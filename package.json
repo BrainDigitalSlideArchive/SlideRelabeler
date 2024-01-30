@@ -1,7 +1,7 @@
 {
   "name": "slide-relabeler",
   "productName": "SlideRelabeler",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Overwrite or delete label images from whole slide images",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -18,6 +18,8 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.23.9",
+    "@babel/preset-react": "^7.23.3",
     "@electron-forge/cli": "^7.2.0",
     "@electron-forge/maker-deb": "^7.2.0",
     "@electron-forge/maker-rpm": "^7.2.0",
@@ -25,9 +27,15 @@
     "@electron-forge/maker-zip": "^7.2.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.2.0",
     "@electron-forge/plugin-vite": "^7.2.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "4.2.1",
+    "babel-loader": "^9.1.3",
     "electron": "28.2.0"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
+    "electron-squirrel-startup": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

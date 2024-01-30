@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 // const path = require('path');
 
@@ -10,7 +10,12 @@ if (require('electron-squirrel-startup')) {
 const createWindow = () => {
   console.log('Creating Main Browser Window ************')
 
-  sendToPython();
+
+  ipcMain.on('button-click',(ev, text)=>{
+    console.log(ev, text);
+    sendToPython(text);
+  })
+  // sendToPython();
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -31,6 +36,7 @@ const createWindow = () => {
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
 };
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -57,12 +63,12 @@ app.on('activate', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-function sendToPython() {
-  console.log('Trying to send to python');
+function sendToPython(text) {
+  console.log(`Trying to send "${text}" to python`);
 
   var python = require("child_process").spawn("python", [
       "./python/engine.py",
-      "Electron",
+      text,
   ]);
 
   python.stdout.on("data", function (data) {
