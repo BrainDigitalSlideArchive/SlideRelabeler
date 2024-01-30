@@ -9,5 +9,6 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 ## Getting started
 Initial templating was done by:
 ```
-npm init electron-app@latest my-app -- --template=vite
+npm init electron-app@latest slide-relabeler -- --template=vite
 ```
+Which created a bunch of boilerplate inside a `slide-relabeler` directory; I moved this up the the project root directory.
