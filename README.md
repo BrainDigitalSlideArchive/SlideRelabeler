@@ -1,7 +1,7 @@
-# SlideDelabeler
-Remove labels from whole slide images
+# SlideRelabeler
+Remove and/or replace labels from whole slide images (WSIs)
 
 ## Design
-The app has a python backend and web frontend, built with [Dash Plotly](https://dash.plotly.com/). It is packaged into a stand-alone application using [PyInstaller](https://www.pyinstaller.org).
+The app has a browser-based (HTML/CSS/js) frontend, for a familiar and efficient graphical user interface. The back-end server invokes python code to interact with the WSI files. It is packaged into a stand-alone application for easy installation and use.
 
-The overall app design is similar to https://github.com/pearcetm/svs-deidentifier. 
+The overall app design is conceptually similar to https://github.com/pearcetm/svs-deidentifier. 
