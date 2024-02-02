@@ -90,3 +90,14 @@ typings/
 
 # Electron-Forge
 out/
+
+
+# python virtual environments
+.pyenv
+.venv
+venv
+
+# pyinstaller output - will be built by npm run make 
+engine.spec 
+dist
+build

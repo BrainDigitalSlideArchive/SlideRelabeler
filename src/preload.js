@@ -2,6 +2,10 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from 'electron';
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  sendButtonClick: (text) => ipcRenderer.send('button-click', text)
-});
+const API = {
+    sendButtonClick: (text) => ipcRenderer.send('button-click', text),
+    onMessage: (callback) => ipcRenderer.on('message', (_event, value) => callback(value)),
+    onDisplay: (callback) => ipcRenderer.on('display', (_event, value) => callback(value)),
+}
+
+contextBridge.exposeInMainWorld('electronAPI', API);

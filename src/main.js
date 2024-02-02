@@ -1,11 +1,24 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import fs from 'fs';
+
 // const path = require('path');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
+
+let mainWindow;
+
+const clientLog = (msg)=>{
+  mainWindow && mainWindow.webContents.send('message', msg);
+}
+
+const clientDisplay = (msg)=>{
+  mainWindow && mainWindow.webContents.send('display', msg);
+}
+
 
 const createWindow = () => {
   console.log('Creating Main Browser Window ************')
@@ -18,7 +31,7 @@ const createWindow = () => {
   // sendToPython();
 
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 500,
     webPreferences: {
@@ -63,17 +76,81 @@ app.on('activate', () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-function sendToPython(text) {
-  console.log(`Trying to send "${text}" to python`);
+function logDir(subdir){
+  // clientLog('Looking for files in ' + __dirname + subdir);
+  const fs = require('fs');
 
-  var python = require("child_process").spawn("python", [
+  fs.readdir(__dirname + subdir, (err, files) => {
+    clientLog(files);
+    clientLog('Found files in ' + __dirname + subdir);
+    if(files){
+      files.forEach(file => {
+        clientLog(file);
+      });
+    }
+    
+  });
+
+}
+
+async function getDir(subdir){
+  // clientLog('Looking for files in ' + __dirname + subdir);
+  const fs = require('fs/promises');
+
+  const files = await fs.readdir(__dirname + subdir);
+  
+  // console.log('getDir',__dirname + subdir, files );
+  return files;
+
+}
+
+function sendToPython(text) {
+  // console.log(`Trying to send "${text}" to python`);
+  clientLog(`Trying to send ${text} to python`);
+
+  // var python = require("child_process").spawn("python", [
+  //     "./python/engine.py",
+  //     text,
+  // ]);
+  // var python = require("child_process").spawn("./dist/engine/engine", [
+  //   text,
+  // ]);
+  
+  let python;
+  if(fs.existsSync('./python/engine.py')){
+    clientLog(`Running python ./python/engine.py`);
+    python = require("child_process").spawn( "python", [
       "./python/engine.py",
       text,
-  ]);
+    ]);
+  } else {
+    clientLog(`Running ../../dist/engine/engine built by pyinstaller`);
+    python = require("child_process").spawn( __dirname + '/../../dist/engine/engine', [
+      text,
+    ]);
+  }
+  
+
+  const dirs = [
+    '/../..',
+    '/../../dist',
+    '/../../build',
+  ]
+
+  const contents = dirs.map(async d => {
+    // logDir(d);
+    const files = await getDir(d);
+    // console.log('in map:', files);
+    return {dir: d, files: files};
+  });
+
+  
+  Promise.all(contents).then(contents=> clientDisplay(JSON.stringify(contents)) )
 
   python.stdout.on("data", function (data) {
   // Do some process here
-  console.log(`Message from python: ${data}`);
+  // console.log(`Message from python: ${data}`);
+    clientLog(`${data}`);
   });
 
   python.stderr.on("data", (data) => {
@@ -82,6 +159,7 @@ function sendToPython(text) {
   });
 
   python.on("close", (code) => {
-      console.log(`child process exited with code ${code}`);
+      // console.log(`child process exited with code ${code}`);
+      clientLog(`Child process exited with code ${code}`);
   });
 }
