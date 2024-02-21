@@ -1,5 +1,5 @@
-# SlideRelabeler
-Remove and/or replace labels from whole slide images (WSIs)
+# WSILabeler
+Replace and/or delete labels from whole slide images (WSIs)
 
 ## Design
 The app has a browser-based (HTML/CSS/js) frontend, for a familiar and efficient graphical user interface. The back-end server invokes python code to interact with the WSI files. It is packaged into a stand-alone application for easy installation and use.
@@ -12,12 +12,14 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 2) Switch to the new directory: `cd SlideRelabeler`.
 3) Create a virtual python environment: `python -m venv .pyenv`.
 4) Activate the virtual environment: `source .pyenv/bin/activate`.
-5) Install python dependencies: `pip install -r requirements.txt`.
+5) Install python dependencies: `pip install -r python-requirements.txt`.
 6) Install npm dependencies: `npm install`;
 7) Launch the dev app: `npm run start`;
 
+> Note about `pip install large-image[common]`: on Macbook Pro MacOS Ventura 13.3 Apple M1 Max, `large-image` failed to install due to `rawpy` not being found on `pypi` - this is because of the M1 architecture. See https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513 and the rest of the thread for info. I ended up being able to clone the `rawpy` repo and install directly (after `brew install cmake`), and then `large-image` could be installed. 
+
 ## Building the distributable application
-Running `npm run start` will open up the app, but won't create a bundle for distribution - no `SlideRelabeler.app` or `SlideRelabeler.exe` file will be generated.
+Running `npm run start` will open up the app, but won't create a bundle for distribution - no `WSILabeler.app` or `WSILabeler.exe` file will be generated.
 
 To build those files, run `npm run make`. This will run `pyinstaller` followed by `electron-forge` to create the application.
 

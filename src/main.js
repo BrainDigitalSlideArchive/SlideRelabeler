@@ -1,6 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, ipcMain, BrowserWindow, protocol } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { PythonBridge , makeBridge} from './bridge/pythonBridge';
+import './handlers'; // side effects - sets up ipcMain handlers
 
 // const path = require('path');
 
@@ -11,34 +13,19 @@ if (require('electron-squirrel-startup')) {
 
 let mainWindow;
 
-const clientLog = (msg)=>{
-  mainWindow && mainWindow.webContents.send('message', msg);
-}
-
-const clientDisplay = (msg)=>{
-  mainWindow && mainWindow.webContents.send('display', msg);
-}
-
-
-const createWindow = () => {
-  console.log('Creating Main Browser Window ************')
-
-
-  ipcMain.on('button-click',(ev, text)=>{
-    console.log(ev, text);
-    sendToPython(text);
-  })
-  // sendToPython();
+const createMainWidow = () => {
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1200,
-    height: 500,
+    height: 900,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
+    icon: '/src/assets/BDSA-icon.png'
   });
 
+  
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -47,14 +34,79 @@ const createWindow = () => {
   }
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools({mode: 'bottom'});
+
+  // setTimeout(()=>{
+  //   mainWindow.webContents.send('log', process.resourcesPath);
+  //   mainWindow.webContents.send('log', fs.readdirSync(process.resourcesPath+'/engine/'));
+
+  //   new makeBridge ( (msg)=>{
+  //     mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
+  //   })
+
+
+  // }, 5000)
+  
+  
 };
+
+
+protocol.registerSchemesAsPrivileged([ 
+  { scheme: 'test', privileges: { secure: true, standard: true, supportFetchAPI: true, }, },
+  { scheme: 'tile', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'thumbnail', privileges: { secure: true, standard: false, supportFetchAPI: true, }, }, 
+  { scheme: 'image', privileges: { secure: true, standard: false, supportFetchAPI: true, }, }, 
+]);
 
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', ()=>{
+  // protocol.handle('image', (request) => {
+  //   console.log('Got image request', request.url);
+  //   return PythonBridge.invoke('image-data',request.url);
+  //   // return null;
+  // });
+
+
+  protocol.handle('thumbnail', async (request) => {
+    return PythonBridge.invoke('thumbnail',request.url.slice('thumbnail://'.length))
+      .then(fetch)
+      .catch(e=>console.log('Error fetching thumbnail',e));
+  });
+
+  protocol.handle('image', async (request) => {
+    const [file, image] = request.url.slice('image://'.length).split('|');
+    return PythonBridge.invoke('image',{file, image})
+      .then(fetch)
+      .catch(e=>console.log('Error fetching image',e));
+  });
+
+  protocol.handle('tile', async (request) => {
+    const [base, query] = request.url.slice('tile://'.length).split('?');
+    const [file, level, x, y] = base.split('|');
+
+    return PythonBridge.invoke('tile',{file, level, x, y})
+      .then(fetch)
+      .catch(e=>console.log('Error fetching tile',e));
+  });
+
+  protocol.handle('test', async (request) => {
+    console.log('Got test request', request.url);
+    
+    let resp = new Response('Test test test',{
+      headers: { 'content-type': 'text/plain' }
+    });
+
+    return resp;
+
+  });
+
+  
+
+  createMainWidow();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -69,97 +121,9 @@ app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    createMainWidow();
   }
 });
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-
-function logDir(subdir){
-  // clientLog('Looking for files in ' + __dirname + subdir);
-  const fs = require('fs');
-
-  fs.readdir(__dirname + subdir, (err, files) => {
-    clientLog(files);
-    clientLog('Found files in ' + __dirname + subdir);
-    if(files){
-      files.forEach(file => {
-        clientLog(file);
-      });
-    }
-    
-  });
-
-}
-
-async function getDir(subdir){
-  // clientLog('Looking for files in ' + __dirname + subdir);
-  const fs = require('fs/promises');
-
-  const files = await fs.readdir(__dirname + subdir);
-  
-  // console.log('getDir',__dirname + subdir, files );
-  return files;
-
-}
-
-function sendToPython(text) {
-  // console.log(`Trying to send "${text}" to python`);
-  clientLog(`Trying to send ${text} to python`);
-
-  // var python = require("child_process").spawn("python", [
-  //     "./python/engine.py",
-  //     text,
-  // ]);
-  // var python = require("child_process").spawn("./dist/engine/engine", [
-  //   text,
-  // ]);
-  
-  let python;
-  if(fs.existsSync('./python/engine.py')){
-    clientLog(`Running python ./python/engine.py`);
-    python = require("child_process").spawn( "python", [
-      "./python/engine.py",
-      text,
-    ]);
-  } else {
-    clientLog(`Running ../../dist/engine/engine built by pyinstaller`);
-    python = require("child_process").spawn( __dirname + '/../../dist/engine/engine', [
-      text,
-    ]);
-  }
-  
-
-  const dirs = [
-    '/../..',
-    '/../../dist',
-    '/../../build',
-  ]
-
-  const contents = dirs.map(async d => {
-    // logDir(d);
-    const files = await getDir(d);
-    // console.log('in map:', files);
-    return {dir: d, files: files};
-  });
-
-  
-  Promise.all(contents).then(contents=> clientDisplay(JSON.stringify(contents)) )
-
-  python.stdout.on("data", function (data) {
-  // Do some process here
-  // console.log(`Message from python: ${data}`);
-    clientLog(`${data}`);
-  });
-
-  python.stderr.on("data", (data) => {
-      console.error(`stderr: ${data}`);
-      console.log(`stderr: ${data}`);
-  });
-
-  python.on("close", (code) => {
-      // console.log(`child process exited with code ${code}`);
-      clientLog(`Child process exited with code ${code}`);
-  });
-}

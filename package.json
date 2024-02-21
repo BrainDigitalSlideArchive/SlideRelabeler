@@ -6,8 +6,9 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
+    "pystart": "pyinstaller --onedir --hidden-import large_image_source_pil ./src/python/engine.py && electron-forge start",
     "package": "electron-forge package",
-    "make": "pyinstaller ./python/engine.py && electron-forge make",
+    "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "echo \"No linting configured\""
   },
@@ -31,11 +32,15 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "4.2.1",
     "babel-loader": "^9.1.3",
-    "electron": "28.2.0"
+    "electron": "28.2.0",
+    "python-shell": "5.0.0"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "openseadragon": "4.1.0",
+    "ag-grid-community":"31.0.3",
+    "ag-grid-react":"31.0.3"
   }
 }

@@ -1,0 +1,93 @@
+import OpenSeadragon from 'openseadragon';
+import React, { useState, useEffect, useRef } from 'react';
+import './osd.css';
+
+export default function OpenSeadragonViewer(props){
+
+    // console.log('OpenSeadragonViewer component', props);
+
+    const viewerRef = useRef(null);
+    useEffect(()=>{
+        if(viewerRef.current || !props){
+            return;
+        }
+        
+        let tileSources = makeTileSources(props);
+
+
+        viewerRef.current = new OpenSeadragon({
+            id: 'osd',
+            prefixUrl: 'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/',
+            tileSources: tileSources,
+            sequenceMode: tileSources.length > 1
+        });
+
+        viewerRef.current.addHandler('open', onImageOpened);
+
+    }, [props]);
+
+
+
+    return (
+        <div id={'osd'} className='osdviewer'></div>
+    )
+}
+
+function onImageOpened(event){
+    console.log('onImageOpened', event);
+    if(event.source && event.source.name){
+        document.title = event.source.name;
+    } else {
+        document.title = 'OpenSeadragon Viewer';
+    }
+}
+
+function makeTileSources(props){
+    const {metadata, associatedImages} = props;
+    // console.log('metadata', metadata)
+    // console.log('associatedImages', associatedImages);
+    // console.log('props', props)
+
+    let tileSources = [];
+    if(metadata.tileWidth == metadata.sizeX && metadata.tileHeight == metadata.sizeY){
+        tileSources.push( makeSimpleImageTileSource(props.file) );
+    } else {
+        tileSources.push( makeTiledImageTileSource(props.file, metadata) );
+    }
+
+    tileSources = tileSources.concat(makeAssociatedImageSources(props.file, associatedImages));
+    return tileSources;
+}
+
+function makeSimpleImageTileSource(file){
+    return {
+        name: file,
+        type: 'image',
+        url: `tile://${file}|0|0|0`
+    }
+}
+
+function makeTiledImageTileSource(file, props){
+    return {
+        name: file,
+        height: props.sizeY,
+        width:  props.sizeX,
+        tileSize: props.tileWidth,
+        minLevel: 0,
+        maxLevel: props.levels - 1,
+        getTileUrl: function( level, x, y ){
+            // console.log('getTileUrl',this.maxLevel, level, x, y)
+            return `tile://${file}|${level}|${x}|${y}`;
+        }
+    }
+}
+
+function makeAssociatedImageSources(file, a){
+    return a.map(image => {
+        return {
+            name: `${image} associated with ${file}`,
+            type: 'image',
+            url: `image://${file}|${image}`
+        }
+    });
+}

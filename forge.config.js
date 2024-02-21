@@ -1,6 +1,23 @@
+const { execSync } = require('child_process');
 module.exports = {
-  packagerConfig: {},
+  packagerConfig: {
+    icon: '/src/assets/BDSA-icon', // no file extension required
+    extraResource: [
+      "./dist/engine",
+    ],
+    
+  },
   rebuildConfig: {},
+  hooks:{
+    prePackage:async (forgeConfig) => {
+
+      console.log('** Cleaning out directory **');
+      execSync('rm -rf ./out');
+
+      console.log('** Running pyinstaller on ./src/python/engine.py **');
+      execSync('pyinstaller -y --onefile --recursive-copy-metadata large_image --collect-all large_image ./src/python/engine.py');
+    }
+  },
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
@@ -12,7 +29,11 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        options: {
+          icon: '/src/assets/BDSA-icon.png'
+        }
+      }
     },
     {
       name: '@electron-forge/maker-rpm',
@@ -39,7 +60,11 @@ module.exports = {
         renderer: [
           {
             name: 'main_window',
-            config: 'vite.renderer.config.mjs',
+            config: 'vite.mainwindow.config.mjs',
+          },
+          {
+            name: 'viewer_window',
+            config: 'vite.viewer.config.mjs',
           },
         ],
       },
