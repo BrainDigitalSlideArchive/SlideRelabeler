@@ -37,11 +37,12 @@ class PythonBridge{
         this._pathToPython;
 
         // console.log('dir: ', __dirname)
-        // if(fs.existsSync('./src/python/engine.py')){
-        //     console.log('Bridge: running locally')
-        //     this._python = './src/python/engine.py';
-        // } else 
-        if (fs.existsSync(path.join(__dirname, '..', '..', 'dist', 'engine', 'engine'))){
+        const usePyinstaller = process.argv[2] === 'pyinstaller';
+        console.log(process.argv)
+        if(!usePyinstaller){
+            console.log('Bridge: running locally')
+            this._python = './src/python/engine.py';
+        } else if (fs.existsSync(path.join(__dirname, '..', '..', 'dist', 'engine', 'engine'))){
             console.log('Bridge: running pyinstaller version locally')
             this._pathToPython = path.join(__dirname, '..', '..', 'dist', 'engine', 'engine');
             // this._python = 'dummy';

@@ -6,7 +6,8 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
-    "pystart": "pyinstaller --onedir --hidden-import large_image_source_pil ./src/python/engine.py && electron-forge start",
+    "startpi": "electron-forge start -- pyinstaller",
+    "startpib": "pyinstaller --onedir --hidden-import large_image_source_pil ./src/python/engine.py && electron-forge start -- pyinstaller",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",

@@ -19,9 +19,14 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 > Note about `pip install large-image[common]`: on Macbook Pro MacOS Ventura 13.3 Apple M1 Max, `large-image` failed to install due to `rawpy` not being found on `pypi` - this is because of the M1 architecture. See https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513 and the rest of the thread for info. I ended up being able to clone the `rawpy` repo and install directly (after `brew install cmake`), and then `large-image` could be installed. 
 
 ## Building the distributable application
-Running `npm run start` will open up the app, but won't create a bundle for distribution - no `WSILabeler.app` or `WSILabeler.exe` file will be generated.
+Running `npm run start` will open up the app, but won't create a bundle for distribution - no `WSILabeler.app` or `WSILabeler.exe` file will be generated. This option will use your local python installation to run the python script in a shell.
 
-To build those files, run `npm run make`. This will run `pyinstaller` followed by `electron-forge` to create the application.
+Running `npm run startpib` (start **P**y**I**nstaller **B**uild) will package your python code into a stand-alone application using `pyinstaller`, and will launch the application
+with a flag to use this python app rather than the system python. This is useful for testing the `pyinstaller` process.
+
+Running `npm run startpi` (start **P**y**I**installer) will use a pre-built `pyinstaller` executable, but won't build it to save startup time. You can use this if you haven't changed your python code since the last build.
+
+To build a stand-alone electron application, run `npm run make`. This will run `pyinstaller` followed by `electron-forge` to create the application. The app can be found in the `out/` directory.
 
 
 Initial templating was done by:

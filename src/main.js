@@ -40,9 +40,11 @@ const createMainWidow = () => {
     // mainWindow.webContents.send('log', process.resourcesPath);
     // mainWindow.webContents.send('log', fs.readdirSync(process.resourcesPath+'/engine/'));
 
-    new makeBridge ( (msg)=>{
-      mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
-    })
+    // const args = Array.from(process.argv)
+    // mainWindow.webContents.send('log','Args: ' + args.join(' | '))
+    // new makeBridge ( (msg)=>{
+    //   mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
+    // })
 
 
   }, 5000)
