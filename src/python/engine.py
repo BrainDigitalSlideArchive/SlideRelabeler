@@ -4,7 +4,6 @@ import json
 import os
 import large_image
 import base64
-# import large_image
 
 openFiles = dict()
 

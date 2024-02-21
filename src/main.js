@@ -36,16 +36,16 @@ const createMainWidow = () => {
   // Open the DevTools.
   mainWindow.webContents.openDevTools({mode: 'bottom'});
 
-  // setTimeout(()=>{
-  //   mainWindow.webContents.send('log', process.resourcesPath);
-  //   mainWindow.webContents.send('log', fs.readdirSync(process.resourcesPath+'/engine/'));
+  setTimeout(()=>{
+    // mainWindow.webContents.send('log', process.resourcesPath);
+    // mainWindow.webContents.send('log', fs.readdirSync(process.resourcesPath+'/engine/'));
 
-  //   new makeBridge ( (msg)=>{
-  //     mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
-  //   })
+    new makeBridge ( (msg)=>{
+      mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
+    })
 
 
-  // }, 5000)
+  }, 5000)
   
   
 };

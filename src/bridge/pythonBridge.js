@@ -37,10 +37,16 @@ class PythonBridge{
         this._pathToPython;
 
         // console.log('dir: ', __dirname)
+        // if(fs.existsSync('./src/python/engine.py')){
+        //     console.log('Bridge: running locally')
+        //     this._python = './src/python/engine.py';
+        // } else 
         if (fs.existsSync(path.join(__dirname, '..', '..', 'dist', 'engine', 'engine'))){
+            console.log('Bridge: running pyinstaller version locally')
             this._pathToPython = path.join(__dirname, '..', '..', 'dist', 'engine', 'engine');
             // this._python = 'dummy';
         } else if (fs.existsSync(path.join(process.resourcesPath, 'engine', 'engine'))){
+            console.log('Bridge: running pyinstaller version from resourcesPath')
             this._pathToPython = path.join(process.resourcesPath, 'engine', 'engine');
             // this._python = 'dummy';
         }
@@ -148,17 +154,6 @@ class PythonBridge{
         }
     }
 }
-
-
-
-const bridge = new PythonBridge();
-
-
-export { 
-    bridge as PythonBridge,
-    PythonBridge as makeBridge
-};
-
 
 
 // Code below is adapted from python-shell package https://github.com/extrabacon/python-shell
@@ -540,3 +535,17 @@ export class PythonShell extends EventEmitter {
 };
 
 ////
+
+
+
+
+/*** Exports *****/
+
+
+const bridge = new PythonBridge();
+
+
+export { 
+    bridge as PythonBridge,
+    PythonBridge as makeBridge
+};
