@@ -22,7 +22,7 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 > For some reason, running `npm run debug` (or `npm run start`) after making changes sometims causes a 504 error about "Outdated optimize deps" fo react. This will go away if you just close the app and start it again. It is annoying, but I'm not sure how to fix it yet.
 
 ## Building the distributable application
-Running `npm run start` will open up the app, but won't create a bundle for distribution - no `WSILabeler.app` or `WSILabeler.exe` file will be generated. This option will use your local python installation to run the python script in a shell.
+Running `npm run start` will open up the app, but won't create a bundle for distribution - no `SlideRelabeler.app` or `SlideRelabeler.exe` file will be generated. This option will use your local python installation to run the python script in a shell.
 
 Running `npm run startpib` (start **P**y**I**nstaller **B**uild) will package your python code into a stand-alone application using `pyinstaller`, and will launch the application
 with a flag to use this python app rather than the system python. This is useful for testing the `pyinstaller` process.
