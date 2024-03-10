@@ -7,6 +7,6 @@ export default defineConfig({
   root: path.join(__dirname, "src", "mainwindow"),
   plugins: [react()],
   optimizeDeps:{
-    exclude:['react'] // this doesn't work; deleting node_modules and rerunning npm install did though
+    // exclude:['react'] // this doesn't work; deleting node_modules and rerunning npm install did though
   }
 })
