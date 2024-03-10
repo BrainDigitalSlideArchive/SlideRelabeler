@@ -1,2 +1,3 @@
 pyinstaller==6.3.0
 large-image[common]==1.27.2
+large-image[sources]==1.27.2

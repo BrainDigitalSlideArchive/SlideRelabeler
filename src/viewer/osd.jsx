@@ -19,10 +19,14 @@ export default function OpenSeadragonViewer(props){
             id: 'osd',
             prefixUrl: 'https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/',
             tileSources: tileSources,
-            sequenceMode: tileSources.length > 1
+            sequenceMode: tileSources.length > 1,
+            drawer:'webgl',
+            maxImageCacheCount:1000,
         });
 
         viewerRef.current.addHandler('open', onImageOpened);
+
+        window.viewer = viewerRef.current;
 
     }, [props]);
 

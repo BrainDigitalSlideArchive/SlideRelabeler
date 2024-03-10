@@ -1,11 +1,17 @@
 const { execSync } = require('child_process');
 module.exports = {
   packagerConfig: {
-    icon: '/src/assets/BDSA-icon', // no file extension required
+    icon: './src/assets/BDSA-icon', // no file extension required
     extraResource: [
       "./dist/engine",
     ],
-    
+    ignore:[
+      "/\.pyenv.*/",
+      "/pyinstaller/",
+      "/build/engine",
+      "dist",
+      "temp"
+    ]
   },
   rebuildConfig: {},
   hooks:{
@@ -14,8 +20,11 @@ module.exports = {
       console.log('** Cleaning out directory **');
       execSync('rm -rf ./out');
 
-      console.log('** Running pyinstaller on ./src/python/engine.py **');
-      execSync('pyinstaller -y --onefile --recursive-copy-metadata large_image --collect-all large_image ./src/python/engine.py');
+      console.log('** Cleaning build directory **');
+      execSync('rm -rf ./build');
+
+      console.log('** Running pyinstaller on ./pyinstaller/engine.spec **');
+      execSync('pyinstaller -y ./pyinstaller/engine.spec');
     }
   },
   makers: [

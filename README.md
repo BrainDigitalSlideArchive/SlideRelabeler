@@ -14,9 +14,12 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 4) Activate the virtual environment: `source .pyenv/bin/activate`.
 5) Install python dependencies: `pip install -r python-requirements.txt`.
 6) Install npm dependencies: `npm install`;
-7) Launch the dev app: `npm run start`;
+7) Launch the dev app: `npm run debug`;
 
 > Note about `pip install large-image[common]`: on Macbook Pro MacOS Ventura 13.3 Apple M1 Max, `large-image` failed to install due to `rawpy` not being found on `pypi` - this is because of the M1 architecture. See https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513 and the rest of the thread for info. I ended up being able to clone the `rawpy` repo and install directly (after `brew install cmake`), and then `large-image` could be installed. 
+
+### Sometimes the window is blank and the console shows a 504 error
+> For some reason, running `npm run debug` (or `npm run start`) after making changes sometims causes a 504 error about "Outdated optimize deps" fo react. This will go away if you just close the app and start it again. It is annoying, but I'm not sure how to fix it yet.
 
 ## Building the distributable application
 Running `npm run start` will open up the app, but won't create a bundle for distribution - no `WSILabeler.app` or `WSILabeler.exe` file will be generated. This option will use your local python installation to run the python script in a shell.
@@ -40,8 +43,6 @@ within the root directory, so `package.json` etc. were all installed in the root
 Useful [stackoverflow](https://stackoverflow.com/questions/67146654/how-to-compile-python-electron-js-into-desktop-app-exe) question and answer.
 
 Blog posts by Simon Willison [here](https://til.simonwillison.net/electron/python-inside-electron) and perhaps the linked one [here](https://til.simonwillison.net/electron/sign-notarize-electron-macos) if signing and notarizing is needed for the bundled Mac app.
-
-Consider using `pyinstaller` though, and running the generated `.exe` instead of bundling python3 from scratch.
 
 The overall app design is conceptually similar to https://github.com/pearcetm/svs-deidentifier.
 

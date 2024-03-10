@@ -1,3 +1,14 @@
+# Divert the program flow in worker sub-process as soon as possible,
+# before importing other modules that may spawn new processes.
+if __name__ == '__main__':
+    import multiprocessing
+    multiprocessing.freeze_support()
+
+    import pyproj
+    import os
+    # the PROJ_DATA env var is necessary for the large_image.rasterio_file_tile_source to work correctly
+    os.environ['PROJ_DATA'] = pyproj.datadir.get_data_dir()
+
 import sys
 import traceback
 import json
@@ -6,7 +17,10 @@ import large_image
 import base64
 
 openFiles = dict()
-
+try:
+    large_image.canRead()
+except Exception as e:
+    pass
 ## For JSON encoded communication: new PythonShell('script.py', {mode: 'json'} ))
 
 
@@ -51,7 +65,7 @@ def listenToInput():
     counter = 0
     for line in sys.stdin:
         counter = counter+1
-        # debugMsg(f'Input {counter}: Got raw line {line}')
+        debugMsg(f'Input {counter}: Got raw line {line}')
         input = dict()
         data = None
         id = None
@@ -72,8 +86,8 @@ def listenToInput():
         requestedFunction = data.get('function')
         inputData = data.get('data')
 
-        if(requestedFunction == 'open-file'):
-            Response(id, lambda: openFile(inputData) )
+        if(requestedFunction == 'metadata'):
+            Response(id, lambda: getMetadata(inputData) )
         elif(requestedFunction == 'thumbnail'):
             Response(id, lambda: getThumbnail(inputData))
         elif(requestedFunction == 'image'):
@@ -82,23 +96,33 @@ def listenToInput():
             Response(id, lambda: getTile(inputData))
 
 
-
-
-
-def openFile(file):
+def openFile(file, second=False):
     source = openFiles.get(file)
     if not source:
-        source = large_image.open(file)
-        openFiles[file] = source
+        try:
+            source = large_image.open(file)
+            openFiles[file] = source
+        except Exception as e:
+            debugMsg('Exception in openFile:' + repr(e) )
+            debugMsg('Retrying')
+            if not second:
+                return openFile(file, True)
+            else:
+                raise Exception('Could not open tile source for ' + file)
+            # try a second time
+    return source
 
+def getMetadata(file):
+    source = openFile(file)
     output = {
         'metadata': source.getMetadata(),
-        'associatedImages': source.getAssociatedImagesList()
+        'associatedImages': source.getAssociatedImagesList(),
+        'bytes': os.path.getsize(file)
     }
     return output
 
 def getThumbnail(file):
-    f = openFiles.get(file)
+    f = openFile(file)
     if f:
         image, mime_type = f.getThumbnail()
         return f'data:{mime_type};base64,{base64.b64encode(image).decode("ascii")}'
@@ -108,16 +132,16 @@ def getThumbnail(file):
 def getImage(d):
     filename = d.get('file')
     image = d.get('image')
-    f = openFiles.get(filename)
+    f = openFile(filename)
     if f and image:
         image, mime_type = f.getAssociatedImage(image)
         return f'data:{mime_type};base64,{base64.b64encode(image).decode("ascii")}'
     else:
-        raise(Exception(f'Error: {file} is not open'))
+        raise(Exception(f'Error: {filename} is not open'))
     
 def getTile(d):
     filename = d.get('file')
-    file = openFiles.get(filename)
+    file = openFile(filename)
     if file:
         mime_type = file.getTileMimeType()
         image = file.getTile(int(d.get('x')), int(d.get('y')), int(d.get('level')))

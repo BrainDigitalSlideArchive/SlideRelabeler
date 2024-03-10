@@ -1,30 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-// import { send } from 'process';
-// import { Readable, Transform, TransformCallback, Writable } from 'stream'
-// import { EOL as newline, tmpdir } from 'os';
-// import { PythonShell, NewlineTransformer } from 'python-shell';
-
-// class NewlineTransformerX extends Transform {
-//     // NewlineTransformer: Megatron's little known once-removed cousin
-//     // constructor
-//     _lastLineData;
-//     _transform(chunk, encoding, callback){
-//         let data = chunk.toString()
-//         console.log('Got data', data)
-//         if (this._lastLineData) data = this._lastLineData + data
-//         const lines = data.split(newline)
-//         this._lastLineData = lines.pop()
-        
-//         lines.forEach(this.push.bind(this))
-//         callback()
-//     }
-//     _flush(done){
-//         if (this._lastLineData) this.push(this._lastLineData)
-//         this._lastLineData = null;
-//         done()
-//     }
-// }
 
 
 class PythonBridge{
@@ -37,26 +12,37 @@ class PythonBridge{
         this._pathToPython;
 
         // console.log('dir: ', __dirname)
-        const usePyinstaller = process.argv[2] === 'pyinstaller';
-        console.log(process.argv)
+        const usePyinstaller = process.argv.includes('pyinstaller') || fs.existsSync(path.join(process.resourcesPath, 'engine', 'engine'));
+
         if(!usePyinstaller){
-            console.log('Bridge: running locally')
+            this._status = 'Bridge: running locally';
             this._python = './src/python/engine.py';
         } else if (fs.existsSync(path.join(__dirname, '..', '..', 'dist', 'engine', 'engine'))){
-            console.log('Bridge: running pyinstaller version locally')
+            this._status = 'Bridge: running pyinstaller version locally';
             this._pathToPython = path.join(__dirname, '..', '..', 'dist', 'engine', 'engine');
-            // this._python = 'dummy';
         } else if (fs.existsSync(path.join(process.resourcesPath, 'engine', 'engine'))){
-            console.log('Bridge: running pyinstaller version from resourcesPath')
+            this._status = 'Bridge: running pyinstaller version from resourcesPath';
             this._pathToPython = path.join(process.resourcesPath, 'engine', 'engine');
-            // this._python = 'dummy';
+        } else {
+            this._status = 'Bridge: No path to python detected, not running';
+        }
+        this._log(this._status);
+
+        this.printStatus = (verbose) => {
+            this._log('PythonBridge status:')
+            this._log(this._status);
+            if(verbose){
+                this._log('Argv')
+                this._log(process.argv)
+                this._log('usePyinstaller?');
+                this._log(!!usePyinstaller)
+                this._log('resource engine exists?')
+                this._log(fs.existsSync(path.join(process.resourcesPath, 'engine', 'engine')))
+            }
+            
+            
         }
 
-        // if(fs.existsSync('./src/python/engine.py')){
-        //     this._python = './src/python/engine.py';
-        // } else if (fs.existsSync('../../dist/engine/engine')){
-        //     this._python = '../../dist/engine/engine';
-        // } 
         try{
             if(this._python || this._pathToPython){
 
@@ -149,9 +135,9 @@ class PythonBridge{
         this._log(this._python);
     }
     _log(){
-        console.log(...arguments);
+        console.log('_log:',...arguments);
         if(this._sendToBrowser){
-            this._sendToBrowser(Array.from(arguments).join(' | '));
+            this._sendToBrowser(Array.from(arguments).map(JSON.stringify).join(' | '));
         }
     }
 }
@@ -172,11 +158,11 @@ class PythonBridge{
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import { EventEmitter } from 'events';
-import { ChildProcess, spawn, SpawnOptions, exec, execSync } from 'child_process';
+import { spawn, exec, execSync } from 'child_process';
 import { EOL as newline, tmpdir } from 'os';
 import { join, sep } from 'path'
-import { Readable, Transform, TransformCallback, Writable } from 'stream'
-import { writeFile, writeFileSync } from 'fs';
+import { Transform } from 'stream'
+import { writeFile } from 'fs';
 import { promisify } from 'util';
 
 function toArray(source){

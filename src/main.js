@@ -33,21 +33,11 @@ const createMainWidow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools({mode: 'bottom'});
-
-  setTimeout(()=>{
-    // mainWindow.webContents.send('log', process.resourcesPath);
-    // mainWindow.webContents.send('log', fs.readdirSync(process.resourcesPath+'/engine/'));
-
-    // const args = Array.from(process.argv)
-    // mainWindow.webContents.send('log','Args: ' + args.join(' | '))
-    // new makeBridge ( (msg)=>{
-    //   mainWindow.webContents.send('log', 'Message from pythonBridge: '+msg);
-    // })
-
-
-  }, 5000)
+  console.log(process.argv);
+  if(process.argv.includes('debug')){
+    // Open the DevTools.
+    mainWindow.webContents.openDevTools({mode: 'bottom'});
+  }
   
   
 };
@@ -65,28 +55,22 @@ protocol.registerSchemesAsPrivileged([
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', ()=>{
-  // protocol.handle('image', (request) => {
-  //   console.log('Got image request', request.url);
-  //   return PythonBridge.invoke('image-data',request.url);
-  //   // return null;
-  // });
-
 
   protocol.handle('thumbnail', async (request) => {
-    return PythonBridge.invoke('thumbnail',request.url.slice('thumbnail://'.length))
+    return PythonBridge.invoke('thumbnail',decodeURI(request.url).slice('thumbnail://'.length))
       .then(fetch)
       .catch(e=>console.log('Error fetching thumbnail',e));
   });
 
   protocol.handle('image', async (request) => {
-    const [file, image] = request.url.slice('image://'.length).split('|');
+    const [file, image] = decodeURI(request.url).slice('image://'.length).split('|');
     return PythonBridge.invoke('image',{file, image})
       .then(fetch)
       .catch(e=>console.log('Error fetching image',e));
   });
 
   protocol.handle('tile', async (request) => {
-    const [base, query] = request.url.slice('tile://'.length).split('?');
+    const [base, query] = decodeURI(request.url).slice('tile://'.length).split('?');
     const [file, level, x, y] = base.split('|');
 
     return PythonBridge.invoke('tile',{file, level, x, y})

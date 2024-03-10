@@ -99,7 +99,6 @@ temp/
 .venv
 venv
 
-# pyinstaller output - will be built by npm run make, npm run package, npm run pystart 
-engine.spec 
+# pyinstaller output - will be built by npm run make, npm run package, npm run pystart  
 dist
 build

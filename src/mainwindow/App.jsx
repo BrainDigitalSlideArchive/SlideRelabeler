@@ -1,22 +1,49 @@
-import { useState, useEffect, useRef } from 'react'
-import reactLogo from '../assets/react.svg'
-import viteLogo from '../../public/vite.svg'
+import { useState, useEffect, useRef, useMemo } from 'react'
+// import reactLogo from '../assets/react.svg'
+// import viteLogo from '../../public/vite.svg'
 import bdsaLogo from '../assets/BDSA_folder_clear.png'
 import './App.css';
-import { AgGridReact } from 'ag-grid-react'; // React Grid Logic
-import "ag-grid-community/styles/ag-grid.css"; // Core CSS
-import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
+// import { AgGridReact } from 'ag-grid-react'; // React Grid Logic
+// import "ag-grid-community/styles/ag-grid.css"; // Core CSS
+// import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
+import { AgGrid } from './AgGrid.jsx';
+import { displayBytes } from './displaybytes.js';
 
-
+/**
+ * 
+ * @returns the component to render that defines the application
+ */
 function App() {
   const [count, setCount] = useState(0);
   const [targetDirectory, setTargetDirectory] = useState(null);
-
-  const [files, setFiles] = useState([]);
+  const [relabelingState, setRelabelingState] = useState(null);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [remainingBytes, setRemainingBytes] = useState(0);
 
   const loaded = useRef(null);
   const gridApiRef = useRef(null);
+
+  const isRelabeling = useRef(false);
+  const findingMetadata = useRef(false);
+  const fileId = useRef(0);
+
+  const [files, setFileState] = useState([]);
+  const filesRef = useRef(null);
+  const setFiles = (arr)=>{
+    const newArr = [...arr];
+    setFileState(newArr);
+    filesRef.current = newArr;
+
+    const allTargetDirectoriesSpecified = newArr.length > 0 && newArr.filter(f=>!f.destinationDirectory).length === 0;
+    if(targetDirectory === true && !allTargetDirectoriesSpecified){
+      setTargetDirectory();
+    } else if (!targetDirectory && allTargetDirectoriesSpecified){
+      setTargetDirectory(true);
+    }
+    
+  }
   
+  // Guard against creating the component twice
   useEffect(()=>{
     if(loaded.current){
       return;
@@ -29,155 +56,297 @@ function App() {
     
   }, []);
 
-  function folderPicked(d){
-    console.log('folderPicked', d);
-    setTargetDirectory(d);
-  }
-  function noFolder(d){
-    console.log('noFolder', d);
-    setTargetDirectory(null);
-  }
 
+  /**
+   * Process the list of files chosen by the user to prepare for displaying it
+   * @param {Array} list 
+   */
   function filesPicked(list){
 
-    const allFiles = [...files, ...list];
-    
+    // add extra fields to each of the objects
     for(const file of list){
-      file.rename = file.filename;
 
-      electronAPI.openFile(file.path).then(d => {
-
-        console.log('openFile (print path)', d)
-        return;
-        
-        // console.log('Success opening file', file.filename, file, d)
-        file.associatedImages = d.associatedImages;
-        
-        const ct = allFiles.reduce((count, f)=>{
-          console.log(count, f)
-          if(f.associatedImages) count += 1;
-          return count;
-        }, 0)
-        console.log('setting count', ct)
-        setCount(ct);
-        if(file.rowNode){
-          // console.log('Refreshing cell');
-          file.rowNode.setData(file);
+      if(file.destination?.parsed.root){
+        // fully specified path was given for the destination file
+        file.destinationDirectory = file.destination.parsed.dir;
+        file.rename = file.destination.parsed.name;
+      } else {
+        // destination not fully specified
+        if(file.destination?.parsed.name){
+          // a name was given - use it, prepending any directories
+          file.rename = file.destination.parsed.name;
+          if(file.destination.parsed.dir){
+            file.rename = file.destination.parsed.dir + file.destination.sep + file.rename;
+          }
+        } else {
+          file.rename = file.source.parsed.name;
         }
-      }).catch(e => {
-        console.log('Error opening file', file.filename, e)
-      });
+      }
+      file.processed = 0;
+      file.progress = 0;
+      file.copiedBytes = 0;
+      file.id = fileId.current;
+      fileId.current += 1;
     }
 
     setFiles([...files, ...list]);
 
-    if(gridApiRef.current){
-      gridApiRef.current.sizeColumnsToFit();
-    }
-  }
-  function noFiles(){
-    fetch('test://whodat').then(d=>d.text()).then(d=>console.log(d)).catch(e=>console.log('error',e))
   }
 
-  function headerInfo(){
-    if(files.length === 0){
-      return <>Select files to inspect and process</>
-    } else {
-      return <>Found info for {count} of {files.length} files; {files.length - count} remaining.</>
-    }
+
+  function displayErrorMsg(msg){
+    alert(msg);
   }
 
-  function targetInfo(){
-    if(targetDirectory){
-      return <>Copy to: {targetDirectory}</>
-    } else {
-      return <>Please select a directory to copy files into</>
-    }
+
+  /**
+   * Updates the state variables about the number of files that have been processed and their total sizes
+   * @param {Array} files 
+   */
+  function updateCount(files){
+    // console.log('updateCount; num files = ', files.length)
+    const ct = files.reduce((count, f)=>{
+      // console.log(count, f)
+      if(f.metadata) count += 1;
+      return count;
+    }, 0)
+    // console.log('setting count', ct)
+    setCount(ct);
+
+    setTotalBytes(files.reduce((total, f)=>total + f.size, 0))
+    setRemainingBytes(files.reduce((total, f)=>total + f.size-f.copiedBytes, 0))
+
   }
 
-  const fileList = (files)=>{
-    console.log('Files', files)
-    const rowData = files;
-    const colDefs = [
-      {field: 'path', headerName: 'Thumbnail', cellRenderer:(params) => {
-        return <><div className='thumbnail' title='Open in viewer'><img src={`thumbnail://${params.value}`}></img></div></>
-      }},
-      {field: 'filename', headerName: 'File name'},
-      {field: 'directory', headerName: 'Directory'},
-      {
-        field: 'associatedImages', 
-        headerName: 'Associated Images', 
-        valueFormatter:v=>'fake',
-        cellRenderer:(params)=>{
-          // console.log('cellRenderer params', params)
-          if(params.data.associatedImages){
-            const images=params.data.associatedImages;
-            return <>{params.data.associatedImages.join(', ')}</>
-          } else {
-            // params.data.refreshCell = params.refreshCell;
-            params.data.rowNode = params.node;
-            return <>Loading...</>
-          }  
-        },
-        comparator:(valA, valB) => {
-          return valA.length - valB.length
+
+  /**
+   * Query and update the metadata for the file
+   */
+  function findMetadataIfNecessary(){
+    if(!findingMetadata.current){
+      // find the next file that needs to have metadata updated
+      let file;
+      gridApiRef.current?.api.forEachNodeAfterFilterAndSort(node=>{
+        if(!file && !node.data.metadata){
+          file = node.data;
         }
-      },
-      {field: 'rename', headerName: 'Rename to', editable: true}
-      
-    ];
-    function clickHandler(ev){
-      if(ev.colDef.field === 'path'){
-        electronAPI.openViewer(ev.value);
+      });
+      if(file){
+
+        findingMetadata.current = true;
+        electronAPI.getMetadata(file.source.path).then(d => {
+
+          file.associatedImages = d.associatedImages;
+          file.metadata = d.metadata;
+          file.size = d.bytes;
+          file.displayBytes = displayBytes(d.bytes);
+          file.rowNode?.setData(file);
+          console.log('set metadata', file.id)
+  
+        }).catch(e => {
+          console.log('Error opening file', file.filename, e);
+          file.metadata = {error:e}
+          file.associatedImages = ['Error']
+        }).then(()=>{
+          // console.log
+          updateCount(files);
+          findingMetadata.current = false;
+          findMetadataIfNecessary();
+        });// keep finding anything that is missing metadata
+      } else {
+        findingMetadata.current = false;
       }
     }
-    const autoSizeStrategy = {
-      type: 'fitCellContents'
-    };
-  
-    return (
-      // Container
-      <div className="ag-theme-quartz"
-            style={{
-              height: '100%',
-              width: '100%'
-            }}
-      >
-        {/* The AG Grid component */}
-        <AgGridReact rowData={rowData} 
-                     columnDefs={colDefs} 
-                     autoSizeStrategy={autoSizeStrategy} 
-                     onGridReady={ ev=>gridApiRef.current=ev.api }
-                     onCellClicked={ clickHandler }/>
-      </div>
-    )
   }
 
+
+  /**
+   * 
+   * @returns the next file to process, or the currently processing one
+   */
+  function getNextUnprocessedFile(){
+    const array = [];
+    gridApiRef.current?.api.forEachNodeAfterFilterAndSort(node=>{
+      if(node.data.processed === 0 || node.data.processed === 'In progress'){
+        array.push(node.data);
+      }
+    });
+    const inProgress = array.filter(a => a.processed === 'In progress')[0];
+    
+    return inProgress || array[0];
+  }
+
+  /**
+   * Start copy and relabel operation
+   */
+  function startCopyAndRelabel(){
+    
+    isRelabeling.current = true;
+
+    const nextFileToProcess = getNextUnprocessedFile();
+    if(nextFileToProcess?.processed === 0){
+      processNextFile(nextFileToProcess);
+    }
+  }
+
+
+
+  /**
+   * Cancel the copy and relabel process
+   */
+  function cancelCopyAndRelabel(){
+    // console.log('cancel copy and relabel')
+    isRelabeling.current = false;
+    setRelabelingState(false);
+  }
+
+
+  /**
+   * Process the next unprocessed file, if one isn't already in progress
+   * @param {string} file The fully resolved file path of the file to process 
+   */
+  function processNextFile(file){
+    if(!file){
+      file = getNextUnprocessedFile();
+    } 
+
+    if(file){
+      file.processed = 'In progress';
+
+      setFiles(files); // trigger a re-render with the new file status
+      const interval = setInterval(()=>{
+        // console.log('Copying', file.path);
+        electronAPI.getCopyProgress(file.id).then(d=>{
+          console.log('progress', d)
+          file.rename = d.path;
+          file.progress = 100 * d.size / file.size;
+          file.copiedBytes = d.size;
+          
+          setFiles(files);
+          updateCount(files);
+        });
+      }, 100);
+      const fileInfo = {
+        id:file.id,
+        path: file.source.path,
+        rename: file.rename + file.source.parsed.ext,
+        targetDirectory: file.destinationDirectory || targetDirectory
+      }
+
+      electronAPI.processFile(fileInfo).then(d => {
+        console.log('Processed', file, d);
+        clearInterval(interval);
+        file.processed = d.errno ? 'Error' : 'OK';
+        file.progress = 100;
+        file.copiedBytes = file.size;
+        file.rename = d;
+        
+        updateCount(files);
+        setFiles(files);
+
+        // if we are supposed to still be processing the list, do the next one
+        if(isRelabeling.current){
+          // console.log('Processing next');
+          processNextFile()
+        } 
+
+      })
+    }
+
+  }
+
+  /**
+   * 
+   * @returns The component for displaying the status of the app
+   */
+  function headerInfo(){
+    // console.log('headerInfo rendering', files);
+    if(files.length === 0){
+      return <>Select files to inspect and process</>
+    } else if(count < files.length) {
+      return <>Found info for {count} of {files.length} files; {files.length - count} remaining.</>
+    } else {
+      return <>Total size: {displayBytes(totalBytes)} for {files.length} files. {displayBytes(remainingBytes)} left to copy.</>
+    }
+  }
+
+  /**
+   * The component that controls selecting and displaying the directory to copy into
+   * @returns the component to render
+   */
+  function targetOfCopyRelabel(){
+    function button(){
+      if(relabelingState){
+        return <><button onClick={()=>cancelCopyAndRelabel()}>Abort processing</button></>
+      } else {
+        return <><button onClick={()=>startCopyAndRelabel()} disabled={files.filter(f=>f.processed===0).length===0}>Make relabeled copies</button></>
+      }
+    }
+    
+    if(targetDirectory){
+      if(relabelingState){
+        return button()
+      } else if(targetDirectory === true){
+        return button()
+      } else {
+        return <>
+          <div className='topbar-do-copy align-center'>
+              {button()}
+              <label>Copy to:</label>{targetDirectory} 
+              <button className = 'cancel-selection x-button' alt='Clear selection' onClick={()=>setTargetDirectory()}>X</button>
+          </div>
+        </>
+      } 
+    } else {
+      return <>
+        <button onClick={()=>electronAPI.openFolderDialog().then(d=>setTargetDirectory(d)).catch(d=>setTargetDirectory())}>Choose</button>
+        <span>Select a directory to copy files into</span>
+      </>
+    }
+  }
+
+
+  // Make the Ag Grid component; re-render when files or targetDirectory change
+  const agGrid = useMemo(()=>AgGrid({files,
+                                     targetDirectory,
+                                     filesRef,
+                                     gridApiRef,
+                                     setFiles,
+                                     updateCount,
+                                     findMetadataIfNecessary
+                                    }),[files, targetDirectory])
+
+  // Return the component for App
   return (
     <>
-      <div className='main-layout'>
-        <div className='main-controls'>
+      <div id='main-layout'>
+        <div id='main-controls'>
           <img src={bdsaLogo} className = 'logo' alt = 'Brain Digital Slide Archive Logo'/>
-          <div>
-            <div>
-              <button onClick={()=>electronAPI.openFileDialog().then(filesPicked).catch(noFiles)}>Add files</button>
-              <span>{headerInfo()}</span>
-            </div>
-            <div>
-              <button onClick={()=>setFiles([])}>Clear list</button>
-            </div>
+          <div id='list-controls'>
+            {/* First row */}
+            <button onClick={()=>electronAPI.openFileDialog().then(files=>{
+              if(files.error){
+                console.log('Throwing new error', files.message);
+                throw new Error(files.message);
+              }
+              filesPicked(files)
+            }).catch(displayErrorMsg)}>Add files</button>
+            <span>{headerInfo()}</span>
+
+            {/* Second row */}
+            <button onClick={()=>{
+              setFiles([]);
+            }}>Clear list</button>
+            
           </div>
-          
-          
         </div>
+
         <div id='table-topbar'>
-          <label>Copy to:</label><span className="copy-target">{targetInfo()}</span>
-          <button onClick={()=>electronAPI.openFolderDialog().then(folderPicked).catch(noFolder)}>Choose</button>
+          <span className="copy-target">{targetOfCopyRelabel()}</span>
         </div>
-        
         
         <div id='table'>
-          {fileList(files)}
+          {agGrid}
         </div>
       </div>
     </>
