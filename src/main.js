@@ -33,7 +33,6 @@ const createMainWidow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  console.log(process.argv);
   if(process.argv.includes('debug')){
     // Open the DevTools.
     mainWindow.webContents.openDevTools({mode: 'bottom'});

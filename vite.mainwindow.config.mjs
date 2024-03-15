@@ -8,5 +8,6 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps:{
     // exclude:['react'] // this doesn't work; deleting node_modules and rerunning npm install did though
+    include:['react-dom']
   }
 })

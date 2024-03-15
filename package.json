@@ -43,6 +43,7 @@
     "electron-squirrel-startup": "^1.0.0",
     "node-xlsx": "^0.23.0",
     "openseadragon": "4.1.0",
+    "osd-paperjs-annotation": "github:pearcetm/osd-paperjs-annotation",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

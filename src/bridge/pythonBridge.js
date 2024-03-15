@@ -32,8 +32,6 @@ class PythonBridge{
             this._log('PythonBridge status:')
             this._log(this._status);
             if(verbose){
-                this._log('Argv')
-                this._log(process.argv)
                 this._log('usePyinstaller?');
                 this._log(!!usePyinstaller)
                 this._log('resource engine exists?')

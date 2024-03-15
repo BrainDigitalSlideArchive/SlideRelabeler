@@ -1,6 +1,7 @@
 import OpenSeadragon from 'openseadragon';
 import React, { useState, useEffect, useRef } from 'react';
-import './osd.css';
+import './OpenSeadragonViewer.css';
+import { AnnotationToolkit } from 'osd-paperjs-annotation';
 
 export default function OpenSeadragonViewer(props){
 
@@ -27,7 +28,12 @@ export default function OpenSeadragonViewer(props){
         viewerRef.current.addHandler('open', onImageOpened);
 
         window.viewer = viewerRef.current;
+        window.tk = new AnnotationToolkit(viewerRef.current);
 
+        return ()=>{
+            window.tk.destroy();
+            window.tk = null;
+        }
     }, [props]);
 
 

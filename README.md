@@ -12,7 +12,7 @@ The overall app design is conceptually similar to https://github.com/pearcetm/sv
 2) Switch to the new directory: `cd SlideRelabeler`.
 3) Create a virtual python environment: `python -m venv .pyenv`.
 4) Activate the virtual environment: `source .pyenv/bin/activate`.
-5) Install python dependencies: `pip install -r python-requirements.txt`.
+5) Install python dependencies: `pip install -r python-requirements.txt --find-links https://girder.github.io/large_image_wheels`
 6) Install npm dependencies: `npm install`;
 7) Launch the dev app: `npm run debug`;
 

@@ -1,4 +1,4 @@
-import OpenSeadragonViewer from './osd.jsx';
+import OpenSeadragonViewer from './OpenSeadragonViewer.jsx';
 import './ViewerWindow.css';
 import { useState, useEffect } from 'react';
 
