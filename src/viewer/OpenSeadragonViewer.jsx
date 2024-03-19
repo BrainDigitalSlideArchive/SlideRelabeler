@@ -29,6 +29,7 @@ export default function OpenSeadragonViewer(props){
 
         window.viewer = viewerRef.current;
         window.tk = new AnnotationToolkit(viewerRef.current);
+        window.tk.addAnnotationUI();
 
         return ()=>{
             window.tk.destroy();
