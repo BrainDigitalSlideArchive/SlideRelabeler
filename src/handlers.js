@@ -8,28 +8,31 @@ import { parseSpreadsheet } from './utilities/parseSpreadsheet';
 // open-file-dialog: let the user pick files from the operating system
 ipcMain.handle('open-file-dialog', async ()=>{
 
+    function normalizePath(path){
+        return path.replaceAll('\\', '/');
+    }
+
     /**
      * @param { Array } list Array of object with fields source (mandatory) and destination (optional)
      */
     function makeFileInfo(list){
-        // console.log('path separator:',path.sep)
         let output = list.map(arr=>{
             const info = {
                 source: {
                     filename: path.basename(arr.source),
-                    directory: path.dirname(arr.source),
-                    path: arr.source,
-                    parsed: path.parse(arr.source),
-                    sep:path.sep
+                    directory: normalizePath(path.dirname(arr.source)),
+                    path: normalizePath(arr.source),
+                    parsed: path.parse(normalizePath(arr.source)),
+                    sep:normalizePath(path.sep)
                 }
             }
             if(arr.destination){
                 info.destination = {
                     filename: path.basename(arr.destination),
-                    directory: path.dirname(arr.destination),
-                    path: arr.destination,
-                    parsed: path.parse(arr.destination),
-                    sep: path.sep
+                    directory: normalizePath(path.dirname(arr.destination)),
+                    path: normalizePath(arr.destination),
+                    parsed: path.parse(normalizePath(arr.destination)),
+                    sep:normalizePath(path.sep)
                 }
             }
             
@@ -39,6 +42,7 @@ ipcMain.handle('open-file-dialog', async ()=>{
     }
     //open the file dialog
     return dialog.showOpenDialog({properties: ['openFile', 'multiSelections']}).then(d=>{
+        console.log('showOpenFileDialog called');
         // if canceled, return; otherwise, return the list of files that were picked
         if(d.canceled){
             // return Promise.reject({errorCode:0, message: 'No files selected'});

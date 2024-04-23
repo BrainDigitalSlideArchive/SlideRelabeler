@@ -11,7 +11,7 @@ class PythonBridge{
         this._promises = {};
         this._pathToPython;
 
-        // console.log('dir: ', __dirname)
+        
         const usePyinstaller = process.argv.includes('pyinstaller') || fs.existsSync(path.join(process.resourcesPath, 'engine', 'engine'));
 
         if(!usePyinstaller){
@@ -53,7 +53,7 @@ class PythonBridge{
                 this._log('Trying to launch shell: ', this._python);
                 this._shell = new PythonShell(this._python, options);
                 this._shell.on('message',msg=>{
-                    // console.log('Shell msg', msg)
+                    
                     switch(msg.type){
                         case 'debug': {
                             this._log(msg.data);

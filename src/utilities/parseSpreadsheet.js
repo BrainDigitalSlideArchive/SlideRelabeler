@@ -47,8 +47,7 @@ export function readExcel(file){
 export function parseSpreadsheet(source){
     const filepath = source.path;
     const ext = source.parsed.ext;
-    console.log('parsing spreadsheet', filepath, ext);
-
+    
     let contents;
     // handle different file types
     if(ext.toLowerCase() === '.csv'){

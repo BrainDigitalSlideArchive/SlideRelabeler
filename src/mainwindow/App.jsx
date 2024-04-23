@@ -195,7 +195,6 @@ function App() {
    * Cancel the copy and relabel process
    */
   function cancelCopyAndRelabel(){
-    // console.log('cancel copy and relabel')
     isRelabeling.current = false;
     setRelabelingState(false);
   }
@@ -215,9 +214,7 @@ function App() {
 
       setFiles(files); // trigger a re-render with the new file status
       const interval = setInterval(()=>{
-        // console.log('Copying', file.path);
         electronAPI.getCopyProgress(file.id).then(d=>{
-          console.log('progress', d)
           file.rename = d.path;
           file.progress = 100 * d.size / file.size;
           file.copiedBytes = d.size;
@@ -234,7 +231,6 @@ function App() {
       }
 
       electronAPI.processFile(fileInfo).then(d => {
-        console.log('Processed', file, d);
         clearInterval(interval);
         file.processed = d.errno ? 'Error' : 'OK';
         file.progress = 100;
@@ -246,7 +242,6 @@ function App() {
 
         // if we are supposed to still be processing the list, do the next one
         if(isRelabeling.current){
-          // console.log('Processing next');
           processNextFile()
         } 
 
@@ -260,7 +255,6 @@ function App() {
    * @returns The component for displaying the status of the app
    */
   function headerInfo(){
-    // console.log('headerInfo rendering', files);
     if(files.length === 0){
       return <>Select files to inspect and process</>
     } else if(count < files.length) {

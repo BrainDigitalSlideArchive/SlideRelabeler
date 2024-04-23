@@ -5,8 +5,6 @@ import { AnnotationToolkit } from 'osd-paperjs-annotation';
 
 export default function OpenSeadragonViewer(props){
 
-    // console.log('OpenSeadragonViewer component', props);
-
     const viewerRef = useRef(null);
     useEffect(()=>{
         if(viewerRef.current || !props){
@@ -45,7 +43,6 @@ export default function OpenSeadragonViewer(props){
 }
 
 function onImageOpened(event){
-    console.log('onImageOpened', event);
     if(event.source && event.source.name){
         document.title = event.source.name;
     } else {
@@ -55,10 +52,7 @@ function onImageOpened(event){
 
 function makeTileSources(props){
     const {metadata, associatedImages} = props;
-    // console.log('metadata', metadata)
-    // console.log('associatedImages', associatedImages);
-    // console.log('props', props)
-
+    
     let tileSources = [];
     if(metadata.tileWidth == metadata.sizeX && metadata.tileHeight == metadata.sizeY){
         tileSources.push( makeSimpleImageTileSource(props.file) );
@@ -87,7 +81,6 @@ function makeTiledImageTileSource(file, props){
         minLevel: 0,
         maxLevel: props.levels - 1,
         getTileUrl: function( level, x, y ){
-            // console.log('getTileUrl',this.maxLevel, level, x, y)
             return `tile://${file}|${level}|${x}|${y}`;
         }
     }

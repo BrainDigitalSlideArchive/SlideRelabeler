@@ -74,7 +74,6 @@ export function AgGrid({files,
                  updateCount,
                  findMetadataIfNecessary
 }){
-  // console.log('fileList triggered', files, files===window.files)
   const rowData = files;
 
   const colDefs = [
@@ -118,7 +117,6 @@ export function AgGrid({files,
       valueFormatter:v=>'fake',
       cellClass:'associated-images',
       cellRenderer:(params)=>{
-        // console.log('cellRenderer params', params)
         if(params.data.associatedImages){
           const images=params.data.associatedImages;
           return <>{images.join(', ')}</>
