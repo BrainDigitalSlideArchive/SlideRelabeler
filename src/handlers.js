@@ -42,7 +42,7 @@ ipcMain.handle('open-file-dialog', async ()=>{
     }
     //open the file dialog
     return dialog.showOpenDialog({properties: ['openFile', 'multiSelections']}).then(d=>{
-        console.log('showOpenFileDialog called');
+        
         // if canceled, return; otherwise, return the list of files that were picked
         if(d.canceled){
             // return Promise.reject({errorCode:0, message: 'No files selected'});
