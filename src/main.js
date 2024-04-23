@@ -56,22 +56,28 @@ protocol.registerSchemesAsPrivileged([
 app.on('ready', ()=>{
 
   protocol.handle('thumbnail', async (request) => {
-    return PythonBridge.invoke('thumbnail',decodeURI(request.url).slice('thumbnail://'.length))
+    console.log('request url:', request.url, decodeURI(request.url));
+    const value = decodeURIComponent(decodeURI(request.url).slice('thumbnail://'.length))
+    return PythonBridge.invoke('thumbnail', value)
       .then(fetch)
       .catch(e=>console.log('Error fetching thumbnail',e));
   });
 
   protocol.handle('image', async (request) => {
-    const [file, image] = decodeURI(request.url).slice('image://'.length).split('|');
+    let [file, image] = decodeURI(request.url).slice('image://'.length).split('|');
+    file = decodeURIComponent(file);
+    image = decodeURIComponent(image);
     return PythonBridge.invoke('image',{file, image})
       .then(fetch)
       .catch(e=>console.log('Error fetching image',e));
   });
 
   protocol.handle('tile', async (request) => {
-    const [base, query] = decodeURI(request.url).slice('tile://'.length).split('?');
-    const [file, level, x, y] = base.split('|');
+    let [base, query] = decodeURI(request.url).slice('tile://'.length).split('?');
+    base = decodeURIComponent(base);
 
+    const [file, level, x, y] = base.split('|');
+    
     return PythonBridge.invoke('tile',{file, level, x, y})
       .then(fetch)
       .catch(e=>console.log('Error fetching tile',e));

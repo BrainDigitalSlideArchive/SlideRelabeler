@@ -74,6 +74,7 @@ export function AgGrid({files,
                  updateCount,
                  findMetadataIfNecessary
 }){
+  // console.log('fileList triggered', files, files===window.files)
   const rowData = files;
 
   const colDefs = [
@@ -97,8 +98,9 @@ export function AgGrid({files,
   
     // Thumbnail for original image
     { headerName:'Thumb', field: 'source.path', cellRenderer:(params) => {
+        const thumbURL = window.encodeURIComponent(params.value);
         if(params.data.metadata){
-          return <><div className='thumbnail center-horizontally' title='Open in viewer'><img src={`thumbnail://${params.value}`}></img></div></>
+          return <><div className='thumbnail center-horizontally' title='Open in viewer'><img src={`thumbnail://${thumbURL}`}></img></div></>
         } else {
           return <>Fetching...</>
         }
@@ -117,6 +119,7 @@ export function AgGrid({files,
       valueFormatter:v=>'fake',
       cellClass:'associated-images',
       cellRenderer:(params)=>{
+        // console.log('cellRenderer params', params)
         if(params.data.associatedImages){
           const images=params.data.associatedImages;
           return <>{images.join(', ')}</>
