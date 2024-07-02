@@ -1,0 +1,3 @@
+[submodule "src/python/dsaLargeImageServer"]
+	path = src/python/dsaLargeImageServer
+	url = https://github.com/dgutman/dsaLargeImageServer

@@ -1,3 +1,13 @@
 pyinstaller==6.3.0
 large-image[common]==1.28.1
 # large-image[sources]==1.28.1
+
+# for dsaLargeImageServer:
+# large-image[common] - already installed above
+# TODO install large_image_source_openslide manually? Otherwise deid pipeline doesn't work because it only recognizes SVS files opened by openslide, not tifffile (who knows why...)
+large-image[openslide]==1.28.1
+large-image[tiff]==1.28.1
+girder_large_image
+# tifftools
+pyvips
+#  openslide-python # is this really needed? behavior didn't change when I installed it. Shouldn't large-image common pull this in?
