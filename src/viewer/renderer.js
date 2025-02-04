@@ -5,7 +5,7 @@
  *
  * https://electronjs.org/docs/tutorial/application-architecture#main-and-renderer-processes
  *
- * By default, Node.js integration in this file is disabled. When enabling Node.js integration
+ * By index, Node.js integration in this file is disabled. When enabling Node.js integration
  * in a renderer process, please be aware of potential security implications. You can read
  * more about security risks here:
  *
@@ -25,7 +25,6 @@
  *  });
  * ```
  */
-
-import './index.css';
-
-console.log('👋 This message is being logged by "renderer.js", included via Vite');
+import '../styles/index.scss';
+import './entry.jsx';
+console.log('👋 This message is being logged by Viewer "renderer.js", included via Vite');

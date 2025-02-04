@@ -1,0 +1,26 @@
+@import '../../../styles/colors';
+@import '../../../styles/variables';
+
+.Button {
+  display: flex;
+  flex-direction: row;
+  font-size: 1em;
+  align-items: center;
+  margin-bottom: 0.5em;
+
+  .__button-label {
+    &._disabled {
+      opacity: 0.5;
+    }
+  }
+  .__button {
+    height: 3em;
+  }
+  .__button-result {
+    width: 20m;
+    color: $beige;
+    &._disabled {
+      opacity: 0.5;
+    }
+  }
+}

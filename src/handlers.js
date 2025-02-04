@@ -1,47 +1,164 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron';
+import {ipcMain, dialog, BrowserWindow, app, safeStorage} from 'electron';
 import { PythonBridge } from './bridge/pythonBridge';
-import path from 'path';
+import path, {join} from 'path';
 import fs from 'fs/promises';
-import { parseSpreadsheet } from './utilities/parseSpreadsheet';
-// import re from 're';
+import {existsSync, accessSync, readFileSync, writeFileSync} from 'fs';
+import {registerRoute} from './routers/main-electron-router';
+import {readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
+import walk from 'fs-walk';
+
+function normalizePath(path){
+  return path.replaceAll('\\', '/');
+}
+
+/**
+ * @param { Array } list Array of object with fields source (mandatory) and destination (optional)
+ */
+function makeFileInfo(list){
+  let output = list.map(arr=>{
+    const info = {
+      source: {
+        filename: path.basename(arr.source),
+        directory: normalizePath(path.dirname(arr.source)),
+        path: normalizePath(arr.source),
+        parsed: path.parse(normalizePath(arr.source)),
+        sep:normalizePath(path.sep)
+      }
+    }
+    if(arr.destination){
+      info.destination = {
+        filename: path.basename(arr.destination),
+        directory: normalizePath(path.dirname(arr.destination)),
+        path: normalizePath(arr.destination),
+        parsed: path.parse(normalizePath(arr.destination)),
+        sep:normalizePath(path.sep)
+      }
+    }
+
+    return info;
+  });
+  return output;
+}
+
+ipcMain.handle('get-platform', async ()=> {
+  return process.platform;
+})
+
+/**
+ * An IPC handler that opens a dialog to choose a file to save
+ * @param {string} file_type The type of file to save
+ */
+ipcMain.handle('open-save-file-dialog', async (event, file_types) => {
+  let dialog_options = {
+    properties: ['createDirectory', "showOverwriteConfirmation"],
+    filters: []
+  }
+
+  if (file_types.includes('csv')) {
+    dialog_options.filters.push({name: 'CSV Files', extensions: ['csv']});
+  }
+
+  if (file_types.includes('xlsx')) {
+    dialog_options.filters.push({name: 'Excel Files', extensions: ['xlsx']});
+  }
+
+  return dialog.showSaveDialog(dialog_options).then(d=>{
+    if(d.canceled){
+      return {error: true, message: 'No file selected'};
+    } else {
+      return d.filePath;
+    }
+  });
+});
+
+ipcMain.handle('open-file-single-dialog', async ()=> {
+  const customFilter = {name: 'CSV Files (*.csv)', extensions: ['csv']};
+  return dialog.showOpenDialog({filters: [customFilter], properties: ['openFile']}).then(d=>{
+
+    // if canceled, return; otherwise, return the list of files that were picked
+    if(d.canceled){
+      // return Promise.reject({errorCode:0, message: 'No files selected'});
+      return [];
+    } else {
+      const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
+      // console.log('fileList:', fileList);
+      return fileList;
+    }
+  });
+});
+
+ipcMain.handle('open-icon-single-dialog', async ()=> {
+  const customFilter = {name: 'Image Files (*.tiff, *.tif, *.png, *.jpg)', extensions: ['tiff', 'tif', 'png', 'jpg']};
+  return dialog.showOpenDialog({filters: [customFilter], properties: ['openFile']}).then(d=>{
+
+    // if canceled, return; otherwise, return the list of files that were picked
+    if(d.canceled){
+      // return Promise.reject({errorCode:0, message: 'No files selected'});
+      return [];
+    } else {
+      const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
+      // console.log('fileList:', fileList);
+      return fileList;
+    }
+  });
+  // ipcMain.emit('store-changes-finalized')
+});
+
+ipcMain.handle('get-store', async() => {
+  let user_data_path = app.getPath('userData')
+  let app_data_path = join(user_data_path, 'deid.tmp')
+  let exists = existsSync(app_data_path);
+  if (exists) {
+    try {
+      accessSync(app_data_path, fs.constants.R_OK);
+      let app_data = readFileSync(app_data_path);
+      let json_string = safeStorage.decryptString(app_data);
+      let json_data = JSON.parse(json_string);
+      return json_data;
+    } catch(err) {
+      console.error("Cannot access previous app data from ", app_data_path, err)
+    }
+
+  }
+})
+
+ipcMain.handle('get-file-from-store', async(event, idx) => {
+  // todo: finish this function
+  let user_data_path = app.getPath('userData')
+  let app_data_path = join(user_data_path, 'deid.tmp')
+  let exists = existsSync(app_data_path);
+  if (exists) {
+    try {
+      accessSync(app_data_path, fs.constants.R_OK);
+      let app_data = await fs.readFile(app_data_path);
+      const json_string = safeStorage.decryptString(app_data);
+      const json_data = JSON.parse(json_string);
+      let value;
+      if (json_data.files) {
+        value = json_data.files.fileRows.pop(idx);
+      } else {
+        value = null;
+      }
+      return value;
+    } catch(err) {
+      console.error("Cannot access previous app data from ", app_data_path, err)
+    }
+
+  }
+})
+
+ipcMain.handle('set-store', async(event, data) => {
+  let user_data_path = app.getPath('userData')
+  let app_data_path = join(user_data_path, 'deid.tmp')
+  let encrypted_data = safeStorage.encryptString(JSON.stringify(data));
+  writeFileSync(app_data_path, encrypted_data, {encoding: 'utf8'})
+})
 
 // open-file-dialog: let the user pick files from the operating system
-ipcMain.handle('open-file-dialog', async ()=>{
-
-    function normalizePath(path){
-        return path.replaceAll('\\', '/');
-    }
-
-    /**
-     * @param { Array } list Array of object with fields source (mandatory) and destination (optional)
-     */
-    function makeFileInfo(list){
-        let output = list.map(arr=>{
-            const info = {
-                source: {
-                    filename: path.basename(arr.source),
-                    directory: normalizePath(path.dirname(arr.source)),
-                    path: normalizePath(arr.source),
-                    parsed: path.parse(normalizePath(arr.source)),
-                    sep:normalizePath(path.sep)
-                }
-            }
-            if(arr.destination){
-                info.destination = {
-                    filename: path.basename(arr.destination),
-                    directory: normalizePath(path.dirname(arr.destination)),
-                    path: normalizePath(arr.destination),
-                    parsed: path.parse(normalizePath(arr.destination)),
-                    sep:normalizePath(path.sep)
-                }
-            }
-            
-            return info;
-        });
-        return output;
-    }
+ipcMain.handle('open-file-multi-dialog', async ()=>{
     //open the file dialog
-    return dialog.showOpenDialog({properties: ['openFile', 'multiSelections']}).then(d=>{
+    const customFilter = {name: 'WSI Files (*.svs, *.ndpi, *.czi, *.tif, *.tiff, *.dcm, *.vms, *.scn, *.mrxs, *.svslide, *.bif, *.zvi)', extensions: ['svs', 'ndpi', 'czi', 'tif', 'tiff', 'dcm', 'vms', 'vmu', 'scn', 'mrxs', 'svslide', 'bif', 'zvi']};
+    return dialog.showOpenDialog({filters: [customFilter], properties: ['openFile', 'multiSelections']}).then(d=>{
         
         // if canceled, return; otherwise, return the list of files that were picked
         if(d.canceled){
@@ -50,29 +167,10 @@ ipcMain.handle('open-file-dialog', async ()=>{
         } else {
             const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
             // console.log('fileList:', fileList);
-            const spreadsheets = fileList.filter(f => {
-                const ext = f.source.parsed.ext.toLowerCase();
-                console.log('File extension', ext);
-                return ext==='.csv' || ext==='.xlsx';
-            });
-            // console.log('spreadsheets:',spreadsheets)
-            if(spreadsheets.length === 0){
-                return fileList;
-            } else if (spreadsheets.length !== fileList.length){
-                return {error:true, errorCode:1, message: 'Selecting spreadsheets and images at the same time is not supported'};
-            } else if (spreadsheets.length > 1){
-                return {error: true, errorCode:2, message: 'Only one spreadsheet can be selected at a time'};
-            } else {
-                try{
-                    return parseSpreadsheet(fileList[0].source);
-                } catch(error){
-                    return {error: true, message:error.message};
-                }
-            }
+            return fileList;
         }
     });
 });
-
 
 // open-folder-dialog: let the user pick files from the operating system
 ipcMain.handle('open-folder-dialog', async ()=>{
@@ -82,40 +180,128 @@ ipcMain.handle('open-folder-dialog', async ()=>{
         if(d.canceled){
             return {error: true, message: 'No folder selected'};
         } else {
-            return d.filePaths[0]
+            return d.filePaths[0];
         }
     });
 });
 
+// open-folders-dialog: let the user pick multiple folders from the operating system
+ipcMain.handle('open-folders-dialog', async ()=>{
+  //open the file dialog
+  return dialog.showOpenDialog({properties: ['multiSelections', 'openDirectory','createDirectory']}).then(d=>{
+    // if canceled, return; otherwise, return the list of files that were picked
+    if(d.canceled){
+      return {error: true, message: 'No folder selected'};
+    } else {
+      return d.filePaths;
+    }
+  });
+});
 
+ipcMain.handle('get-all-wsi-file-paths', async (event, folder_path) => {
+  const paths = [];
+  walk.walkSync(folder_path, function(basedir, filename, stat){
+    if (['.svs', '.ndpi', '.czi', '.tiff'].includes(path.extname(filename))) {
+      paths.push(join(basedir, filename));
+    }
+  });
+  console.log("Paths :", paths);
+  const fileList = makeFileInfo(paths.map(f=>{return {source:f}}));
+  console.log("File list ", fileList);
+  return fileList;
+})
+
+// check if file exists
+ipcMain.handle('check-file-exists', async (event, file_path) => {
+  try {
+    await fs.access(file_path);
+    return true
+  }
+  catch {
+    return false;
+  }
+});
+
+ipcMain.handle('check-file-readable', async (event, file_path) => {
+  try {
+    await fs.access(file, fs.constants.R_OK);
+    return true;
+  }
+  catch {
+    return false;
+  }
+});
+
+ipcMain.handle('check-file-writeable', async (event, file_path) => {
+  try {
+    await fs.access(file, fs.constants.W_OK);
+    return true;
+  }
+  catch {
+    return false;
+  }
+});
+
+// read csv file
+ipcMain.handle('read-csv', async (event, file) => {
+  return readCSV(file);
+});
+
+// todo: test and maek sure read excel works
+ipcMain.handle('read-excel', async (event, file) => {
+  return readExcel(file);
+});
+
+ipcMain.handle('write-csv', async (event, file, data) => {
+  return writeCSV(file, data);
+});
 
 // open-file: tell python to get metadata for a file
 ipcMain.handle('metadata', async (event, file) => {
-    return PythonBridge.invoke('metadata', file);
+  return PythonBridge.invoke('metadata', normalizePath(file));
 });
 
-ipcMain.handle('open-viewer', async (event, file) => {
-    // console.log(JSON.stringify(event))
-    // console.log(`******* Creating Viewer Window for ${file} ************`)
+ipcMain.handle('open-viewer', async (event, file, row_idx) => {
+    console.log(`******* Creating Viewer Window for ${file} at ${row_idx} ************`)
+    const encoded_file_uri = encodeURIComponent(file);
 
-    // Create the browser window.
-    const viewerWindow = new BrowserWindow({
+    try {
+      const options = {
+        webPreferences: {
+          preload: join(__dirname, `./preload.js`),
+        }
+      }
+
+      const window = new BrowserWindow({
         width: 1200,
         height: 900,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-        },
-    });
-    
+        ...options,
+      });
 
-    // and load the index.html of the app.
-    if (VIEWER_WINDOW_VITE_DEV_SERVER_URL) {
-        viewerWindow.loadURL(VIEWER_WINDOW_VITE_DEV_SERVER_URL+`?file=${file}`);
-    } else {
-        viewerWindow.loadFile(path.join(__dirname, `../renderer/${VIEWER_WINDOW_VITE_NAME}/index.html`), {query: {file: file}});
+      console.log("Register route", registerRoute);
+
+      registerRoute( {
+        id: 'viewer',
+        browserWindow: window,
+        htmlFile: path.join(__dirname, '..', 'renderer', 'viewer', 'index.html'),
+        query: {file: file, row_idx: row_idx}
+      })
+    }
+
+    catch (e)
+    {
+      console.log("Error creating viewer window for file:", file)
     }
 
 });
+
+ipcMain.handle('open-image', async (event, image_url) => {
+  const window = new BrowserWindow({
+    width: 1200,
+    height: 900
+  });
+  window.loadURL(image_url);
+})
 
 const processingFiles = {}
 // copy-file: make a copy from source to destination
@@ -186,12 +372,15 @@ async function processFile(fileInfo, copyNum){
         }
     });
 }
-ipcMain.handle('process-file', async(event, info)=>{
-    // fs.copyFile(file.path, )
-    console.log('process-file', info)
-    return processFile(info);
 
-})
+ipcMain.handle('process-file', async(event, info)=>{
+    console.log("INfo", info);
+    return PythonBridge.invoke('deid-process', info);
+});
+
+ipcMain.handle('get-progress', async(event, id)=>{
+    return PythonBridge.invoke('getProgress', id);
+});
 
 ipcMain.handle('get-copy-progress', async(event, id)=>{
     const file = processingFiles[id];
@@ -206,5 +395,5 @@ ipcMain.handle('get-copy-progress', async(event, id)=>{
         return null;
     }
     
-})
+});
 

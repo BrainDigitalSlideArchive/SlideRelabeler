@@ -1,0 +1,21 @@
+@import '../styles/colors';
+
+* {
+  box-sizing:border-box;
+  margin: 0 0 0 0;
+}
+body{
+  display: flex;
+  height: 100%;
+  width: 100%;
+  margin:0;
+  color: $beige;
+  background-color: $darker-blue;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  margin: 0;
+}

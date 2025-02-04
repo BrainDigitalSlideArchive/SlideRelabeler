@@ -1,8 +1,11 @@
-import { app, ipcMain, BrowserWindow, protocol } from 'electron';
-import path from 'path';
-import fs from 'fs';
-import { PythonBridge , makeBridge} from './bridge/pythonBridge';
+import { app, BrowserWindow, protocol } from 'electron';
+import {join} from 'path';
+import { PythonBridge } from './bridge/pythonBridge';
 import './handlers'; // side effects - sets up ipcMain handlers
+import { registerRoute } from './routers/main-electron-router';
+import installExtension, {REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS} from "electron-devtools-installer";
+import {decodeURLParameters} from "./helpers/url_helpers";
+import {clear_files_from_store} from "./helpers/electron_helpers";
 
 // const path = require('path');
 
@@ -11,42 +14,15 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-let mainWindow;
-
-const createMainWidow = () => {
-
-  // Create the browser window.
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 900,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-    icon: '/src/assets/BDSA-icon.png'
-  });
-
-  
-  // and load the index.html of the app.
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-  }
-
-  if(process.argv.includes('debug')){
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools({mode: 'bottom'});
-  }
-  
-  
-};
-
-
 protocol.registerSchemesAsPrivileged([ 
   { scheme: 'test', privileges: { secure: true, standard: true, supportFetchAPI: true, }, },
   { scheme: 'tile', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
-  { scheme: 'thumbnail', privileges: { secure: true, standard: false, supportFetchAPI: true, }, }, 
-  { scheme: 'image', privileges: { secure: true, standard: false, supportFetchAPI: true, }, }, 
+  { scheme: 'thumbnail', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'label', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'image', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'macro', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'preview-label', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
+  { scheme: 'preview-macro', privileges: { secure: true, standard: false, supportFetchAPI: true, }, },
 ]);
 
 
@@ -54,11 +30,74 @@ protocol.registerSchemesAsPrivileged([
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', ()=>{
+  // First initalize the needed dev tools
+  if (process.env.NODE_ENV === 'development') {
+    installExtension(REACT_DEVELOPER_TOOLS)
+        .then((name) => console.log(`Added Extension:  ${name}`))
+        .catch((err) => console.log('An error occurred: ', err));
+    installExtension(REDUX_DEVTOOLS)
+        .then((name) => console.log(`Added Extension:  ${name}`))
+        .catch((err) => console.log('An error occurred: ', err));
+  }
 
-  protocol.handle('thumbnail', async (request) => {
-    console.log('request url:', request.url, decodeURI(request.url));
-    const value = decodeURIComponent(decodeURI(request.url).slice('thumbnail://'.length))
+  const options = {
+    webPreferences: {
+      preload: join(__dirname, `./preload.js`),
+    }
+  };
+
+  const window = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    ...options,
+  });
+
+  registerRoute( {
+    id: 'main',
+    browserWindow: window,
+    htmlFile: join(__dirname, '..', 'renderer', 'main', 'index.html'),
+  });
+
+  window.on('closed', (event) => {
+    clear_files_from_store();
+  })
+
+  protocol.handle('thumbnail', async (request,) => {
+    const url = new URL(request.url);
+    const value = decodeURIComponent(url.hostname);
     return PythonBridge.invoke('thumbnail', value)
+      .then(fetch)
+      .catch(e=>console.log('Error fetching thumbnail',e));
+  });
+
+  protocol.handle('macro', async (request,) => {
+    const url = new URL(request.url);
+    const value = decodeURIComponent(url.hostname);
+    return PythonBridge.invoke('macro', value)
+      .then(fetch)
+      .catch(e=>console.log('Error fetching thumbnail',e));
+  });
+
+  protocol.handle('label', async (request,) => {
+    const url = new URL(request.url);
+    const value = decodeURIComponent(url.hostname);
+    return PythonBridge.invoke('label', value)
+      .then(fetch)
+      .catch(e=>console.log('Error fetching thumbnail',e));
+  });
+
+  protocol.handle('preview-macro', async (request,) => {
+    const url = new URL(request.url);
+    const decoded_params = decodeURLParameters(url.searchParams);
+    return PythonBridge.invoke('preview-macro', decoded_params)
+      .then(fetch)
+      .catch(e=>console.log('Error fetching thumbnail',e));
+  });
+
+  protocol.handle('preview-label', async (request,) => {
+    const url = new URL(request.url);
+    const decoded_params = decodeURLParameters(url.searchParams);
+    return PythonBridge.invoke('preview-label', decoded_params)
       .then(fetch)
       .catch(e=>console.log('Error fetching thumbnail',e));
   });
@@ -91,28 +130,44 @@ app.on('ready', ()=>{
     });
 
     return resp;
-
+    });
   });
 
-  
+  app.on('activate', () => {
+    // On OS X it's common to re-create a window in the app whe
+    //  mn the
+    // dock icon is clicked and there are other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) {
 
-  createMainWidow();
+      const options = {
+          webPreferences: {
+            preload: join(__dirname, `./preload.js`),
+          }
+        }
+
+      const window = new BrowserWindow({
+        width: 1200,
+        height: 900,
+        ...options,
+      });
+
+      registerRoute( {
+        id: 'main',
+        browserWindow: window,
+        htmlFile: join(__dirname, '..', 'renderer', 'main', 'index.html'),
+      })
+
+    }
 });
+
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  clear_files_from_store();
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createMainWidow();
   }
 });
 

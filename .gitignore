@@ -99,6 +99,15 @@ temp/
 .venv
 venv
 
+# InteliJ IDE
+.idea
+
 # pyinstaller output - will be built by npm run make, npm run package, npm run pystart  
 dist
 build
+src/python/tests/dist
+src/python/tests/build
+*.png
+*.jpg
+*.tiff
+*.tif
