@@ -1,0 +1,3 @@
+[submodule "DSA-WSI-DeID"]
+	path = DSA-WSI-DeID
+	url = git@github.com:DigitalSlideArchive/DSA-WSI-DeID.git

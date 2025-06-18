@@ -1,0 +1,30 @@
+@import '../../../styles/colors.scss';
+@import '../../../styles/variables.scss';
+
+.InputText {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 0.5em;
+  label {
+    display: flex;
+    width: $modal_config_input_label_width;
+    &._disabled {
+      opacity: 0.2;
+    }
+  }
+  .__input-text {
+    color: $beige;
+    display: flex;
+    align-items: center;
+    height: 1.5em;
+    background-color: $black;
+    border: none;
+    margin-left: 1em;
+    padding: 0.5em;
+    font-size: 1em;
+    &._disabled {
+      opacity: 0.2;
+      cursor: not-allowed;
+    }
+  }
+}

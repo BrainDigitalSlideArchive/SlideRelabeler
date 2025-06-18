@@ -1,0 +1,30 @@
+@import '../../../styles/colors.scss';
+@import '../../../styles/variables.scss';
+
+.Checkbox {
+  width: $modal_config_input_checkbox_width;
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 0.5em;
+  margin-right: $modal_config_input_control_margin_right;
+  cursor: pointer;
+  &._disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  label {
+    display: flex;
+    width: $modal_config_input_label_width;
+  }
+  .__checkbox {
+    font-weight: bolder;
+    display: flex;
+    width: 1.5em;
+    height: 1.5em;
+    background-color: $black;
+    color: $green;
+    justify-content: center;
+    align-items: center;
+    margin-left: 1em;
+  }
+}

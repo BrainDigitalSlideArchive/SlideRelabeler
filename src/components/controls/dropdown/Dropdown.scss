@@ -1,0 +1,143 @@
+@import '../../../styles/colors.scss';
+@import '../../../styles/variables.scss';
+
+.Dropdown {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  width: $dropdown-width;
+  font-family: system-ui, -apple-system, sans-serif;
+  margin-right: $modal_config_input_control_margin_right;
+  margin-bottom: 0.5em;
+
+  &._disabled {
+    opacity: 0.2;
+    pointer-events: none;
+    cursor: not-allowed !important;
+  }
+
+  .__description {
+    width: $dropdown_description_width;
+    display: flex;
+    margin-left: 1em;
+    font-size: 0.75em;
+  }
+
+  .__label {
+    display: flex;
+    min-width: $modal_config_input_label_width;
+    font-size: 1em;
+    margin-right: 0.5em;
+    &._disabled {
+      opacity: 0.2;
+    }
+  }
+
+  .__trigger {
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: $black;
+    transition: border-color 0.2s ease;
+    min-height: 44px;
+
+    &._disabled {
+      color: transparent !important;
+      cursor: not-allowed !important;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+
+    &:hover {
+      border-color: $darker-blue;
+    }
+
+    &:focus {
+      outline: none;
+      border-color:$beige;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+
+    .__selected-items {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-grow: 1;
+      text-align: left;
+      color: $beige;
+      font-size: 14px;
+      &._disabled {
+        cursor: not-allowed !important;
+        opacity: 0.2;
+        pointer-events: none;
+      }
+    }
+
+    .__arrow {
+      transition: transform 0.2s ease;
+      color: $beige;
+      margin-left: 8px;
+
+      &._open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+    border: 1px solid $beige;
+    border-radius: 6px;
+    background-color: $black;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 240px;
+    overflow-y: auto;
+
+    .__item {
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      color: $beige;
+
+      &:hover,
+      &.focused {
+        background-color: $dark-blue;
+      }
+
+      &[aria-selected="true"] {
+        background-color: $darker-blue;
+        font-weight: 500;
+      }
+
+      .__checkbox {
+        margin-right: 12px;
+        width: 16px;
+        height: 16px;
+        accent-color: #007bff;
+        cursor: pointer;
+      }
+
+      &._disabled {
+        color: $gray;
+        cursor: not-allowed !important;
+        background-color: transparent !important;
+        pointer-events: none;
+      }
+    }
+  }
+}

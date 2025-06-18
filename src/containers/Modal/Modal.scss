@@ -1,0 +1,398 @@
+@import '../../styles/colors.scss';
+@import '../../styles/variables.scss';
+
+.Modal {
+  position: absolute;
+  z-index: 100;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  left: 0;
+  display: none;
+  &._active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .__modal {
+    opacity: 1;
+    z-index: 1000;
+    background-color: $dark-blue;
+    display: flex;
+    width: $modal_width;
+    height: $modal_height;
+    box-shadow: 0px 5px 5px 0 $black;
+    flex-direction: column;
+    border-top-left-radius: 1em;
+    border-top-right-radius: 1em;
+
+    .__spacer {
+      flex: 1;
+    }
+
+    .__footer {
+      padding-top: 1em;
+      padding-bottom: 1em;
+      background-color: $dark-blue;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      .__button-label {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-right: 1em;
+      }
+      button {
+        background-color: $green;
+        border: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        width: 3em;
+        height: 3em;
+        i { 
+          font-size: 2em;
+        }
+      }
+    }
+
+    .__inspect-image {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      object-fit: contain;
+      padding-left: 1em;
+      padding-right: 1em;
+      position: relative;
+      z-index: 1;
+      top: 5em;
+      overflow-y: auto;
+      height: calc($modal_height_large - 5em);
+    }
+
+    &._large {
+      width: $modal_width_large;
+      height: $modal_height_large;
+      overflow: hidden;
+      padding-bottom: 1em;
+    }
+
+    .__header {
+      display: flex;
+      flex-direction: row;
+      padding: 1em;
+      align-items: center;
+      position: absolute;
+      z-index: 2;
+      width: $modal_width;
+      background-color: $dark-blue;
+      border-top-left-radius: 1em;
+      border-top-right-radius: 1em;
+      box-shadow: 0px 2px 2px 0 $black;
+
+      &._large {
+        width: $modal_width_large;
+      }
+      
+
+      .__title {
+        font-weight: bolder;
+        font-size: 2em;
+      }
+      .__close {
+        padding: 0.25em;
+        width: 2em;
+        height: 2em;
+        font-size: 1em;
+        background-color: $red;
+      }
+    }
+    .__divider {
+      margin: 0;
+      display: flex;
+      box-shadow: none;
+      border-radius: 0 0 0 0;
+      border-style: dotted;
+      border-color: $light-blue;
+      border-width: 1px;
+    }
+    .__content {
+      padding-left: 1em;
+      padding-right: 1em;
+      position: relative;
+      z-index: 1;
+      top: 5em;
+      overflow-y: auto;
+      height: calc($modal_height - 5em);
+
+      .__control {
+        display: flex;
+        padding: 1em;
+        // background-color: $beige;
+        border-radius: 0.5em;
+        // box-shadow: 0px 5px 5px 0 $black;
+        flex-direction: column;
+        .__control-item {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          margin-bottom: 0.5em;
+        }
+        .__control-action {
+          display: flex;
+          justify-content: flex-end;
+          .__button-aciton {
+            background-color: $green;
+            border: none;
+            display: flex;
+            justify-content: center;
+          }
+        }
+      }
+
+
+      .__card {
+        margin-bottom: 1em;
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        padding: 1em;
+        background-color: $beige;
+        border-radius: 0.5em;
+        box-shadow: 0px 5px 5px 0 $black;
+        .__error-message {
+          font-size: 1.5em;
+          display: flex;
+          color: #8B0000;
+        }
+        .__warning-message {
+          font-size: 1.5em;
+          display: flex;
+          color: orange;
+        }
+      }
+
+      
+
+      .__messages {
+        display: flex;
+        flex-direction: column;
+        .__messages-header {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          .__messages-header-spacer {
+            flex: 1;
+          }
+          .__messages-header-title {
+            font-weight: bold;
+            font-size: 1.5em;
+          }
+          .__messages-header-clear {
+            margin-right: 0.5em;
+            button {
+              background-color: $red;
+              border: none;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              padding: 0;
+              width: 2em;
+              height: 2em;
+              i { 
+                font-size: 1.5em;
+              }
+            }
+          }
+          .__messages-header-toggle {
+            
+            button {
+              background-color: $red;
+              border: none;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              padding: 0;
+              width: 2em;
+              height: 2em;
+              i { 
+                font-size: 1.5em;
+              }
+            }
+          }
+        }
+      }
+
+      .__content-section {
+        p {
+          margin-bottom: 1em;
+        }
+      }
+      .__config-controls {
+        display: flex;
+        flex-direction: column;
+        .__divider {
+          margin: 0;
+          display: flex;
+          box-shadow: none;
+          border-radius: 0 0 0 0;
+          border-style: dotted;
+          border-color: $light-blue;
+          border-width: 1px;
+        }
+        .__config-control-section {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 1em;
+
+          .__config-control-section-container {
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 1em;
+            .__config-control-subsection {
+              width: 48%;
+              display: flex;
+              flex-direction: column;
+              margin-right: 1em;
+              .__config-control-subsection-title {
+                font-weight: bold;
+                font-size: 1em;
+              }
+              .__config-control-subsection-description {
+                font-size: 0.8em;
+                margin-bottom: 2em;
+              }
+              .__config-control-subsection-row {
+                display: flex;
+                height: 4em;
+              }
+              .__config-control-subsection-row-header {
+                padding-left: 0;
+                display: flex;
+                flex-direction: row;
+                margin-bottom: 0.25em;
+                .__config-control-subsection-row-column {
+                  margin-left: 1em;
+                  display: flex;
+                  flex-direction: column;
+                }
+                .__config-control-subsection-row-label {
+                  width: $modal_config_input_label_width;
+                }
+              }
+              .__config-control-subsection-note {
+                margin-top: 1em;
+                display: flex;
+                flex-direction: column;
+                background-color: $light-blue;
+                padding: 0.5em;
+                color: $black;
+                border-radius: 0.5em;
+                box-shadow: 0px 5px 5px 0 $black;
+                .__config-control-subsection-note-title {
+                  font-weight: bold;
+                  font-size: 1em;
+                }
+                .__config-control-subsection-note-description {
+                  font-size: 0.8em;
+                }
+              }
+            }
+          }
+
+          .__config-control-section-title {
+            font-weight: bold;
+            font-size: 1.5em;
+          }
+          .__config-control-subgroup-label {
+            display: flex;
+            width: 100%;
+            font-size: 1em;
+            text-decoration: underline;
+            border-bottom: 1px $beige;
+            align-items: center;
+            padding-bottom: 0.5em;
+          }
+          .__config-control-section-group {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-bottom: 0.5em;
+
+            .__config-control-section-space-holder{
+              display: block;
+              width: $modal_config_input_checkbox_width;
+              margin-right: $modal_config_input_control_margin_right;
+            }
+
+            .__spacer {
+              display: flex;
+              width: 3em;
+            }
+            .__config-control {
+              flex-direction: row;
+              display: flex;
+              .__config-control-checkbox {
+                display: flex;
+              }
+            }
+
+          }
+          .__config-control-section-infobox {
+            background-color: $blue;
+            color: $black;
+            box-shadow: 10px 10px 10px 0 $black;
+            border-radius: 0.5em;
+            display: flex;
+            flex-direction: column;
+            padding: 0.5em;
+            font-size: 1em;
+            .__infobox-title {
+              font-weight: bolder;
+            }
+            .__infobox-labels {
+              display: flex;
+              flex-direction: row;
+              .__infobox-label {
+                width: $modal_infobox_column_width;
+                margin-right: 1em;
+              }
+            }
+            .__infobox-items {
+              display: flex;
+              flex-direction: row;
+              .__infobox-item {
+                width: $modal_infobox_column_width;
+                margin-right: 1em;
+
+                .__input-text {
+                  width: 12em;
+                }
+              }
+            }
+          }
+          .__config-control-section-description {
+            margin-bottom: 1em;
+            font-style: italic;
+          }
+        }
+      }
+    }
+    .__metadata_viewer {
+      height: 100%;
+      width: 100%;
+    }
+  }
+  .__modal-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0.9;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: opacity 250ms ease;
+    background-color: $black;
+  }
+}

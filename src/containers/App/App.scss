@@ -1,0 +1,220 @@
+@import '../../styles/colors';
+@import url('https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css');
+
+.logo {
+  height: 5em;
+  padding: 0.2em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.__button {
+    display: flex;
+    margin-right: 1em;
+    padding: 0.5em;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    height: 3em;
+    width: 10em;
+    border-radius: 0.5em;
+    transition: background-color 0.25s;
+  &._disabled {
+    background-color: #f0f0f0;
+    color: $black;
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  &._negative {
+    background-color: $red;
+  }
+}
+
+.__action-button {
+  background-color: $green;
+  margin-right: 1em;
+  position: relative;
+  &._disabled {
+    background-color: #f0f0f0;
+    color: $black;
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+    
+}
+
+.__process-files {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  position: relative;
+    .__process-files-message {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+      background-color: $black;
+      color: $beige;
+      position: absolute;
+      padding: 1em;
+      z-index: 10; // Make sure it's above the button
+    }
+    
+    &:hover .__process-files-message {
+      opacity: 1 !important;
+      visibility: visible;
+    }
+  }
+
+.__button-icon {
+  display: flex;
+  padding: 0.1em;
+  padding-top: 0.25em;
+  font-size: 2em;
+  width: 1.5em;
+  height: 1.5em;
+  justify-content: center;
+  align-items: center;
+  margin-left: 0.25em;
+}
+
+.App {
+  width: 100%;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  .__top {
+    display: grid;
+    grid-template-columns: 7em auto;
+    padding: 1em;
+    .__controls {
+      display: flex;
+      flex-direction: column;
+    }
+    .__list-controls{
+      display: flex;
+      flex-direction: row;
+      margin-bottom: 1em;
+      align-items: center;
+      padding-left: 0.25em;
+      padding-top: 0.25em;
+      padding-bottom: 0.25em;
+      &._next-step {
+        border: $green 0.125em solid;
+        width: 45em;     
+      }
+      .__list-controls-group {
+        display: flex;
+        flex-direction: row;
+        padding-bottom: 1em;
+
+      }
+      .__display-dir {
+        width: auto;
+        display: flex;
+        margin-left: 1em;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+      }
+    }
+  }
+  .__disclaimer {
+    display: flex;
+    justify-content: end;
+    font-style: italic;
+    font-size: 0.75em;
+  }
+
+}
+.__spacer {
+  display: flex;
+  flex: 1;
+}
+
+.__table-top-bar{
+  display: flex;
+  width: 100%;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+#table{
+  display: flex;
+  width: 100%;
+  flex: 1;
+  margin-top: 1em;
+}
+
+.topbar-do-copy label{
+  margin-left:2em;
+  margin-right:0.5em;
+  font-weight:bold;
+  font-size:0.8em;
+  color:gray;
+}
+.align-center{
+  display:flex;
+  align-items:center;
+}
+
+.editable-cell:not(.locked){
+  cursor:text;
+}
+.editable-cell.locked{
+  opacity:0.8;
+}
+.progress-indicator{
+  background: linear-gradient(90deg, rgb(190, 255, 190) 0 var(--done), rgba(0,0,0,0) var(--done) 100%);
+}
+
+.copied-path{
+  cursor:pointer;
+}
+.hidden-padding{
+  visibility:hidden;
+}
+
+.__top-bar-spacer {
+  flex: 1;
+}
+
+.__controls-csv-xlsx {
+    display: flex;
+    height: 5em;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.__spacer {
+    flex: 1;
+}
+
+button :disabled {
+
+}
