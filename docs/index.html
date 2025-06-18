@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideRelabeler - WSI De-identification Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .subtitle {
+            font-size: 1.3rem;
+            color: #666;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .download-section {
+            margin: 2rem 0;
+        }
+
+        .download-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .download-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            cursor: pointer;
+        }
+
+        .download-btn.enabled {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .download-btn.enabled:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-btn.disabled {
+            border-color: #dee2e6;
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .download-btn .platform-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 0.5rem;
+        }
+
+        .download-btn .platform-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .download-btn .platform-status {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .download-btn.enabled .platform-status {
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card h3 {
+            font-size: 1.3rem;
+            margin: 1.5rem 0 0.5rem 0;
+            color: #555;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .steps li {
+            counter-increment: step-counter;
+            margin-bottom: 1rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+
+        .steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            color: #e83e8c;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tech-tag {
+            background: #e9ecef;
+            color: #495057;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .cta-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .note strong {
+            color: #856404;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .footer a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .hero {
+                padding: 2rem;
+            }
+            
+            .card {
+                padding: 1.5rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>SlideRelabeler</h1>
+            <p class="subtitle">A powerful desktop application for de-identifying whole slide images</p>
+            <div class="badges">
+                <span class="badge">Electron</span>
+                <span class="badge">React</span>
+                <span class="badge">Python</span>
+                <span class="badge">WSI Processing</span>
+            </div>
+            
+            <div class="download-section">
+                <h3>Download for Your Platform</h3>
+                <div class="download-buttons">
+                    <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/releases/download/v0.1.5/SlideRelabeler-0.1.5.Setup.exe" class="download-btn enabled">
+                        <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M0,12.40183361 L0,12.40183361 L0,12.40183361 L5.11616044,7.28567317 L5.11616044,10.4095702 L10.1312335,10.4095702 L10.1312335,14.3941002 L5.11616044,14.3941002 L5.11616044,17.5179972 L0,12.40183361 Z M22.2370899,0 L22.2370899,0 L22.2370899,0 L13.2963718,0 L13.2963718,0 L8.36557434,4.93079746 L8.36557434,7.28567317 L13.2963718,7.28567317 L13.2963718,17.5179972 L8.36557434,17.5179972 L8.36557434,19.8728729 L13.2963718,24.8036704 L22.2370899,24.8036704 L22.2370899,0 Z"/>
+                        </svg>
+                        <div class="platform-name">Windows</div>
+                        <div class="platform-status">Available</div>
+                    </a>
+                    
+                    <div class="download-btn disabled">
+                        <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.024.559-.085-.008-.2-.008-.2v-3.946s-.179.023-.391.023c-1.177 0-2.052-.164-2.052-1.983 0-.729.312-1.272.818-1.272.233 0 .556.09.556.09.556-.637.99-1.81.99-2.727 0-.546-.312-.818-.312-.818-.546-.546-.818-1.177-.818-2.052 0-.818.363-1.452.818-1.814.546-.455 1.177-.637 1.814-.637 1.452 0 2.727.546 3.273 1.452.273.455.455.99.455 1.633v6.906s.133.085-.008.2c4.46-1.607 7.618-5.945 7.618-11.024C23.975 5.367 18.637.029 12.017.029zM12.017 22.174c-5.641 0-10.188-4.547-10.188-10.188S6.376 1.798 12.017 1.798s10.188 4.547 10.188 10.188-4.547 10.188-10.188 10.188z"/>
+                        </svg>
+                        <div class="platform-name">macOS</div>
+                        <div class="platform-status">Coming Soon</div>
+                    </div>
+                    
+                    <div class="download-btn disabled">
+                        <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12.504 0C18.784 0 23.93 5.07 23.93 11.35c0 5.061-3.144 9.365-7.595 11.067L16.017 22.18c-.18-.045-.36-.09-.54-.18l-.36-.18c-.18-.09-.36-.18-.54-.315-.18-.135-.36-.27-.54-.45-.18-.18-.36-.36-.54-.585-.18-.225-.36-.45-.54-.72-.18-.27-.36-.585-.54-.9-.18-.36-.36-.72-.54-1.125-.18-.405-.36-.855-.54-1.305-.18-.45-.36-.945-.54-1.44-.18-.495-.36-1.035-.54-1.575-.18-.54-.36-1.125-.54-1.71-.18-.585-.36-1.215-.54-1.845-.18-.63-.36-1.305-.54-1.98-.18-.675-.36-1.395-.54-2.115-.18-.72-.36-1.485-.54-2.25-.18-.765-.36-1.575-.54-2.385-.18-.81-.36-1.665-.54-2.52-.18-.855-.36-1.755-.54-2.655L7.785 1.8c-.225.045-.45.135-.675.225-.225.09-.45.225-.675.36-.225.135-.45.315-.675.495-.225.18-.45.405-.675.63-.225.225-.45.495-.675.765-.225.27-.45.585-.675.9-.225.315-.45.675-.675 1.035-.225.36-.45.765-.675 1.17-.225.405-.45.855-.675 1.305-.225.45-.45.945-.675 1.44-.225.495-.45 1.035-.675 1.575-.225.54-.45 1.125-.675 1.71-.225.585-.45 1.215-.675 1.845-.225.63-.45 1.305-.675 1.98-.225.675-.45 1.395-.675 2.115-.225.72-.45 1.485-.675 2.25-.225.765-.45 1.575-.675 2.385-.225.81-.45 1.665-.675 2.52-.225.855-.45 1.755-.675 2.655-.225.9-.45 1.845-.675 2.79-.045.18-.09.36-.135.54 0 .18 0 .36.045.54.045.18.135.36.225.54.09.18.225.36.36.54.135.18.315.36.495.54.18.18.405.36.63.54.225.18.495.36.765.54.27.18.585.36.9.54.315.18.675.36 1.035.54.36.18.765.36 1.17.54.405.18.855.36 1.305.54.45.18.945.36 1.44.54.495.18 1.035.36 1.575.54.54.18 1.125.36 1.71.54.585.18 1.215.36 1.845.54.63.18 1.305.36 1.98.54.675.18 1.395.36 2.115.54.72.18 1.485.36 2.25.54.765.18 1.575.36 2.385.54.81.18 1.665.36 2.52.54.855.18 1.755.36 2.655.54.9.18 1.845.36 2.79.54.18.045.36.09.54.135.18 0 .36 0 .54-.045.18-.045.36-.135.54-.225.18-.09.36-.225.54-.36.18-.135.36-.315.54-.495.18-.18.36-.405.54-.63.18-.225.36-.495.54-.765.18-.27.36-.585.54-.9.18-.315.36-.675.54-1.035.18-.36.36-.765.54-1.17.18-.405.36-.855.54-1.305.18-.45.36-.945.54-1.44.18-.495.36-1.035.54-1.575.18-.54.36-1.125.54-1.71.18-.585.36-1.215.54-1.845.18-.63.36-1.305.54-1.98.18-.675.36-1.395.54-2.115.18-.72.36-1.485.54-2.25.18-.765.36-1.575.54-2.385.18-.81.36-1.665.54-2.52.18-.855.36-1.755.54-2.655.18-.9.36-1.845.54-2.79.045-.18.09-.36.135-.54 0-.18 0-.36-.045-.54-.045-.18-.135-.36-.225-.54-.09-.18-.225-.36-.36-.54-.135-.18-.315-.36-.495-.54-.18-.18-.405-.36-.63-.54-.225-.18-.495-.36-.765-.54C19.152 1.044 15.81.729 12.504 0z"/>
+                        </svg>
+                        <div class="platform-name">Linux</div>
+                        <div class="platform-status">Coming Soon</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <h2>
+                    <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clip-rule="evenodd"></path>
+                    </svg>
+                    Design & Architecture
+                </h2>
+                <p>SlideRelabeler features a modern and powerful frontend built with React, Redux, and Redux-Saga. The backend server invokes Python code to interact with WSI files, providing a seamless de-identification workflow.</p>
+                
+                <div class="tech-stack">
+                    <span class="tech-tag">React</span>
+                    <span class="tech-tag">Redux</span>
+                    <span class="tech-tag">Redux-Saga</span>
+                    <span class="tech-tag">Electron</span>
+                    <span class="tech-tag">Python</span>
+                    <span class="tech-tag">Vite</span>
+                </div>
+
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    The project incorporates modified code from the 
+                    <a href="https://github.com/DigitalSlideArchive/DSA-WSI-DeID" style="color: #667eea;">DSA-WSI-DeID</a> 
+                    and is modeled on 
+                    <a href="https://github.com/pearcetm/svs-deidentifier" style="color: #667eea;">svs-deidentifier</a>.
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                    Getting Started
+                </h2>
+                <ol class="steps">
+                    <li>Clone the repository: <code>git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git</code></li>
+                    <li>Navigate to directory: <code>cd SlideRelabeler</code></li>
+                    <li>Create conda environment: <code>conda env create -f environment.yml</code></li>
+                    <li>Activate environment: <code>conda activate sliderelabeler</code></li>
+                    <li>Install dependencies: <code>npm install</code></li>
+                    <li>Launch development app: <code>npm start</code></li>
+                </ol>
+
+                <div class="note">
+                    <strong>Note for Apple M1 users:</strong> If you encounter issues with <code>large-image[common]</code> installation due to <code>rawpy</code> not being found, you may need to install <code>cmake</code> and clone the rawpy repository directly. See the GitHub issue for detailed solutions.
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-1zM3 7a1 1 0 011-1h12a1 1 0 011 1v1a1 1 0 01-1 1H4a1 1 0 01-1-1V7zM3 12a1 1 0 011-1h12a1 1 0 011 1v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    Build Options
+                </h2>
+                
+                <h3>Development Mode</h3>
+                <div class="code-block">npm start</div>
+                <p>Opens the app using your local Python installation</p>
+
+                <h3>PyInstaller Build & Test</h3>
+                <div class="code-block">npm run startpib</div>
+                <p>Packages Python code with PyInstaller and launches the app</p>
+
+                <h3>Use Pre-built PyInstaller</h3>
+                <div class="code-block">npm run startpi</div>
+                <p>Uses existing PyInstaller executable without rebuilding</p>
+
+                <h3>Production Build</h3>
+                <div class="code-block">npm run make</div>
+                <p>Creates a standalone Electron application in the <code>out/</code> directory</p>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    Resources & References
+                </h2>
+                <ul style="list-style-type: disc; margin-left: 1.5rem;">
+                    <li><a href="https://www.electronjs.org/docs/latest/" style="color: #667eea;">Electron Documentation</a> - Main framework documentation</li>
+                    <li><a href="https://www.electronforge.io/" style="color: #667eea;">Electron Forge</a> - Build and development tools</li>
+                    <li><a href="https://stackoverflow.com/questions/67146654/how-to-compile-python-electron-js-into-desktop-app-exe" style="color: #667eea;">Python + Electron Guide</a> - Useful Stack Overflow discussion</li>
+                    <li><a href="https://til.simonwillison.net/electron/python-inside-electron" style="color: #667eea;">Python inside Electron</a> - Simon Willison's blog post</li>
+                </ul>
+
+                <p style="margin-top: 1rem; font-style: italic; color: #666;">
+                    Initial templating was created with: <code>npm init electron-app@latest . -- --template=vite</code>
+                </p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Ready to Get Started?</h2>
+            <p>Clone the repository and start de-identifying your whole slide images today!</p>
+            <div class="cta-buttons">
+                <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler" class="btn btn-primary">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+                <a href="#" class="btn btn-secondary">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    Download Release
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 SlideRelabeler. Built with ❤️ for the medical imaging community.</p>
+        <p>
+            <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler">GitHub</a> • 
+            <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/issues">Issues</a> • 
+            <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/blob/main/LICENSE">License</a>
+        </p>
+    </footer>
+</body>
+</html>
