@@ -1,5 +1,5 @@
 # SlideRelabeler
-A desktop application for de-identifying whole slide images built with electron.
+A desktop application for de-identifying whole slide images built with electron. [View the project homepage](https://braindigitalslidearchive.github.io/SlideRelabeler/) for more information and to download the application installer.
 
 ## Design
 The app has a modern and powerful frontend (React/Redux/Redux-Saga). The back-end server invokes python code to interact with the WSI files. It is packaged into a stand-alone application for easy installation and use.
