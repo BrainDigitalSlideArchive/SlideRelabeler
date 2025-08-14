@@ -47,11 +47,12 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "4.3.1",
     "babel-loader": "^9.1.3",
+    "electorn": "^0.0.1-security",
     "electron": "^32.1.2",
     "electron-devtools-installer": "^3.2.0",
     "postcss": "^8.4.40",
     "postcss-preset-env": "^10.0.0",
-    "vite": "^5.4.7",
+    "vite": "^5.4.19",
     "vite-plugin-babel": "^1.2.0"
   },
   "dependencies": {

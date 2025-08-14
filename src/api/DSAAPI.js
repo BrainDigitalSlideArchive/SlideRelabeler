@@ -84,9 +84,9 @@ class DSAAPI {
         })
     }
 
-    finish_upload_file(file_id) {
-        return this.post(`/file/${file_id}/upload`, {
-    }
+    // finish_upload_file(file_id) {
+    //     return this.post(`/file/${file_id}/upload`, {
+    // }
 
     get_tile(item_id, level, x, y) {
         return this.get(`/item/${item_id}/tiles/zxy/${level}/${x}/${y}`);

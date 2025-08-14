@@ -11,11 +11,18 @@ $env:PATH += ";$NODE_INSTALL_DIR"
 # provided you have installed miniconda3 or anaconda
 # and changed it for the appropriate directory
 
-Write-Host "Adding conda bin to path"
-$CONDA_INSTALL_DIR = "C:\ProgramData\miniconda3"
-# $CONDA_INSTALL_DIR = "C:\Users\arosado\miniconda3"
-$env:PATH += ";$CONDA_INSTALL_DIR\condabin"
-$envName = "sliderelabeler"
+if (where.exe conda eq "") {
+    Write-Host "Adding conda bin to path"
+    $CONDA_INSTALL_DIR = "C:\ProgramData\miniconda3"
+    # $CONDA_INSTALL_DIR = "C:\Users\arosado\miniconda3"
+    $env:PATH += ";$CONDA_INSTALL_DIR\condabin"
+    $envName = "sliderelabeler"
+} else {
+    Write-Host "Conda is already in the path"
+    $CONDA_INSTALL_DIR = (where.exe conda.exe).split('\')[0]
+    $env:PATH += ";$CONDA_INSTALL_DIR\condabin"
+    $envName = "sliderelabeler"
+}
 
 # Check if npm/node is installed and in path
 Write-Host "Checking if npm/node is installed and in path"
