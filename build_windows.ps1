@@ -21,7 +21,7 @@ if ($npmPath -eq "") {
 
 Write-Host "Checking if conda is installed and in path"
 $envName = "sliderelabeler"
-$condaPath = where.exe conda
+$condaPath = where.exe "conda.bat"
 if ($condaPath -eq "") {
     Write-Host "Adding conda bin to path"
     $CONDA_INSTALL_DIR = "C:\ProgramData\miniconda3"
