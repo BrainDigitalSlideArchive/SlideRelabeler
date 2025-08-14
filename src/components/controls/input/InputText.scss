@@ -23,5 +23,8 @@
       opacity: 0.2;
       cursor: default;
     }
+    &._error {
+      border: 1px solid $red;
+    }
   }
 }

@@ -1,0 +1,9 @@
+export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
+export const LOGIN_FAILURE = 'LOGIN_FAILURE';
+export const SET_DSA_API_URL = 'SET_DSA_API_URL';
+export const SET_DSA_USERNAME = 'SET_DSA_USERNAME';
+export const SET_DSA_PASSWORD = 'SET_DSA_PASSWORD';
+export const LOGIN = 'LOGIN';
+export const LOGOUT = 'LOGOUT';
+export const LOGOUT_SUCCESS = 'LOGOUT_SUCCESS';
+export const LOGOUT_FAILURE = 'LOGOUT_FAILURE';

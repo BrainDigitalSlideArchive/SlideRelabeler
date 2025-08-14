@@ -30,7 +30,9 @@ const API = {
   checkFileWriteable: (file_path) => ipcRenderer.invoke('check-file-writeable', file_path),
   getPlatform: (file_path) => ipcRenderer.invoke('get-platform'),
   getStore: () => ipcRenderer.invoke('get-store'),
-  setStore: (store) => ipcRenderer.invoke('set-store', store)
+  setStore: (store) => ipcRenderer.invoke('set-store', store),
+  dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
+  dsaLogout: () => ipcRenderer.invoke('dsa-logout')
 }
 
 // ipcRenderer.on('log',()=>console.log(...arguments));

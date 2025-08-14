@@ -6,6 +6,9 @@ import {existsSync, accessSync, readFileSync, writeFileSync} from 'fs';
 import {registerRoute} from './routers/main-electron-router';
 import {readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
+import DSAAPI from './api/DSAAPI';
+
+let dsa_client = null;
 
 function normalizePath(path){
   return path.replaceAll('\\', '/');
@@ -39,6 +42,18 @@ function makeFileInfo(list){
   });
   return output;
 }
+
+ipcMain.handle('dsa-login', async (event, api_url, username, password) => {
+  dsa_client = new DSAAPI(api_url);
+  let response = await dsa_client.login(username, password);
+  return response;
+});
+
+ipcMain.handle('dsa-logout', async (event) => {
+  let response = dsa_client.logout();
+  dsa_client = null;
+  return response;
+});
 
 ipcMain.handle('get-platform', async ()=> {
   return process.platform;

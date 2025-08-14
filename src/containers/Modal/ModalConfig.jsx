@@ -2,6 +2,7 @@ import React, {useState, useLayoutEffect} from 'react';
 import {useSelector, useDispatch} from "react-redux";
 
 import * as config_actions from "../../actions/config";
+import * as dsa_actions from "../../actions/dsa";
 
 import ModalHeader from './ModalHeader';
 import Checkbox from '../../components/controls/checkbox/Checkbox';
@@ -17,6 +18,10 @@ function ModalConfig(props) {
   const csv = useSelector(state => state.config.csv);
   const label_config = useSelector(state => state.config.label);
   const wsi_config = useSelector(state => state.config.wsi);
+  const dsa = useSelector(state => state.dsa);
+
+  const { username, password, api_url, api_auth, login_error, login_error_message } = dsa;
+
   const dispatch = useDispatch();
 
   const qr_mode_options = [
@@ -44,6 +49,12 @@ function ModalConfig(props) {
     }
   }
 
+  let expiration_date = null;
+  if (api_auth) {
+    expiration_date = new Date(api_auth.authToken.expires);
+  }
+
+  console.log(expiration_date);
 
   function create_filename_example(example_basename) {
     let output_filename = ''
@@ -159,6 +170,60 @@ function ModalConfig(props) {
               Save table to CSV file to the output directory as deid_output.csv.
             </div>
             <Checkbox label={"Save CSV"} checked={csv.save_csv} onClick={() => dispatch({type: config_actions.TOGGLE_SAVE_CSV})}/>
+          </div>
+          <div className={"__divider"}/>
+          <div className={"__config-control-section"}>
+            <div className={"__config-control-section-title"}>DSA</div>
+            <div className={"__config-control-section-description"}>
+              Configure the DSA connection for transfering deidentified files to the DSA.
+            </div>
+            <div className={"__config-control-section-dsa-group"}>
+              <div className={"__config-control-section-dsa-subgroup"}>
+                <InputText disabled={api_auth} error={login_error} label={"API URL"} value={api_url? api_url : ''} onChange={(new_value) => dispatch({type: dsa_actions.SET_DSA_API_URL, payload: new_value})}/>
+                <InputText disabled={api_auth} error={login_error} label={"Username"} value={username? username : ''} onChange={(new_value) => dispatch({type: dsa_actions.SET_DSA_USERNAME, payload: new_value})}/>
+                <InputText disabled={api_auth} error={login_error} type={"password"} label={"Password"} value={password? password : ''} onChange={(new_value) => dispatch({type: dsa_actions.SET_DSA_PASSWORD, payload: new_value})}/>
+                {
+                      !api_auth? 
+                      <Button disabled={!(username !== '' && password !== '' && !api_auth)} text={"Login"} onClick={() => dispatch({type: dsa_actions.LOGIN, payload: {api_url, username, password}})}/> :
+                      <Button disabled={!(username !== '' && password !== '' && api_auth)} text={"Logout"} onClick={() => dispatch({type: dsa_actions.LOGOUT})}/>
+                }
+                {
+                  login_error && <div className={"__config-control-section-error"}>{login_error_message}</div>
+                }
+              </div>
+              <div className={"__config-control-section-dsa-subgroup"}>
+              {
+                api_auth && 
+                  <div className={"__dsa-auth-group"}>
+                    <div className={"__dsa-auth-item"}>
+                      <div className={"__dsa-auth-item-label"}>
+                        API URL:
+                      </div>
+                      <div className={"__dsa-auth-item-value"}>
+                        {api_url}
+                      </div>
+                    </div>
+                    <div className={"__dsa-auth-item"}>
+                      <div className={"__dsa-auth-item-label"}>
+                        Username:
+                      </div>
+                      <div className={"__dsa-auth-item-value"}>
+                        {username}
+                      </div>
+                    </div>
+                    <div className={"__dsa-auth-item"}>
+                      <div className={"__dsa-auth-item-label"}>
+                        Expiration:
+                      </div>
+                      <div className={"__dsa-auth-item-value"}>
+                        {expiration_date.toString()}
+                      </div>
+                    </div>
+                  </div>
+              }
+            </div>
+            </div>
+            
           </div>
         </div>
       </div>
