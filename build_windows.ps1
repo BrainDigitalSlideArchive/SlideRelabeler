@@ -11,7 +11,7 @@ if ($npmPath -eq "") {
     $env:PATH += ";$NODE_INSTALL_DIR"
 } else {
     Write-Host "Npm is already in the path"
-    $npmPathArray = $npmPath.split('\')
+    $npmPathArray = $npmPath.split("`r?`n")[0].split('\')
     $NODE_INSTALL_DIR = $npmPathArray[0..($npmPathArray.Length - 2)] -join '\'
 }
 
@@ -30,7 +30,7 @@ if ($condaPath -eq "") {
 
 } else {
     Write-Host "Conda is already in the path"
-    $condaPathArray = $condaPath.split('\')
+    $condaPathArray = $condaPath.split("`r?`n")[0].split('\')
     $CONDA_INSTALL_DIR = $condaPathArray[0..($condaPathArray.Length - 3)] -join '\'
     Write-Host "Conda install dir: $CONDA_INSTALL_DIR"
 }
