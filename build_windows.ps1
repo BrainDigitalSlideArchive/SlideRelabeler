@@ -32,6 +32,7 @@ if ($condaPath -eq "") {
     Write-Host "Conda is already in the path"
     $condaPathArray = $condaPath.split('\')
     $CONDA_INSTALL_DIR = $condaPathArray[0..($condaPathArray.Length - 3)] -join '\'
+    Write-Host "Conda install dir: $CONDA_INSTALL_DIR"
 }
 
 # Check if npm/node is installed and in path
