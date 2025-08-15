@@ -1,61 +1,7 @@
-# To use this script you must install miniconda3 or anaconda 
+# To use this script you must install miniconda/anaconda and nodejs
 # and add the condabin to your path
 
-# Uncomment the following block to add npm node to your path
-# provided you have installed npm/node as described in the readme
-Write-Host "Checking if npm/node is installed and in path"
-$npmPath = where.exe npm
-if ($npmPath -eq "") {
-    Write-Host "Adding npm node to path"
-    $NODE_INSTALL_DIR = "C:\Program Files\nodejs"
-    $env:PATH += ";$NODE_INSTALL_DIR"
-} else {
-    Write-Host "Npm is already in the path"
-    $npmPathArray = $npmPath.split("`r?`n")[0].split('\')
-    $NODE_INSTALL_DIR = $npmPathArray[0..($npmPathArray.Length - 2)] -join '\'
-}
-
-# Uncomment the following block to add the conda bin to your path
-# provided you have installed miniconda3 or anaconda
-# and changed it for the appropriate directory
-
-Write-Host "Checking if conda is installed and in path"
-$envName = "sliderelabeler"
-$condaPath = where.exe "conda.bat"
-if ($condaPath -eq "") {
-    Write-Host "Adding conda bin to path"
-    $CONDA_INSTALL_DIR = "C:\ProgramData\miniconda3"
-    # $CONDA_INSTALL_DIR = "C:\Users\arosado\miniconda3"
-    $env:PATH += ";$CONDA_INSTALL_DIR\condabin"
-
-} else {
-    Write-Host "Conda is already in the path"
-    $condaPathArray = $condaPath.split("`r?`n")[0].split('\')
-    $CONDA_INSTALL_DIR = $condaPathArray[0..($condaPathArray.Length - 3)] -join '\'
-    Write-Host "Conda install dir: $CONDA_INSTALL_DIR"
-}
-
-# Check if npm/node is installed and in path
-Write-Host "Checking if npm/node is installed and in path"
-if (!(Get-Command npm -ErrorAction SilentlyContinue)) {
-    Write-Host "Npm/node must be installed to use this script"
-    Write-Host "Install npm/node from https://nodejs.org/en/download/"
-    Write-Host "Make sure that npm is in your path environment variable"
-    exit
-}
-
-# Check if conda is in the path
-Write-Host "Checking if conda is in the path"
-if (!(Get-Command conda -ErrorAction SilentlyContinue)) {
-    Write-Host "Conda must be installed and in the path to use this script"
-    Write-Host "Install miniconda3 or anaconda and add the condabin to your path"
-    Write-Host "Anaconda installation instructions:"
-    Write-Host "https://www.anaconda.com/docs/getting-started/miniconda/install"
-    Write-Host "Download latest miniconda3 installer:"
-    Write-Host "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
-    Write-Host "See readme for more details"
-    exit
-}
+. .\setup_dependency_paths.ps1
 
 # Create the environment if it doesn't exist
 if (!(conda env list | Select-String -Pattern $envName)) {
