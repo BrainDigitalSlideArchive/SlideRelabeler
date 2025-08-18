@@ -110,7 +110,3 @@ dist
 build
 src/python/tests/dist
 src/python/tests/build
-*.png
-*.jpg
-*.tiff
-*.tif

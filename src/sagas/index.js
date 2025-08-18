@@ -8,6 +8,7 @@ import app from './app';
 import files from './files';
 import config from './config';
 import debug from './debug';
+import dsa from './dsa';
 
 import save_store from './bridge/save_store';
 import delete_store from './bridge/delete_store';
@@ -17,6 +18,7 @@ function* sagas() {
     yield fork(files);
     yield fork(config);
     yield fork(debug);
+    yield fork(dsa);
 
     yield load_saved_store()
 

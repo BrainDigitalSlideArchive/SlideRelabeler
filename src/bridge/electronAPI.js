@@ -39,7 +39,12 @@ const API = {
   clearDebugs: () => ipcRenderer.invoke('clear-debugs'),
   getOutputPath: (info) => ipcRenderer.invoke('get-output-path', info),
   deleteStore: () => ipcRenderer.invoke('delete-store'),
-  previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict)
+  previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
+  dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
+  dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
+  dsaStartUpload: (folder_id, file_path) => ipcRenderer.invoke('dsa-start-file-upload', folder_id, file_path),
+  dsaCompleteUpload: (upload_id) => ipcRenderer.invoke('dsa-complete-file-upload', upload_id),
+  dsaUploadChunk: (upload_id, chunk_data, offset) => ipcRenderer.invoke('dsa-upload-file-chunk', upload_id, chunk_data, offset),
 }
 
 // ipcRenderer.on('log',()=>console.log(...arguments));

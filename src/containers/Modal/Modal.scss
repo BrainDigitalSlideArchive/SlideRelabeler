@@ -246,6 +246,36 @@
           flex-direction: column;
           margin-bottom: 1em;
 
+          .__config-control-section-dsa-group {
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 0.5em;
+            width: 50%;
+
+            .__config-control-section-dsa-subgroup {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              margin-bottom: 0.5em;
+
+              .__dsa-auth-group {
+                display: flex;
+                width: 100%;
+                flex-direction: column;
+                .__dsa-auth-item { 
+                  width: 100%;
+                  display: flex;
+                  flex-direction: column;
+                  margin-bottom: 0.5em;
+                }
+              }
+
+              input {
+                margin-right: 1em;
+              }
+            }
+          }
+
           .__config-control-section-container {
             display: flex;
             flex-direction: row;

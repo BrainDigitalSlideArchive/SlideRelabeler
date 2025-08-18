@@ -6,10 +6,16 @@ import {existsSync, accessSync, readFileSync, writeFileSync} from 'fs';
 import {registerRoute} from './routers/main-electron-router';
 import {readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
+import DSAAPI from './api/DSAAPI';
 
 let bridge = new PythonBridge();
 
 const wsiCustomFilter = {name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff']};
+
+let upload_status = {
+};
+
+let dsa_client = null;
 
 function normalizePath(path){
   return path.replaceAll('\\', '/');
@@ -42,7 +48,40 @@ function makeFileInfo(list){
     return info;
   });
   return output;
-}
+};
+
+ipcMain.handle('dsa-login', async (event, api_url, username, password) => {
+  dsa_client = new DSAAPI(api_url);
+  let response = await dsa_client.login(username, password);
+  return response;
+});
+
+ipcMain.handle('dsa-logout', async (event) => {
+  let response = dsa_client.logout();
+  dsa_client = null;
+  return response;
+});
+
+ipcMain.handle('dsa-start-file-upload', async (event, folder_id, file_path) => {
+  let response = await dsa_client.begin_upload_file_to_folder(folder_id, file_path);
+  if (response[0]) {
+    upload_status[file_path] = {
+      fileId: response.fileId,
+      folderId: response.folderId,
+    }
+  }
+  return response;
+});
+
+ipcMain.handle('dsa-complete-file-upload', async (event, file_id) => {
+  let response = dsa_client.complete_upload_file(file_id);
+  return response;
+});
+
+ipcMain.handle('dsa-upload-file-chunk', async (event, file_id, chunk_data, offset) => {
+  let response = await dsa_client.upload_file_chunk(file_id, chunk_data, offset);
+  return response;
+});
 
 ipcMain.handle('get-platform', async ()=> {
   return process.platform;
