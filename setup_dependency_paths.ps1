@@ -1,9 +1,9 @@
-# Uncomment the following block to add npm node to your path
-# provided you have installed npm/node as described in the readme
 $envName = "sliderelabeler"
 
 Write-Host "Checking if npm/node is installed and in path"
 if ((Get-Command npm -ErrorAction SilentlyContinue) -eq $null) { # linter is wrong
+    # Change the following block to add npm node to your path
+    # provided you have installed npm/node as described in the readme
     Write-Host "Adding npm node to path"
     $NODE_INSTALL_DIR = "C:\Program Files\nodejs"
     $env:PATH += ";$NODE_INSTALL_DIR"
