@@ -6,6 +6,18 @@ export function* login(api_url, username, password) {
     const response = yield electronAPI.dsaLogin(api_url, username, password);
     if (response[0]) {
         yield put({ type: dsa_actions.LOGIN_SUCCESS, payload: response[1] });
+        // check upload folder
+        const folder_id = yield select(state => state.dsa.folder_id);
+        const check_folder_response = yield electronAPI.dsaCheckUploadFolder(folder_id);
+
+        if (check_folder_response._id) {
+            yield put({ type: dsa_actions.DSA_FOLDER_EXISTS });
+        } else if (check_folder_response.message) {
+            yield put({ type: dsa_actions.DSA_FOLDER_DOES_NOT_EXIST, payload: check_folder_response.message });
+        } else {
+            yield put({ type: dsa_actions.DSA_FOLDER_DOES_NOT_EXIST, payload: "Unknown error checking folder" });
+        }
+        
     } else {
         yield put({ type: dsa_actions.LOGIN_FAILURE, payload: response[1].message });
     }

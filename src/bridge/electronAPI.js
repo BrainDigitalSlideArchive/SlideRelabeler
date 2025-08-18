@@ -21,6 +21,7 @@ const API = {
   onLog: (callback) => ipcRenderer.on('log', (_event, value) => callback(value)),
   // onDisplay: (callback) => ipcRenderer.on('display', (_event, value) => callback(value)),
   processFile: (info) => ipcRenderer.invoke('process-file', info),
+  copyFile: (source, destination) => ipcRenderer.invoke('copy-file', source, destination),
   getCopyProgress: (id) => ipcRenderer.invoke('get-copy-progress', id),
   getProgress: (info, output_path) => ipcRenderer.invoke('get-progress', info, output_path),
   cancelRestartBridge: () => ipcRenderer.invoke('cancel-restart-bridge'),
@@ -57,6 +58,7 @@ const API = {
   dsaStopUploadFileProgress: () => ipcRenderer.removeAllListeners('dsa-upload-file-progress'),
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
+  dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);

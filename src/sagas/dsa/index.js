@@ -4,12 +4,14 @@ import login from './login';
 import logout from './logout';
 import upload from './upload';
 import progress from './progress';
+import check from './check';
 
 function* dsa() {
     const watch_login = yield fork(login);
     const watch_logout = yield fork(logout);
     const watch_upload = yield fork(upload);
     const watch_progress = yield fork(progress);
+    const watch_check = yield fork(check);
 }
 
 export default dsa;

@@ -137,6 +137,10 @@ class DSAAPI {
         return this.get(`/folder`, params);
     }
 
+    get_folder_by_id(folder_id) {
+        return this.get(`/folder/${folder_id}`);
+    }
+
     get_collection_details_by_id(collection_id) {
         return this.get(`/collection/${collection_id}/details`);
     }
