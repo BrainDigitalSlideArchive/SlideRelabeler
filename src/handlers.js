@@ -2,6 +2,7 @@ import {ipcMain, dialog, BrowserWindow, app, safeStorage} from 'electron';
 import { PythonBridge } from './bridge/pythonBridge';
 import path, {join} from 'path';
 import fs from 'fs/promises';
+import { open, read, close } from 'fs';
 import {existsSync, accessSync, readFileSync, writeFileSync} from 'fs';
 import {registerRoute} from './routers/main-electron-router';
 import {readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
@@ -62,12 +63,107 @@ ipcMain.handle('dsa-logout', async (event) => {
   return response;
 });
 
-ipcMain.handle('dsa-start-file-upload', async (event, folder_id, file_path) => {
+function get_browser_window_by_title(title) {
+  const windows = BrowserWindow.getAllWindows();
+  for (const window of windows) {
+    if (window.getTitle() === title) {
+      return window;
+    }
+  }
+  return null;
+}
+
+// async function send_file_chunks(window, upload_id, file_path, uuid) {
+//   const chunk_size = 1024 * 4; // 8MB
+//   const file_size = (await fs.stat(file_path)).size;
+//   const num_chunks = Math.ceil(file_size / chunk_size);
+//   const read_stream = createReadStream(file_path, {highWaterMark: chunk_size, start: 0, end: chunk_size * 10});
+//   let data_offset = 0;
+//   let data_success = 0;
+//   let data_completed = false;
+//   read_stream.on('data', async (chunk) => {
+//     console.log("Chunk size", chunk.length);
+//     const response = await dsa_client.upload_file_chunk(upload_id, chunk, data_offset);
+//     data_offset += chunk.length;
+//     if (response[0]) {
+//       window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: data_offset / file_size});
+//       data_success += chunk.length;
+//       if (data_success >= file_size) {
+//         data_completed = true;
+//       }
+//     } else {
+//       window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: response[1].message});
+//       read_stream.destroy();
+//       await dsa_client.upload_delete_partial(upload_id);
+//     }
+//   });
+//   read_stream.on('end', async () => {    
+//   });
+//   read_stream.on('error', async (error) => {
+//     window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: error});
+//     const response = await dsa_client.delete_partial_upload(upload_id);
+//     console.log("Delete response", response);
+//     read_stream.destroy();
+//   });
+
+//   while(!data_completed) {
+//     // wait for the file to be uploaded
+//     await new Promise(resolve => setTimeout(resolve, 1000));
+//   }
+//   // on completion, send the final message
+//   window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: 1});
+//   window.webContents.send('dsa-upload-file-complete', {file_path: file_path, uuid: uuid});
+//   const response = await dsa_client.complete_upload_file(uuid);
+//   console.log("Complete response", response);
+//   read_stream.destroy();
+
+  
+// }
+
+async function send_file_chunks(window, upload_id, file_path, uuid) {
+  const chunk_size = 1024 * 1024; // 8MB
+  const file_size = (await fs.stat(file_path)).size;
+  
+  open(file_path, 'r', (err, fd) => {
+    if (err) {
+      console.error("Error opening file", err);
+      return;
+    }
+    const file_buffer = Buffer.alloc(chunk_size);
+    let data_start = 0;
+    let data_offset = 0;
+    read(fd, file_buffer, 0, chunk_size, data_start, async (err, bytesRead, buffer) => {
+      if (err) {
+        console.error("Error reading file", err);
+        return;
+      }
+      console.log("Bytes read", bytesRead);
+      console.log("Chunk size", buffer.length);
+      const response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
+      data_offset += bytesRead;
+      if (response[0]) {
+        console.log("Uploaded chunk", bytesRead);
+        const progress = bytesRead / file_size;
+        window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: progress});
+      } else {
+        window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: response[1].message});
+        close(fd);
+      }
+      if (data_offset >= chunk_size*10) {
+        close(fd);
+        console.log("File closed");
+      }
+    });
+  });
+}
+
+ipcMain.handle('dsa-upload-file-start', async (event, folder_id, file_path, uuid) => {
   let response = await dsa_client.begin_upload_file_to_folder(folder_id, file_path);
   if (response[0]) {
-    upload_status[file_path] = {
-      fileId: response.fileId,
-      folderId: response.folderId,
+    console.log("Emitting dsa-file-progress", {file_path: file_path, progress: 0});
+    const window = get_browser_window_by_title('SlideRelabeler');
+    if (window) {      
+      send_file_chunks(window, response[1]._id, file_path, uuid);
     }
   }
   return response;
@@ -135,7 +231,7 @@ ipcMain.handle('cancel-restart-bridge', async ()=> {
   bridge = new PythonBridge();
 });
 
-ipcMain.handle('delete-partial-file', async (event, file_path)=> {
+ipcMain.handle('delete-file', async (event, file_path)=> {
   try {
     if (existsSync(file_path)) {
       await fs.unlink(file_path);

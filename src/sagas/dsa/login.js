@@ -13,7 +13,7 @@ export function* login(api_url, username, password) {
     const files = yield select(state => state.files.file_rows);
     const file = files[0];
 
-    yield put({type: dsa_actions.UPLOAD_FILE, payload: {folder_id: '689ca9edbc6082acbe2389b4',  file: file}})
+    yield put({type: dsa_actions.UPLOAD_FILE, payload: {folder_id: '689ca9edbc6082acbe2389b4',  file: file}});
 }
 
 function* watch_login() {

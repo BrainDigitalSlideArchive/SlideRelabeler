@@ -1,8 +1,9 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, BrowserWindow } from 'electron';
 
-import * as app_actions from '../actions/app';
+import * as files_actions from '../actions/files';
+
 
 const API = {
   // sendButtonClick: (text) => ipcRenderer.send('button-click', text),
@@ -23,7 +24,7 @@ const API = {
   getCopyProgress: (id) => ipcRenderer.invoke('get-copy-progress', id),
   getProgress: (info, output_path) => ipcRenderer.invoke('get-progress', info, output_path),
   cancelRestartBridge: () => ipcRenderer.invoke('cancel-restart-bridge'),
-  deletePartialFile: (file_path) => ipcRenderer.invoke('delete-partial-file', file_path),
+  deleteFile: (file_path) => ipcRenderer.invoke('delete-file', file_path),
   readCSV: (file_path) => ipcRenderer.invoke('read-csv', file_path),
   writeCSV: (file_path, data) => ipcRenderer.invoke('write-csv', file_path, data),
   readExcel: (file_path) => ipcRenderer.invoke('read-excel', file_path),
@@ -42,11 +43,19 @@ const API = {
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
-  dsaStartUpload: (folder_id, file_path) => ipcRenderer.invoke('dsa-start-file-upload', folder_id, file_path),
-  dsaCompleteUpload: (upload_id) => ipcRenderer.invoke('dsa-complete-file-upload', upload_id),
-  dsaUploadChunk: (upload_id, chunk_data, offset) => ipcRenderer.invoke('dsa-upload-file-chunk', upload_id, chunk_data, offset),
+  dsaUploadFileStart: (folder_id, file_path, uuid) => ipcRenderer.invoke('dsa-upload-file-start', folder_id, file_path, uuid),
+  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, upload_id) => {
+    dispatch({type: files_actions.UPLOAD_FILE_COMPLETE, payload: upload_id});
+  }),
+  dsaSetupUploadFileProgress: (dispatch) => ipcRenderer.on('dsa-upload-file-progress', (event, progress) => {
+    dispatch({type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress});
+  }),
+  dsaSetupUploadFileError: (dispatch) => ipcRenderer.on('dsa-upload-file-error', (event, error) => {
+    dispatch({type: files_actions.UPLOAD_FILE_ERROR, payload: error});
+  }),
+  dsaStopUploadFileProgress: () => ipcRenderer.removeAllListeners('dsa-upload-file-progress'),
+  dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
+  dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
 }
-
-// ipcRenderer.on('log',()=>console.log(...arguments));
 
 contextBridge.exposeInMainWorld('electronAPI', API);

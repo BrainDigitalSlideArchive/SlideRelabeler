@@ -7,7 +7,7 @@ import { app, safeStorage } from 'electron';
 import { join, basename, extname  } from 'path';
 
 class DSAAPI {
-    perform_request(sub_url, method, data = null, content_type = 'application/json') {
+    perform_request(sub_url, method, data = null, data_type = 'json', content_type = 'application/json') {
         return new Promise((resolve, reject) => {
             console.log("Performing request:", this.api_url + sub_url);
             const request_url = this.api_url + sub_url;
@@ -59,7 +59,11 @@ class DSAAPI {
             });
             
             if (data) {
-                req.write(JSON.stringify(data));
+                if (data_type === 'json') {
+                    req.write(JSON.stringify(data));
+                } else if (data_type === 'binary') {
+                    req.write(data);
+                }
             }
             
             req.end();
@@ -70,7 +74,7 @@ class DSAAPI {
         if (fs.existsSync(file_path)) {
             const file_basename = basename(file_path);
             const ext = extname(file_path);
-            return this.post('/file', null, {
+            return this.post('/file', null, 'json', {
                 name: `${file_basename}${ext}`,
                 parentId: folder_id,
                 parentType: 'folder',
@@ -79,22 +83,21 @@ class DSAAPI {
         }
     }
 
-    upload_file_chunk(upload_id, file_path, offset, chunk_size = 1024 * 1024 * 4) {
-        let chunk_buffer = Buffer.alloc(chunk_size);
-        if (offset + chunk_size > fs.statSync(file_path).size) {
-            chunk_data = fs.readFileSync(file_path, {start: offset, end: fs.statSync(file_path).size - 1});
-        } else {
-            chunk_data = fs.readFileSync(file_path, {start: offset, end: offset + chunk_size - 1});
-        }
-
-        return this.post(`/file/${upload_id}/upload`, {
-            offset: offset,
-            chunk: chunk_data
+    upload_file_chunk(upload_id, chunk_data, offset) {
+        return this.post(`/file/chunk`, chunk_data, 'binary', {
+            uploadId: upload_id,
+            offset: offset
         })
     }
 
-    complete_upload_file(file_id) {
-        return this.post(`/file/${file_id}/upload/complete`);
+    upload_delete_partial(upload_id) {
+        return this.delete(`/file/upload/${upload_id}`);
+    }
+
+    upload_file_complete(upload_id) {
+        return this.post(`/file/completion`, null, 'json', {
+            uploadId: upload_id
+        });
     }
 
     get_tile(item_id, level, x, y) {
@@ -160,11 +163,11 @@ class DSAAPI {
         return this.perform_request(sub_url, 'GET');
     }
 
-    post(sub_url, post_data = null, url_params = null) {
+    post(sub_url, post_data = null, data_type = 'json', url_params = null) {
         if (url_params) {
             sub_url += this.process_url_params(url_params);
         }
-        return this.perform_request(sub_url, 'POST', post_data);
+        return this.perform_request(sub_url, 'POST', post_data, data_type);
     }
 
     put(sub_url, put_data = null, url_params = null) {

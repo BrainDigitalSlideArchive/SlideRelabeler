@@ -20,4 +20,6 @@ const store = configureStore({
 // Then run the saga
 sagaMiddleware.run(saga);
 
+window.redux_store = store;
+
 export default store;

@@ -124,6 +124,7 @@ app.on('ready', ()=>{
   };
 
   const window = new BrowserWindow({
+    title: 'SlideRelabeler',
     width: 1200,
     height: 900,
     ...options,
@@ -241,6 +242,7 @@ app.on('ready', ()=>{
         }
 
       const window = new BrowserWindow({
+        title: 'SlideRelabeler',
         width: 1200,
         height: 900,
         ...options,
