@@ -1,7 +1,7 @@
 {
   "name": "slide-relabeler",
   "productName": "SlideRelabeler",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Overwrite or delete label images from whole slide images",
   "main": ".vite/build/main.js",
   "scripts": {
