@@ -831,12 +831,18 @@ class DeidTools:
         redact_square = redact_square_default or redact_square_manual
         if redact_square or macro_geojson:
             try:
-                if 'label' in output_dict['config'] and 'wsi' in output_dict['config']['label']:
-                    if output_dict['config']['label']['wsi']['save_macro_image']:
+                if 'wsi' in output_dict['config']:
+                    if output_dict['config']['wsi']['save_macro_image']:
                         macroImage = PIL.Image.open(
                             io.BytesIO(tileSource.getAssociatedImage("macro")[0])
                         )
-                # ImageItem().removeThumbnailFiles(item)
+                        if redact_square:
+                            macroImage = redact_topleft_square(macroImage)
+                        elif macro_geojson:
+                            macroImage = redact_image_area(macroImage, macro_geojson)
+
+                        # ImageItem().removeThumbnailFiles(item)
+                # 
             except Exception:
                 pass
 
@@ -846,7 +852,10 @@ class DeidTools:
             elif macro_geojson:
                 macroImage = redact_image_area(macroImage, macro_geojson)
         else:
-            macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
+            if not output_dict['config']['wsi']['save_macro_image']:
+                macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
+            else:
+                macroImage = PIL.Image.open(io.BytesIO(tileSource.getAssociatedImage("macro")[0]))
 
         return macroImage
 
