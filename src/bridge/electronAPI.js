@@ -40,6 +40,7 @@ const API = {
   clearDebugs: () => ipcRenderer.invoke('clear-debugs'),
   getOutputPath: (info) => ipcRenderer.invoke('get-output-path', info),
   deleteStore: () => ipcRenderer.invoke('delete-store'),
+  deleteFile: (file_path) => ipcRenderer.invoke('delete-file', file_path),
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),

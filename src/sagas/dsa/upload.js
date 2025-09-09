@@ -1,4 +1,4 @@
-import { take, put, fork } from 'redux-saga/effects';
+import { select, take, put, fork } from 'redux-saga/effects';
 
 import * as dsa_actions from '../../actions/dsa';
 import * as files_actions from '../../actions/files';
@@ -14,6 +14,17 @@ function* watch_complete_upload(row_idx) {
         break;
     }
     let action_finalize = yield put({ type: dsa_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
+
+    let delete_after = yield select(state => state.dsa.delete_after);
+    if (delete_after) {
+        const file_rows = yield select(state => state.files.file_rows);
+        const file_path = file_rows[row_idx].__reserved.output_path;
+        console.log('file_path:', file_path);
+        yield electronAPI.deleteFile(file_path.replace(/\\/g, '/'));
+        console.log('file_path deleted');
+        yield put({ type: files_actions.UPLOAD_DELETE_AFTER, payload: { row_idx: row_idx } });
+        console.log('file_path deleted');
+    }
 }
 
 function* watch_upload() {

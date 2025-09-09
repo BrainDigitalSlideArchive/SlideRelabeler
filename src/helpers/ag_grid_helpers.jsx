@@ -69,7 +69,7 @@ export function setupThumbnailColumnOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.source.path',
-    (params) => params.data.__reserved.processed === 1 ? electronAPI.openViewer(params.data.__reserved.output_path, params.node.rowIndex) : electronAPI.openViewer(params.data.__reserved.source.path, params.node.rowIndex)
+    (params) => (params.data.__reserved.processed === 1 && !params.data.__reserved.deleted_after) ? electronAPI.openViewer(params.data.__reserved.output_path, params.node.rowIndex) : electronAPI.openViewer(params.data.__reserved.source.path, params.node.rowIndex)
   )
 }
 
@@ -297,7 +297,7 @@ export function setupDestinationDirectoryOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.destinationDirectory',
-    ({ data }) => data.__reserved.processed === 1 && electronAPI.openViewer(data.__reserved.output_path)
+    ({ data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
   )
 }
 
@@ -337,6 +337,6 @@ export function setupRenameCellOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.rename',
-    ({ value, data }) => data.__reserved.processed === 1 && electronAPI.openViewer(data.__reserved.output_path)
+    ({ value, data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
   )
 }

@@ -3,7 +3,7 @@ import { PythonBridge } from './bridge/pythonBridge';
 import path, { join } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
-import { existsSync, accessSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { registerRoute } from './routers/main-electron-router';
 import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
@@ -95,6 +95,7 @@ function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path
 
         if (finalize) {
           window.webContents.send('dsa-upload-file-complete', file_row_idx);
+          close(fd);
         } else {
           window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx });
         }
@@ -126,6 +127,7 @@ async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
       }
     }
   });
+  return true;
 }
 
 ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_path) => {
@@ -194,10 +196,11 @@ ipcMain.handle('cancel-restart-bridge', async () => {
 ipcMain.handle('delete-file', async (event, file_path) => {
   try {
     if (existsSync(file_path)) {
-      await fs.unlink(file_path);
+      unlinkSync(file_path);
     }
     return true;
   } catch (err) {
+    console.log('error deleting file:', err);
     return false;
   }
 });
@@ -328,9 +331,7 @@ ipcMain.handle('get-all-wsi-file-paths', async (event, folder_path) => {
       paths.push(join(basedir, filename));
     }
   });
-  console.log("Paths :", paths);
   const fileList = makeFileInfo(paths.map(f => { return { source: f } }));
-  console.log("File list ", fileList);
   return fileList;
 })
 
@@ -401,8 +402,6 @@ ipcMain.handle('open-viewer', async (event, file, row_idx) => {
       height: 900,
       ...options,
     });
-
-    console.log("Register route", registerRoute);
 
     registerRoute({
       id: 'viewer',
