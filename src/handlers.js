@@ -1,32 +1,32 @@
-import {ipcMain, dialog, BrowserWindow, app, safeStorage} from 'electron';
+import { ipcMain, dialog, BrowserWindow, app, safeStorage } from 'electron';
 import { PythonBridge } from './bridge/pythonBridge';
-import path, {join} from 'path';
+import path, { join } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
-import {existsSync, accessSync, readFileSync, writeFileSync} from 'fs';
-import {registerRoute} from './routers/main-electron-router';
-import {readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
+import { existsSync, accessSync, readFileSync, writeFileSync } from 'fs';
+import { registerRoute } from './routers/main-electron-router';
+import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 
 let bridge = new PythonBridge();
 
-const wsiCustomFilter = {name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff']};
+const wsiCustomFilter = { name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff'] };
 
 let upload_status = {
 };
 
 let dsa_client = null;
 
-function normalizePath(path){
+function normalizePath(path) {
   return path.replaceAll('\\', '/');
 }
 
 /**
  * @param { Array } list Array of object with fields source (mandatory) and destination (optional)
  */
-function makeFileInfo(list){
-  let output = list.map(arr=>{
+function makeFileInfo(list) {
+  let output = list.map(arr => {
     const info = {
       source: {
         filename: path.basename(arr.source),
@@ -34,9 +34,9 @@ function makeFileInfo(list){
         path: arr.source,
         parsed: path.parse(arr.source),
         sep: path.sep
-      }   
+      }
     }
-    if(arr.destination){
+    if (arr.destination) {
       info.destination = {
         filename: path.basename(arr.destination),
         directory: path.dirname(arr.destination),
@@ -73,113 +73,73 @@ function get_browser_window_by_title(title) {
   return null;
 }
 
-// async function send_file_chunks(window, upload_id, file_path, uuid) {
-//   const chunk_size = 1024 * 4; // 8MB
-//   const file_size = (await fs.stat(file_path)).size;
-//   const num_chunks = Math.ceil(file_size / chunk_size);
-//   const read_stream = createReadStream(file_path, {highWaterMark: chunk_size, start: 0, end: chunk_size * 10});
-//   let data_offset = 0;
-//   let data_success = 0;
-//   let data_completed = false;
-//   read_stream.on('data', async (chunk) => {
-//     console.log("Chunk size", chunk.length);
-//     const response = await dsa_client.upload_file_chunk(upload_id, chunk, data_offset);
-//     data_offset += chunk.length;
-//     if (response[0]) {
-//       window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: data_offset / file_size});
-//       data_success += chunk.length;
-//       if (data_success >= file_size) {
-//         data_completed = true;
-//       }
-//     } else {
-//       window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: response[1].message});
-//       read_stream.destroy();
-//       await dsa_client.upload_delete_partial(upload_id);
-//     }
-//   });
-//   read_stream.on('end', async () => {    
-//   });
-//   read_stream.on('error', async (error) => {
-//     window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: error});
-//     const response = await dsa_client.delete_partial_upload(upload_id);
-//     console.log("Delete response", response);
-//     read_stream.destroy();
-//   });
-
-//   while(!data_completed) {
-//     // wait for the file to be uploaded
-//     await new Promise(resolve => setTimeout(resolve, 1000));
-//   }
-//   // on completion, send the final message
-//   window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: 1});
-//   window.webContents.send('dsa-upload-file-complete', {file_path: file_path, uuid: uuid});
-//   const response = await dsa_client.complete_upload_file(uuid);
-//   console.log("Complete response", response);
-//   read_stream.destroy();
-
-  
-// }
-
-async function send_file_chunks(window, upload_id, file_path, uuid) {
-  const chunk_size = 1024 * 1024; // 8MB
-  const file_size = (await fs.stat(file_path)).size;
-  
-  open(file_path, 'r', (err, fd) => {
-    if (err) {
-      console.error("Error opening file", err);
-      return;
-    }
-    const file_buffer = Buffer.alloc(chunk_size);
-    let data_start = 0;
-    let data_offset = 0;
-    read(fd, file_buffer, 0, chunk_size, data_start, async (err, bytesRead, buffer) => {
+function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size) {
+  return new Promise(async (resolve, reject) => {
+    read(fd, file_buffer, 0, chunk_size, -1, async (err, bytesRead, buffer) => {
       if (err) {
         console.error("Error reading file", err);
-        return;
+        reject(false);
       }
-      console.log("Bytes read", bytesRead);
-      console.log("Chunk size", buffer.length);
-      const response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
-      data_offset += bytesRead;
-      if (response[0]) {
-        console.log("Uploaded chunk", bytesRead);
-        const progress = bytesRead / file_size;
-        window.webContents.send('dsa-upload-file-progress', {file_path: file_path, uuid: uuid, progress: progress});
+      let response = null;
+      let finalize = false;
+      if (bytesRead < chunk_size) {
+        response = await dsa_client.upload_file_chunk(upload_id, buffer.slice(0, bytesRead), data_offset);
+        finalize = true;
       } else {
-        window.webContents.send('dsa-upload-file-error', {file_path: file_path, uuid: uuid, error: response[1].message});
-        close(fd);
+        response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
       }
-      if (data_offset >= chunk_size*10) {
+
+      data_offset += bytesRead;
+      if (response && response[0]) {
+        const progress = (response[1].received / file_size) * 100;
+
+        if (finalize) {
+          window.webContents.send('dsa-upload-file-complete', file_row_idx);
+        } else {
+          window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx });
+        }
+        resolve(true);
+      } else {
+        window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: response[1].message, row_idx: file_row_idx });
         close(fd);
-        console.log("File closed");
+        reject(false);
       }
     });
   });
 }
 
-ipcMain.handle('dsa-upload-file-start', async (event, folder_id, file_path, uuid) => {
+async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
+  const chunk_size = 64 * 1024 * 1024; // 64MB
+  const file_size = (await fs.stat(file_path)).size;
+
+  open(file_path, 'r', async (err, fd) => {
+    if (err) {
+      console.error("Error opening file", err);
+      return;
+    }
+    const file_buffer = Buffer.alloc(chunk_size);
+
+    for (let data_offset = 0; data_offset < file_size; data_offset += chunk_size) {
+      const success = await read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size);
+      if (!success) {
+        break;
+      }
+    }
+  });
+}
+
+ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_path) => {
   let response = await dsa_client.begin_upload_file_to_folder(folder_id, file_path);
   if (response[0]) {
-    console.log("Emitting dsa-file-progress", {file_path: file_path, progress: 0});
     const window = get_browser_window_by_title('SlideRelabeler');
-    if (window) {      
-      send_file_chunks(window, response[1]._id, file_path, uuid);
+    if (window) {
+      await send_file_chunks(window, response[1]._id, file_row_idx, file_path);
     }
   }
   return response;
 });
 
-ipcMain.handle('dsa-complete-file-upload', async (event, file_id) => {
-  let response = dsa_client.complete_upload_file(file_id);
-  return response;
-});
-
-ipcMain.handle('dsa-upload-file-chunk', async (event, file_id, chunk_data, offset) => {
-  let response = await dsa_client.upload_file_chunk(file_id, chunk_data, offset);
-  return response;
-});
-
-ipcMain.handle('get-platform', async ()=> {
+ipcMain.handle('get-platform', async () => {
   return process.platform;
 })
 
@@ -194,44 +154,44 @@ ipcMain.handle('open-save-file-dialog', async (event, file_types) => {
   }
 
   if (file_types.includes('csv')) {
-    dialog_options.filters.push({name: 'CSV Files', extensions: ['csv']});
+    dialog_options.filters.push({ name: 'CSV Files', extensions: ['csv'] });
   }
 
   if (file_types.includes('xlsx')) {
-    dialog_options.filters.push({name: 'Excel Files', extensions: ['xlsx']});
+    dialog_options.filters.push({ name: 'Excel Files', extensions: ['xlsx'] });
   }
 
-  return dialog.showSaveDialog(dialog_options).then(d=>{
-    if(d.canceled){
-      return {error: true, message: 'No file selected'};
+  return dialog.showSaveDialog(dialog_options).then(d => {
+    if (d.canceled) {
+      return { error: true, message: 'No file selected' };
     } else {
       return d.filePath;
     }
   });
 });
 
-ipcMain.handle('open-file-single-dialog', async ()=> {
-  const customFilter = {name: 'CSV Files (*.csv)', extensions: ['csv']};
-  return dialog.showOpenDialog({filters: [customFilter], properties: ['openFile']}).then(d=>{
+ipcMain.handle('open-file-single-dialog', async () => {
+  const customFilter = { name: 'CSV Files (*.csv)', extensions: ['csv'] };
+  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked
-    if(d.canceled){
+    if (d.canceled) {
       // return Promise.reject({errorCode:0, message: 'No files selected'});
       return [];
     } else {
-      const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
+      const fileList = makeFileInfo(d.filePaths.map(f => { return { source: f } }));
       // console.log('fileList:', fileList);
       return fileList;
     }
   });
 });
 
-ipcMain.handle('cancel-restart-bridge', async ()=> {
+ipcMain.handle('cancel-restart-bridge', async () => {
   bridge._shell.kill();
   bridge = new PythonBridge();
 });
 
-ipcMain.handle('delete-file', async (event, file_path)=> {
+ipcMain.handle('delete-file', async (event, file_path) => {
   try {
     if (existsSync(file_path)) {
       await fs.unlink(file_path);
@@ -242,16 +202,16 @@ ipcMain.handle('delete-file', async (event, file_path)=> {
   }
 });
 
-ipcMain.handle('open-icon-single-dialog', async ()=> {
-  const customFilter = {name: 'Image Files (*.tiff, *.tif, *.png, *.jpg)', extensions: ['tiff', 'tif', 'png', 'jpg']};
-  return dialog.showOpenDialog({filters: [customFilter], properties: ['openFile']}).then(d=>{
+ipcMain.handle('open-icon-single-dialog', async () => {
+  const customFilter = { name: 'Image Files (*.tiff, *.tif, *.png, *.jpg)', extensions: ['tiff', 'tif', 'png', 'jpg'] };
+  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked
-    if(d.canceled){
+    if (d.canceled) {
       // return Promise.reject({errorCode:0, message: 'No files selected'});
       return [];
     } else {
-      const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
+      const fileList = makeFileInfo(d.filePaths.map(f => { return { source: f } }));
       // console.log('fileList:', fileList);
       return fileList;
     }
@@ -259,7 +219,7 @@ ipcMain.handle('open-icon-single-dialog', async ()=> {
   // ipcMain.emit('store-changes-finalized')
 });
 
-ipcMain.handle('get-store', async() => {
+ipcMain.handle('get-store', async () => {
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
   let exists = existsSync(app_data_path);
@@ -270,14 +230,14 @@ ipcMain.handle('get-store', async() => {
       let json_string = safeStorage.decryptString(app_data);
       let json_data = JSON.parse(json_string);
       return json_data;
-    } catch(err) {
+    } catch (err) {
       console.error("Cannot access previous app data from ", app_data_path, err)
     }
 
   }
 });
 
-ipcMain.handle('get-file-from-store', async(event, idx) => {
+ipcMain.handle('get-file-from-store', async (event, idx) => {
   // todo: finish this function
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
@@ -295,21 +255,21 @@ ipcMain.handle('get-file-from-store', async(event, idx) => {
         value = null;
       }
       return value;
-    } catch(err) {
+    } catch (err) {
       console.error("Cannot access previous app data from ", app_data_path, err)
     }
 
   }
 });
 
-ipcMain.handle('set-store', async(event, data) => {
+ipcMain.handle('set-store', async (event, data) => {
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
   let encrypted_data = safeStorage.encryptString(JSON.stringify(data));
-  writeFileSync(app_data_path, encrypted_data, {encoding: 'utf8'})
+  writeFileSync(app_data_path, encrypted_data, { encoding: 'utf8' })
 });
 
-ipcMain.handle('delete-store', async() => {
+ipcMain.handle('delete-store', async () => {
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
   let exists = existsSync(app_data_path);
@@ -320,41 +280,41 @@ ipcMain.handle('delete-store', async() => {
 });
 
 // open-file-dialog: let the user pick files from the operating system
-ipcMain.handle('open-file-multi-dialog', async ()=>{    
-    return dialog.showOpenDialog({filters: [wsiCustomFilter], properties: ['openFile', 'multiSelections']}).then(d=>{
-        
-        // if canceled, return; otherwise, return the list of files that were picked
-        if(d.canceled){
-            // return Promise.reject({errorCode:0, message: 'No files selected'});
-            return [];
-        } else {
-            const fileList = makeFileInfo(d.filePaths.map(f=>{return {source:f}}));
-            // console.log('fileList:', fileList);
-            return fileList;
-        }
-    });
+ipcMain.handle('open-file-multi-dialog', async () => {
+  return dialog.showOpenDialog({ filters: [wsiCustomFilter], properties: ['openFile', 'multiSelections'] }).then(d => {
+
+    // if canceled, return; otherwise, return the list of files that were picked
+    if (d.canceled) {
+      // return Promise.reject({errorCode:0, message: 'No files selected'});
+      return [];
+    } else {
+      const fileList = makeFileInfo(d.filePaths.map(f => { return { source: f } }));
+      // console.log('fileList:', fileList);
+      return fileList;
+    }
+  });
 });
 
 // open-folder-dialog: let the user pick files from the operating system
-ipcMain.handle('open-folder-dialog', async ()=>{
-    //open the file dialog
-    return dialog.showOpenDialog({properties: ['openDirectory','createDirectory']}).then(d=>{
-        // if canceled, return; otherwise, return the list of files that were picked
-        if(d.canceled){
-            return {error: true, message: 'No folder selected'};
-        } else {
-            return d.filePaths[0];
-        }
-    });
+ipcMain.handle('open-folder-dialog', async () => {
+  //open the file dialog
+  return dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] }).then(d => {
+    // if canceled, return; otherwise, return the list of files that were picked
+    if (d.canceled) {
+      return { error: true, message: 'No folder selected' };
+    } else {
+      return d.filePaths[0];
+    }
+  });
 });
 
 // open-folders-dialog: let the user pick multiple folders from the operating system
-ipcMain.handle('open-folders-dialog', async ()=>{
+ipcMain.handle('open-folders-dialog', async () => {
   //open the file dialog
-  return dialog.showOpenDialog({properties: ['multiSelections', 'openDirectory','createDirectory']}).then(d=>{
+  return dialog.showOpenDialog({ properties: ['multiSelections', 'openDirectory', 'createDirectory'] }).then(d => {
     // if canceled, return; otherwise, return the list of files that were picked
-    if(d.canceled){
-      return {error: true, message: 'No folder selected'};
+    if (d.canceled) {
+      return { error: true, message: 'No folder selected' };
     } else {
       return d.filePaths;
     }
@@ -363,13 +323,13 @@ ipcMain.handle('open-folders-dialog', async ()=>{
 
 ipcMain.handle('get-all-wsi-file-paths', async (event, folder_path) => {
   const paths = [];
-  walk.walkSync(folder_path, function(basedir, filename, stat){
+  walk.walkSync(folder_path, function (basedir, filename, stat) {
     if (['.svs', '.ndpi', '.czi', '.tiff'].includes(path.extname(filename))) {
       paths.push(join(basedir, filename));
     }
   });
   console.log("Paths :", paths);
-  const fileList = makeFileInfo(paths.map(f=>{return {source:f}}));
+  const fileList = makeFileInfo(paths.map(f => { return { source: f } }));
   console.log("File list ", fileList);
   return fileList;
 })
@@ -426,36 +386,35 @@ ipcMain.handle('metadata', async (event, file) => {
 });
 
 ipcMain.handle('open-viewer', async (event, file, row_idx) => {
-    console.log(`******* Creating Viewer Window for ${file} at ${row_idx} ************`)
-    const encoded_file_uri = encodeURIComponent(file);
+  console.log(`******* Creating Viewer Window for ${file} at ${row_idx} ************`)
+  const encoded_file_uri = encodeURIComponent(file);
 
-    try {
-      const options = {
-        webPreferences: {
-          preload: join(__dirname, `./preload.js`),
-        }
+  try {
+    const options = {
+      webPreferences: {
+        preload: join(__dirname, `./preload.js`),
       }
-
-      const window = new BrowserWindow({
-        width: 1200,
-        height: 900,
-        ...options,
-      });
-
-      console.log("Register route", registerRoute);
-
-      registerRoute( {
-        id: 'viewer',
-        browserWindow: window,
-        htmlFile: path.join(__dirname, '..', 'renderer', 'viewer', 'index.html'),
-        query: {file: file, row_idx: row_idx}
-      })
     }
 
-    catch (e)
-    {
-      console.log("Error creating viewer window for file:", file)
-    }
+    const window = new BrowserWindow({
+      width: 1200,
+      height: 900,
+      ...options,
+    });
+
+    console.log("Register route", registerRoute);
+
+    registerRoute({
+      id: 'viewer',
+      browserWindow: window,
+      htmlFile: path.join(__dirname, '..', 'renderer', 'viewer', 'index.html'),
+      query: { file: file, row_idx: row_idx }
+    })
+  }
+
+  catch (e) {
+    console.log("Error creating viewer window for file:", file)
+  }
 
 });
 
@@ -469,112 +428,112 @@ ipcMain.handle('open-image', async (event, image_url) => {
 
 const processingFiles = {}
 // copy-file: make a copy from source to destination
-async function processFile(fileInfo, copyNum){
-    const file = fileInfo.path;
-    const name = fileInfo.rename;
-    const id = fileInfo.id;
-    const targetDir = fileInfo.targetDirectory;
+async function processFile(fileInfo, copyNum) {
+  const file = fileInfo.path;
+  const name = fileInfo.rename;
+  const id = fileInfo.id;
+  const targetDir = fileInfo.targetDirectory;
 
-    const alreadyProcessing = processingFiles[id];
-    let tryName;
-    if(copyNum){
-        const parsed = path.parse(name);
-        tryName = `${parsed.name}(${copyNum})${parsed.ext}`;
+  const alreadyProcessing = processingFiles[id];
+  let tryName;
+  if (copyNum) {
+    const parsed = path.parse(name);
+    tryName = `${parsed.name}(${copyNum})${parsed.ext}`;
+  } else {
+    tryName = name;
+  }
+  const outputPath = path.join(targetDir, tryName);
+
+  //save a map from the id to the destination file
+  processingFiles[id] = outputPath;
+  const outputDir = path.parse(outputPath).dir;
+
+  return fs.mkdir(outputDir, { recursive: true }).then(() => {
+    // console.log('Copying', file, outputPath, outputDir);
+    fs.copyFile(file, outputPath, fs.constants.COPYFILE_EXCL)
+  }).catch(async err => {
+    console.log('Error copying file', err); // this will happen if the file name already exists (code: 'EEXIST') or other reasons
+    if (err.code === 'EEXIST') {
+      // handle this be creating a renamed copy
+      const parsed = path.parse(outputPath);
+      const existing = await fs.readdir(targetDir);
+      const regex = `^${parsed.name}(?:\\((\\d+)\\))?${parsed.ext}$`;
+      const re = new RegExp(regex);
+      // console.log('regex:', regex, re);
+      //get reverse sorted list of existing copy numbers
+      const matches = existing.filter(name => name.match(re)).map(name => parseInt(name.match(re)[1] || 0)).sort((a, b) => b - a);
+      console.log('matches?', matches);
+      if (matches) {
+        // increment the prefix number and retry
+        const nextIndex = matches[0] + 1;
+        // return processFile(file, targetDir, name, nextIndex);
+        return { retry: true, copyNum: nextIndex }
+      } else if (!alreadyProcessing) {
+        // no matches... just try again...?
+        // return processFile(file, targetDir, name, copyNum);
+        return { retry: true, copyNum: copyNum }
+      } else {
+        return err;
+      }
     } else {
-        tryName = name;
+      return err;
     }
-    const outputPath = path.join(targetDir, tryName);
-
-    //save a map from the id to the destination file
-    processingFiles[id] = outputPath;
-    const outputDir = path.parse(outputPath).dir;
-
-    return fs.mkdir(outputDir, {recursive: true}).then( ()=>{
-        // console.log('Copying', file, outputPath, outputDir);
-        fs.copyFile(file, outputPath, fs.constants.COPYFILE_EXCL)
-    }).catch(async err=>{
-        console.log('Error copying file', err); // this will happen if the file name already exists (code: 'EEXIST') or other reasons
-        if(err.code === 'EEXIST'){
-            // handle this be creating a renamed copy
-            const parsed = path.parse(outputPath);
-            const existing = await fs.readdir(targetDir);
-            const regex = `^${parsed.name}(?:\\((\\d+)\\))?${parsed.ext}$`;
-            const re = new RegExp(regex);
-            // console.log('regex:', regex, re);
-            //get reverse sorted list of existing copy numbers
-            const matches = existing.filter(name => name.match(re)).map(name => parseInt(name.match(re)[1]||0)).sort((a,b)=>b-a);
-            console.log('matches?', matches);
-            if(matches){
-                // increment the prefix number and retry
-                const nextIndex = matches[0]+1;
-                // return processFile(file, targetDir, name, nextIndex);
-                return {retry: true, copyNum: nextIndex}
-            } else if(!alreadyProcessing){
-                // no matches... just try again...?
-                // return processFile(file, targetDir, name, copyNum);
-                return {retry: true, copyNum: copyNum}
-            } else {
-                return err;
-            }
-        } else {
-            return err;
-        }
-    }).then( x => {
-        const copiedFile = processingFiles[id];
-        delete processingFiles[id]; // clear the cache of this key
-        console.log('In then', x, processingFiles);
-        if(x?.errno){
-            console.log('Returning error', x)
-            return x;
-        } else if (x?.retry){
-            console.log('Retrying with copy num', x.copyNum);
-            return processFile(fileInfo, x.copyNum);
-        } else {
-            console.log('Returning copied file', copiedFile);
-            return copiedFile;
-        }
-    });
+  }).then(x => {
+    const copiedFile = processingFiles[id];
+    delete processingFiles[id]; // clear the cache of this key
+    console.log('In then', x, processingFiles);
+    if (x?.errno) {
+      console.log('Returning error', x)
+      return x;
+    } else if (x?.retry) {
+      console.log('Retrying with copy num', x.copyNum);
+      return processFile(fileInfo, x.copyNum);
+    } else {
+      console.log('Returning copied file', copiedFile);
+      return copiedFile;
+    }
+  });
 }
 
-ipcMain.handle('get-errors', async(event)=>{
+ipcMain.handle('get-errors', async (event) => {
   try {
     return bridge.invoke('get-errors');
   }
   catch (e) {
     console.log("Cannot get errors.  Is the python bridge process running?", e);
-    return [{message: "Cannot get errors.  Is the python bridge process running?", error: e}];
+    return [{ message: "Cannot get errors.  Is the python bridge process running?", error: e }];
   }
 });
 
-ipcMain.handle('get-debugs', async(event)=>{
+ipcMain.handle('get-debugs', async (event) => {
   return bridge.invoke('get-debugs');
 });
 
-ipcMain.handle('clear-errors', async(event)=>{
+ipcMain.handle('clear-errors', async (event) => {
   return bridge.invoke('clear-errors');
 });
 
-ipcMain.handle('clear-debugs', async(event)=>{
+ipcMain.handle('clear-debugs', async (event) => {
   return bridge.invoke('clear-debugs');
 });
 
-ipcMain.handle('get-output-path', async(event, info)=>{
+ipcMain.handle('get-output-path', async (event, info) => {
   return bridge.invoke('get-output-path', info);
 });
 
 
-ipcMain.handle('process-file', async(event, info)=>{
-    return bridge.invoke('deid-process', info);
+ipcMain.handle('process-file', async (event, info) => {
+  return bridge.invoke('deid-process', info);
 });
 
-ipcMain.handle('preview-metadata', async(event, info)=>{
+ipcMain.handle('preview-metadata', async (event, info) => {
   return bridge.invoke('preview-metadata', info);
 });
 
-ipcMain.handle('get-progress', async(event, info, output_path)=>{
+ipcMain.handle('get-progress', async (event, info, output_path) => {
   try {
     let partial_output_path = output_path + ".partial";
-    
+
     const output_stats = await fs.stat(partial_output_path);
 
     const input_size = info.__reserved.bytes;
@@ -588,25 +547,25 @@ ipcMain.handle('get-progress', async(event, info, output_path)=>{
       time: new Date().getTime()
     }
 
-    
+
   } catch (e) {
     console.log("Error getting progress", e);
     return null;
   }
 });
 
-ipcMain.handle('get-copy-progress', async(event, id)=>{
-    const file = processingFiles[id];
-    if(file){
-        const stats = await fs.stat(file);
-        // console.log('File stats',file, stats);
-        return {
-            path: file,
-            size: stats.size
-        };
-    } else {
-        return null;
-    }
-    
+ipcMain.handle('get-copy-progress', async (event, id) => {
+  const file = processingFiles[id];
+  if (file) {
+    const stats = await fs.stat(file);
+    // console.log('File stats',file, stats);
+    return {
+      path: file,
+      size: stats.size
+    };
+  } else {
+    return null;
+  }
+
 });
 

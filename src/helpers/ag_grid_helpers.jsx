@@ -137,6 +137,17 @@ export function setupDestinationDirectoryColumn(file_cols, targetDirectory) {
   )
 }
 
+function render_progress_text(data) {
+  if (typeof data.__reserved.upload_progress === 'number') {
+    return `Uploading: ${Math.trunc(data.__reserved.upload_progress)}%`;
+  }
+  else if (data.__reserved.progress && data.__reserved.progress !== 0) {
+    return `Processing: ${Math.trunc(data.__reserved.progress)}%`;
+  } else {
+    return 'Not started';
+  }
+}
+
 export function setupProgressColumn(file_cols) {
   return addCellRenderer(
     file_cols,
@@ -144,11 +155,20 @@ export function setupProgressColumn(file_cols) {
     ({ data }) => {
       return (
         <div className={'__progress-indicator'}>
-          <div className={'__progress-indicator-fill'} style={data.__reserved.progress && data.__reserved.progress !== 0 ? { width: `${Math.trunc(data.__reserved.progress)}%` } : { width: '0%' }}>
-
-          </div>
+          {
+            (typeof data.__reserved.upload_progress === 'number') && (
+              <div className={'__progress-indicator-upload-fill'} style={data.__reserved.upload_progress && data.__reserved.upload_progress !== 0 ? { width: `${Math.trunc(data.__reserved.upload_progress)}%` } : { width: '0%' }}>
+              </div>
+            )
+          }
+          {
+            data.__reserved.progress && data.__reserved.progress !== 0 && typeof data.__reserved.upload_progress !== 'number' && (
+              <div className={'__progress-indicator-process-fill'} style={data.__reserved.progress && data.__reserved.progress !== 0 ? { width: `${Math.trunc(data.__reserved.progress)}%` } : { width: '0%' }}>
+              </div>
+            )
+          }
           <div className={'__progress-indicator-text'}>
-            {data.__reserved.progress && data.__reserved.progress !== 0 ? `${Math.trunc(data.__reserved.progress)}%` : 'Not started'}
+            {render_progress_text(data)}
           </div>
         </div>
       )

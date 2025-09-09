@@ -4,56 +4,64 @@
     height: 100%;
     width: 100%;
 
-    .ag-cell.remove-row, .ag-header-cell.remove-row{
-        padding-right:0;
-        padding-left:0;
+    .ag-cell.remove-row,
+    .ag-header-cell.remove-row {
+        padding-right: 0;
+        padding-left: 0;
     }
-    .ag-cell.left-ellipsis{
-        overflow:hidden;
-        text-overflow:ellipsis;
-        direction:rtl;
+
+    .ag-cell.left-ellipsis {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        direction: rtl;
     }
-    .ag-cell.directory{
-        color:gray;
-        padding-right:0;
+
+    .ag-cell.directory {
+        color: gray;
+        padding-right: 0;
     }
-    .ag-cell.filename{
-        padding-left:0;
+
+    .ag-cell.filename {
+        padding-left: 0;
     }
-    
-    .ag-cell input{
+
+    .ag-cell input {
         /* height: 1.2em; */
         height: 1.2em;
     }
-    .ag-cell.copy-as.editable{
-        padding-left:calc(var(--ag-cell-horizontal-padding) - 1px);
-        padding-right:calc(var(--ag-cell-horizontal-padding) - 1px);
+
+    .ag-cell.copy-as.editable {
+        padding-left: calc(var(--ag-cell-horizontal-padding) - 1px);
+        padding-right: calc(var(--ag-cell-horizontal-padding) - 1px);
     }
 
-    .__thumbnail{
-        cursor:pointer;
-    }
-    .__thumbnail img{
-        height:40px;
+    .__thumbnail {
+        cursor: pointer;
     }
 
-    ._center-horizontally{
-        text-align:center;
+    .__thumbnail img {
+        height: 40px;
     }
 
-    ._remove-button{
-        background-color:rgb(255, 154, 154);
-        font-weight:bold;
-        font-size:0.5em;
-        border-radius:1em;
-        margin:0.1em 1em;
-        cursor:pointer;
+    ._center-horizontally {
+        text-align: center;
     }
+
+    ._remove-button {
+        background-color: rgb(255, 154, 154);
+        font-weight: bold;
+        font-size: 0.5em;
+        border-radius: 1em;
+        margin: 0.1em 1em;
+        cursor: pointer;
+    }
+
     .ag-cell-value {
         display: flex;
         width: 100% !important;
         height: 100% !important;
     }
+
     .cell-container {
         height: 100% !important;
     }
@@ -66,15 +74,15 @@
 .__progress-indicator {
     width: 100% !important;
     height: 100% !important;
-    background-color: #f0f0f0;
     border-radius: 5px;
     overflow: hidden;
     display: flex;
-    position: relative;
+    position: absolute;
+    background-color: #f0f0f0;
 }
 
-.__progress-indicator-fill {
-    position: absolute;
+.__progress-indicator-upload-fill {
+    position: relative;
     top: 0;
     left: 0;
     right: 0;
@@ -85,10 +93,26 @@
     align-items: center;
     font-weight: bold;
     color: $black;
+    z-index: 2;
+}
+
+.__progress-indicator-process-fill {
+    position: relative;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: $blue;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: $black;
+    z-index: 1;
 }
 
 .__progress-indicator-text {
-    position: relative;
+    position: absolute;
     display: flex;
     top: 0;
     left: 0;
@@ -100,6 +124,8 @@
     align-items: center;
     font-weight: bold;
     color: $black;
+    z-index: 3;
+    background-color: transparent;
 }
 
 .__cell {

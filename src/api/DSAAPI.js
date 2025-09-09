@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 import { URL } from 'url';
 import fs from 'fs';
 import { app, safeStorage } from 'electron';
-import { join, basename, extname  } from 'path';
+import { join, basename, extname } from 'path';
 
 class DSAAPI {
     perform_request(sub_url, method, data = null, data_type = 'json', content_type = 'application/json') {
@@ -12,7 +12,7 @@ class DSAAPI {
             console.log("Performing request:", this.api_url + sub_url);
             const request_url = this.api_url + sub_url;
             const url = new URL(request_url);
-            
+
             const options = {
                 hostname: url.hostname,
                 port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -26,19 +26,19 @@ class DSAAPI {
             };
 
             const httpModule = url.protocol === 'https:' ? https : http;
-            
+
             const req = httpModule.request(options, (res) => {
                 let responseData = '';
-                
+
                 res.on('data', (chunk) => {
                     responseData += chunk;
                 });
-                
+
                 res.on('end', () => {
                     console.log("Response data:", responseData);
                     try {
                         const parsedResponse = JSON.parse(responseData);
-                        
+
                         if (res.statusCode === 200) {
                             resolve([true, parsedResponse]);
                         } else if (res.statusCode === 400) {
@@ -46,18 +46,18 @@ class DSAAPI {
                         } else if (res.statusCode === 403) {
                             resolve([false, parsedResponse]);
                         } else {
-                            resolve([false, {message: `HTTP Error: ${res.statusCode}`, status: res.statusCode}]);
+                            resolve([false, { message: `HTTP Error: ${res.statusCode}`, status: res.statusCode }]);
                         }
                     } catch (error) {
-                        resolve([false, {message: "Invalid JSON response", status: res.statusCode, data: responseData}]);
+                        resolve([false, { message: "Invalid JSON response", status: res.statusCode, data: responseData }]);
                     }
                 });
             });
-            
+
             req.on('error', (error) => {
-                resolve([false, {message: "Network error occurred", status: 0, error: error.message}]);
+                resolve([false, { message: "Network error occurred", status: 0, error: error.message }]);
             });
-            
+
             if (data) {
                 if (data_type === 'json') {
                     req.write(JSON.stringify(data));
@@ -65,7 +65,7 @@ class DSAAPI {
                     req.write(data);
                 }
             }
-            
+
             req.end();
         });
     }
@@ -75,7 +75,7 @@ class DSAAPI {
             const file_basename = basename(file_path);
             const ext = extname(file_path);
             return this.post('/file', null, 'json', {
-                name: `${file_basename}${ext}`,
+                name: `${file_basename}`,
                 parentId: folder_id,
                 parentType: 'folder',
                 size: fs.statSync(file_path).size
@@ -114,7 +114,7 @@ class DSAAPI {
     }
 
     get_folder_item(folder_id) {
-        return this.get('/item', {folderId: folder_id});
+        return this.get('/item', { folderId: folder_id });
     }
 
     get_item(item_id) {
@@ -217,7 +217,7 @@ class DSAAPI {
         fs.unlinkSync(app_data_path);
         this.api_auth = null;
         this.api_url = null;
-        return [true, {message: "Logged out"}];
+        return [true, { message: "Logged out" }];
     }
 
     login(username, password) {
@@ -227,11 +227,11 @@ class DSAAPI {
             try {
                 url = new URL(this.api_url + '/user/authentication');
             } catch (error) {
-                resolve([false, {message: "Invalid API URL. Please check your API URL."}]);
+                resolve([false, { message: "Invalid API URL. Please check your API URL." }]);
             }
 
             const credentials = Buffer.from(`${username}:${password}`).toString('base64');
-            
+
             const options = {
                 hostname: url.hostname,
                 port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -243,21 +243,21 @@ class DSAAPI {
             };
 
             const httpModule = url.protocol === 'https:' ? https : http;
-            
+
             const req = httpModule.request(options, (res) => {
                 let responseData = '';
-                
+
                 res.on('data', (chunk) => {
                     responseData += chunk;
                 });
-                
+
                 res.on('end', () => {
                     this.handle_auth_response(res, responseData, resolve);
                 });
             });
-            
+
             req.on('error', (error) => {
-                resolve([false, {message: "Network error during login", error: error.message}]);
+                resolve([false, { message: "Network error during login", error: error.message }]);
             });
 
             req.end();
@@ -284,12 +284,12 @@ class DSAAPI {
                 console.log("Authentication error:", error_response);
                 resolve([false, error_response]);
             } else if (res.statusCode === 404) {
-                resolve([false, {message: "Unable to connect to API URL. Please check your API URL."}]);
+                resolve([false, { message: "Unable to connect to API URL. Please check your API URL." }]);
             } else {
-                resolve([false, {message: "Unable to authenticate. Please check your username and password."}]);
+                resolve([false, { message: "Unable to authenticate. Please check your username and password." }]);
             }
         } catch (error) {
-            resolve([false, {message: "Invalid JSON response during authentication", error: error.message}]);
+            resolve([false, { message: "Invalid JSON response during authentication", error: error.message }]);
         }
     }
 
@@ -303,9 +303,9 @@ class DSAAPI {
                 resolve(check_auth);
                 return;
             }
-            
+
             const url = new URL(api_url + '/api_key/token');
-            
+
             const options = {
                 hostname: url.hostname,
                 port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -318,23 +318,23 @@ class DSAAPI {
             };
 
             const httpModule = url.protocol === 'https:' ? https : http;
-            
+
             const req = httpModule.request(options, (res) => {
                 let responseData = '';
-                
+
                 res.on('data', (chunk) => {
                     responseData += chunk;
                 });
-                
+
                 res.on('end', () => {
                     this.handle_auth_response(res, responseData, resolve);
                 });
             });
-            
+
             req.on('error', (error) => {
-                resolve([false, {message: "Network error during authentication", error: error.message}]);
+                resolve([false, { message: "Network error during authentication", error: error.message }]);
             });
-            
+
             const post_data = encodeURI(`key=${api_key}`);
             req.write(post_data);
             req.end();

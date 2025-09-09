@@ -5,6 +5,9 @@ const default_state = {
     password: '',
     login_error: false,
     login_error_message: null,
+    upload: false,
+    delete_after: false,
+    folder_id: '689ca9edbc6082acbe2389b4',
 };
 
 export default default_state;

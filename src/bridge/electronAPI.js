@@ -10,9 +10,9 @@ const API = {
   openFileIconDialog: () => ipcRenderer.invoke('open-icon-single-dialog'),
   openFileMultiDialog: () => ipcRenderer.invoke('open-file-multi-dialog'),
   openFileSingleDialog: () => ipcRenderer.invoke('open-file-single-dialog'),
-  openFolderDialog: () => { return ipcRenderer.invoke('open-folder-dialog')},
-  openFoldersDialog: () => { return ipcRenderer.invoke('open-folders-dialog')},
-  getAllWSIFilePaths: (folder_path) => { return ipcRenderer.invoke('get-all-wsi-file-paths', folder_path)},
+  openFolderDialog: () => { return ipcRenderer.invoke('open-folder-dialog') },
+  openFoldersDialog: () => { return ipcRenderer.invoke('open-folders-dialog') },
+  getAllWSIFilePaths: (folder_path) => { return ipcRenderer.invoke('get-all-wsi-file-paths', folder_path) },
   openSaveFileDialog: (file_types) => ipcRenderer.invoke('open-save-file-dialog', file_types),
   getMetadata: (file_path) => ipcRenderer.invoke('metadata', file_path),
   openViewer: (file, row_idx) => ipcRenderer.invoke('open-viewer', file, row_idx),
@@ -43,15 +43,15 @@ const API = {
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
-  dsaUploadFileStart: (folder_id, file_path, uuid) => ipcRenderer.invoke('dsa-upload-file-start', folder_id, file_path, uuid),
-  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, upload_id) => {
-    dispatch({type: files_actions.UPLOAD_FILE_COMPLETE, payload: upload_id});
+  dsaUploadFile: (folder_id, file_row_idx, file_path) => ipcRenderer.invoke('dsa-upload-file', folder_id, file_row_idx, file_path),
+  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, file_row_idx) => {
+    dispatch({ type: files_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
   }),
   dsaSetupUploadFileProgress: (dispatch) => ipcRenderer.on('dsa-upload-file-progress', (event, progress) => {
-    dispatch({type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress});
+    dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
   }),
   dsaSetupUploadFileError: (dispatch) => ipcRenderer.on('dsa-upload-file-error', (event, error) => {
-    dispatch({type: files_actions.UPLOAD_FILE_ERROR, payload: error});
+    dispatch({ type: files_actions.UPLOAD_FILE_ERROR, payload: error });
   }),
   dsaStopUploadFileProgress: () => ipcRenderer.removeAllListeners('dsa-upload-file-progress'),
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),

@@ -8,6 +8,7 @@ import { average } from '../../helpers/math';
 import * as files_actions from '../../actions/files';
 import * as app_actions from '../../actions/app';
 import * as preview_actions from '../../actions/preview';
+import * as dsa_actions from '../../actions/dsa';
 
 function add_file_row(state, draft, input_file_row) {
   let file_row_already_added = false;
@@ -214,6 +215,11 @@ const files_reducer = createReducer(default_state, (builder) => {
         }
       })
     })
+    .addCase(files_actions.UPDATE_FILE_UPLOAD_PROGRESS, (state, action) => {
+      return produce(state, draft => {
+        draft.file_rows[action.payload.row_idx].__reserved.upload_progress = action.payload.progress;
+      })
+    })
     .addCase(files_actions.PROCESSED_FILE, (state, action) => {
       return produce(state, draft => {
         let row_idx = action.payload.row_idx;
@@ -222,6 +228,16 @@ const files_reducer = createReducer(default_state, (builder) => {
         draft.file_rows[row_idx].__reserved.progress = 100;
         draft.file_rows[row_idx].__reserved.associatedImages = action.payload.processedFile.associatedImages;
         draft.remainingBytes -= state.file_rows[row_idx].__reserved.bytes;
+      })
+    })
+    .addCase(files_actions.UPLOAD_FILE_FINALIZE, (state, action) => {
+      return produce(state, draft => {
+        draft.file_rows[action.payload.row_idx].__reserved.upload_progress = 100;
+      })
+    })
+    .addCase(dsa_actions.UPLOAD_FILE, (state, action) => {
+      return produce(state, draft => {
+        draft.file_rows[action.payload.row_idx].__reserved.upload_progress = 0;
       })
     })
     .addCase(files_actions.SELECT_IMPORT_CSV_XSLX, (state, action) => {

@@ -5,6 +5,7 @@ import monitor_process_progress from "./monitor_process_progress";
 import output_csv from "./output_csv";
 
 import * as files_actions from '../../actions/files';
+import * as dsa_actions from '../../actions/dsa';
 
 export function* save_csv() {
   // Make new CSV file if save_csv is true
@@ -49,14 +50,18 @@ export default function* process_file(file_row_idx, file_row) {
     let response = yield fetch(`metadata://${encoded}`);
     let metadata = yield response.json();
 
-    console.log('metadata in process file', metadata);
-
     // Update associated images
     processed_file_json.associatedImages = metadata.associatedImages;
 
     yield put({ type: files_actions.PROCESSED_FILE, payload: { row_idx: file_row_idx, processedFile: processed_file_json } });
     yield cancel(monitor_progress);
     yield put({ type: files_actions.REMOVE_PROCESSING_FILE, payload: file_row_idx });
+    const folder_id = yield select(state => state.dsa.folder_id);
+    const upload_to_dsa = yield select(state => state.dsa.upload);
+    const api_auth = yield select(state => state.dsa.api_auth);
+    if (upload_to_dsa && api_auth.authToken) {
+      yield put({ type: dsa_actions.UPLOAD_FILE, payload: { row_idx: file_row_idx, folder_id: folder_id, file_path: output_path, file: processed_file } });
+    }
 
     yield call(save_csv);
   } catch (error) {

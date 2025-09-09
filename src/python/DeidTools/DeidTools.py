@@ -1139,3 +1139,6 @@ class DeidTools:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
         self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
+
+        from . import __version__
+        self.version = __version__
