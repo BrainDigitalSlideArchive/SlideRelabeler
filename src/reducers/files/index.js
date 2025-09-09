@@ -138,6 +138,10 @@ const files_reducer = createReducer(default_state, (builder) => {
         draft.processing = false;
         draft.csv = default_state.csv;
         draft.file_columns = [];
+        draft.uploading = false;
+        draft.upload_remaining_bytes = null;
+        draft.upload_transfer_rate_bytes_per_ms = null;
+        draft.upload_transfer_rates_bytes_per_ms = [];
       })
     })
     .addCase(files_actions.SET_OUTPUT_DIR, (state, action) => {
@@ -218,6 +222,30 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(files_actions.UPDATE_FILE_UPLOAD_PROGRESS, (state, action) => {
       return produce(state, draft => {
         draft.file_rows[action.payload.row_idx].__reserved.upload_progress = action.payload.progress;
+
+        let reamining_upload_bytes = 0;
+
+        reamining_upload_bytes += draft.file_rows[action.payload.row_idx].__reserved.bytes * ((100 - action.payload.progress) / 100);
+        
+        for (let row_idx = 0; row_idx < draft.file_rows.length; row_idx++) {
+          if (row_idx !== action.payload.row_idx && (draft.file_rows[row_idx].__reserved.upload_progress === undefined || draft.file_rows[row_idx].__reserved.upload_progress === 0)) {
+            reamining_upload_bytes += draft.file_rows[row_idx].__reserved.bytes
+            console.log("Adding remaining upload bytes", draft.file_rows[row_idx].__reserved.bytes);
+          }
+        }
+        draft.upload_remaining_bytes = reamining_upload_bytes;
+
+        // todo: think about possible average, depending on feedback
+        // if (draft.upload_transfer_rates_bytes_per_ms.length > 9) {
+        //   draft.upload_transfer_rates_bytes_per_ms.shift();
+        //   draft.upload_transfer_rates_bytes_per_ms.push(action.payload.rate_bytes_per_ms)
+        // } else {
+        //   draft.upload_transfer_rates_bytes_per_ms.push(action.payload.rate_bytes_per_ms)
+        // }
+
+        console.log("Upload remaining bytes", draft.upload_remaining_bytes);
+
+        draft.upload_transfer_rate_bytes_per_ms = action.payload.rate_bytes_per_ms;
       })
     })
     .addCase(files_actions.UPLOAD_DELETE_AFTER, (state, action) => {
@@ -333,6 +361,11 @@ const files_reducer = createReducer(default_state, (builder) => {
         if (!draft.ifds[action.payload.path]) {
           draft.ifds[action.payload.path] = action.payload.table;
         }
+      })
+    })
+    .addCase(dsa_actions.SET_UPLOADING, (state, action) => {
+      return produce(state, draft => {
+        draft.uploading = action.payload;
       })
     })
 }
