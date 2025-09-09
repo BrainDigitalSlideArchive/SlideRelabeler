@@ -19,11 +19,8 @@ function* watch_complete_upload(row_idx) {
     if (delete_after) {
         const file_rows = yield select(state => state.files.file_rows);
         const file_path = file_rows[row_idx].__reserved.output_path;
-        console.log('file_path:', file_path);
         yield electronAPI.deleteFile(file_path.replace(/\\/g, '/'));
-        console.log('file_path deleted');
         yield put({ type: files_actions.UPLOAD_DELETE_AFTER, payload: { row_idx: row_idx } });
-        console.log('file_path deleted');
     }
 }
 
