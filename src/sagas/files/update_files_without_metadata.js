@@ -1,10 +1,10 @@
-import { take, put, call, fork, delay, select } from 'redux-saga/effects';
+import { take, put, call, fork, delay, select, cancel } from 'redux-saga/effects';
 
 import * as files_actions from '../../actions/files';
 import * as debug_actions from '../../actions/debug';
 
 export function* update_file_metadata(file_row_idx, file_row) {
-    try {        
+    try {
         if (!file_row.__reserved.bytes) {
             // let metadata = yield electronAPI.getMetadata(file_row.__reserved.source.path);
             let encoded = encodeURIComponent(file_row.__reserved.source.path);
@@ -19,20 +19,30 @@ export function* update_file_metadata(file_row_idx, file_row) {
             }
 
             // make reserved
-            let updated_file_row = Object.assign({}, file_row, {'__reserved': metadata})
+            let updated_file_row = Object.assign({}, file_row, { '__reserved': metadata })
 
-            yield put({type: files_actions.UPDATE_FILE_ROW_WITH_METADATA, payload: {file_row_idx, updated_file_row}})
-        }   
+            yield put({ type: files_actions.UPDATE_FILE_ROW_WITH_METADATA, payload: { file_row_idx, updated_file_row } })
+        }
     }
     catch (err) {
-        yield put({type: debug_actions.ADD_BACKEND_ERROR_MESSAGE, payload: err.message});
-        yield put({type: files_actions.UPDATE_FILE_ROW_WITH_ERROR, payload: {file_row_idx, error: "Error getting metadata. Please check the file's path and ensure you have permission to access it."}})
+        yield put({ type: debug_actions.ADD_BACKEND_ERROR_MESSAGE, payload: err.message });
+        yield put({ type: files_actions.UPDATE_FILE_ROW_WITH_ERROR, payload: { file_row_idx, error: "Error getting metadata. Please check the file's path and ensure you have permission to access it." } })
     }
 }
 
+export function* cancel_update_files_without_metadata_loop(update_files_without_metadata_loop_task) {
+    yield take(files_actions.CLEAR_FILES);
+    yield cancel(update_files_without_metadata_loop_task);
+}
+
 export function* update_files_without_metadata_worker() {
+    let update_files_without_metadata_loop_task = yield fork(update_files_without_metadata_loop);
+    yield fork(cancel_update_files_without_metadata_worker, update_files_without_metadata_loop_task);
+}
+
+export function* update_files_without_metadata_loop() {
     let files_not_found = true;
-    while(files_not_found) {        
+    while (files_not_found) {
         const file_rows = yield select(state => state.files.file_rows);
 
         if (file_rows.length > 0) {
@@ -41,18 +51,25 @@ export function* update_files_without_metadata_worker() {
 
         for (let i = 0; i < file_rows.length; i++) {
             let file_row = file_rows[i];
-            yield call(update_file_metadata, i, file_row);       
+            yield call(update_file_metadata, i, file_row);
         }
         yield delay(100);
     }
 }
 
+export function* cancel_update_files_without_metadata_worker(update_files_metadata_worker_task) {
+    const action = yield take(files_actions.CLEAR_FILES);
+    yield cancel(update_files_metadata_worker_task);
+    console.log("Cancel update files without metadata worker task");
+}
+
 export default function* update_files_without_metadata() {
-    while(true) {
+    while (true) {
         const action = yield take(files_actions.UPDATE_FILES_WITHOUT_METADATA);
-        yield put({type: files_actions.SET_METADATA_UPDATING, payload: true});
-        yield call(update_files_without_metadata_worker);
-        yield put({type: files_actions.SET_METADATA_UPDATING, payload: false});
+        yield put({ type: files_actions.SET_METADATA_UPDATING, payload: true });
+        let update_files_metadata_worker_task = yield call(update_files_without_metadata_worker);
+        yield put({ type: files_actions.SET_METADATA_UPDATING, payload: false });
+        // yield cancel(cancel_update_files_metadata_worker_task);
 
     }
 }

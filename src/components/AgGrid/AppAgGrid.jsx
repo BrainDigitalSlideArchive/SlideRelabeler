@@ -1,6 +1,10 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import {useDispatch, useSelector} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+
+// Setup the community module
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 import "ag-grid-community/styles/ag-grid.css"; // Core CSS
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
@@ -39,10 +43,34 @@ const AppAgGrid = (props) => {
   const filename_config = useSelector(state => state.config.filename);
   const processing = useSelector(state => state.files.processing);
   const disable_changes = useSelector(state => state.files.disable_changes);
-  const dispatch= useDispatch();
+  const gridRef = useRef(null);
+  const dispatch = useDispatch();
 
   const [column_defs, set_column_defs] = useState([]);
 
+  // Validate and filter row data to prevent AG Grid errors
+  const validateRowData = (rows) => {
+    if (!Array.isArray(rows)) {
+      console.warn('file_rows is not an array:', rows);
+      return [];
+    }
+
+    return rows.filter(row => {
+      if (!row || typeof row !== 'object') {
+        console.warn('Invalid row data:', row);
+        return false;
+      }
+
+      if (!row.__reserved || typeof row.__reserved !== 'object') {
+        console.warn('Row missing __reserved property:', row);
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  const validatedFileRows = validateRowData(file_rows);
   let all_cols = [...reserved_cols, ...file_cols];
 
   const {
@@ -81,39 +109,76 @@ const AppAgGrid = (props) => {
     set_column_defs(column_defs);
   }, [file_cols, file_rows, filename_config, reserved_cols]);
 
+  // useEffect(() => {
+  //   if (gridRef && gridRef.current && gridRef.current.api) {
+  //     // Validate row data before refreshing
+  //     const validRows = file_rows.filter(row => {
+  //       return row && typeof row === 'object' && row.__reserved;
+  //     });
+
+  //     if (validRows.length !== file_rows.length) {
+  //       console.warn('Some rows were filtered out due to invalid data structure');
+  //     }
+
+  //     // gridRef.current.api.purgeInfiniteCache();
+  //     // gridRef.current.api.refreshCells()
+  //     // gridRef.current.api.refreshClientSideRowModel()
+  //     // gridRef.current.api.
+  //     // gridRef.current.api.applyTransaction({
+  //     //   remove: [...file_rows]
+  //     // })
+  //     // gridRef.current.api.applyTransaction({
+  //     //   add: [...file_rows]
+  //     // })
+  //     // />
+  //   }
+  // }, [file_rows]);
+
   function getRowStyle(params) {
-    if (params.data.__reserved.progress === 100) {
+    // Add safety checks to prevent undefined errors
+    if (!params || !params.data) {
+      return {};
+    }
+
+    if (params.data.__reserved && params.data.__reserved.progress === 100) {
       return {
         backgroundColor: 'lightgreen'
       }
     }
-    if (params.data.__reserved.error) {
+    if (params.data.__reserved && params.data.__reserved.error) {
       return {
         backgroundColor: 'lightcoral'
       }
     }
+    return {};
   }
 
   return (
     <div className={"ag-theme-quartz __ag-grid"}>
       <AgGridReact
-        rowData={file_rows}
+        ref={gridRef}
+        rowData={validatedFileRows}
         columnDefs={column_defs}
         rowStyle={{
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
-          overflow: 'hidden',          
+          overflow: 'hidden',
         }}
         autoSizeStrategy={autoSizeStrategy}
         suppressMovableColumns={suppressMovableColumns}
         suppressScrollOnNewData={true}
         ensureDomOrder={ensureDomOrder}
         suppressDragLeaveHidesColumns={suppressDragLeaveHidesColumns}
-        enableCellTextSelection = {enableCellTextSelection}
-        undoRedoCellEditing = {undoRedoCellEditing}
-        undoRedoCellEditingLimit = {undoRedoCellEditingLimit}
+        enableCellTextSelection={enableCellTextSelection}
+        undoRedoCellEditing={undoRedoCellEditing}
+        undoRedoCellEditingLimit={undoRedoCellEditingLimit}
         getRowStyle={getRowStyle}
         tooltipShowDelay={100}
+      // suppressModelUpdateAfterUpdateTransaction={true}
+      // suppressRowTransform={true}
+      // suppressColumnVirtualisation={false}
+      // suppressRowVirtualisation={false}
+      // suppressAnimationFrame={false}
       />
     </div>
   )

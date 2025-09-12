@@ -284,6 +284,7 @@ ipcMain.handle('delete-store', async () => {
 
 // open-file-dialog: let the user pick files from the operating system
 ipcMain.handle('open-file-multi-dialog', async () => {
+  // todo: enable streaming for this dialog in the case of there being a large number of files
   return dialog.showOpenDialog({ filters: [wsiCustomFilter], properties: ['openFile', 'multiSelections'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked

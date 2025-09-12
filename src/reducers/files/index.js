@@ -64,7 +64,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.ADD_FILE_ROW, (state, action) => {
       return (produce(state, draft => {
-        add_file_row(state, draft, action);
+        add_file_row(state, draft, action.payload);
       }))
     })
     .addCase(files_actions.ADD_FILE_ROWS, (state, action) => {
