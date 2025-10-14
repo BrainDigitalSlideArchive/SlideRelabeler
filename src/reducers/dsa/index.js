@@ -57,6 +57,21 @@ const dsa_reducer = createReducer(default_state, (builder) => {
         draft.delete_after = !draft.delete_after;
       })
     })
+    .addCase(dsa_actions.ADD_UPLOAD_FILE_TO_QUEUE, (state, action) => {
+      return produce(state, draft => {
+        draft.upload_queue.push(action.payload);
+      })
+    })
+    .addCase(dsa_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, (state, action) => {
+      return produce(state, draft => {
+        for (let idx in draft.upload_queue) {
+          if (draft.upload_queue[idx].row_idx === action.payload) {
+            draft.upload_queue.splice(idx, 1);
+            break;
+          }
+        }
+      })
+    })
 })
 
 export default dsa_reducer;

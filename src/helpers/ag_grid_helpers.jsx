@@ -1,7 +1,6 @@
 import React from "react";
-import { displayBytes, formatLeftEllipsis } from "./fe_helpers";
+import { displayBytes } from "./fe_helpers";
 import * as files_actions from "../actions/files";
-import { UPDATE_FILE_ROW_WITHOUT_METADATA } from "../actions/files";
 
 export function addFieldToColumn(file_cols, match_field_header_class, field, field_value) {
   let outputFileCols = [...file_cols];

@@ -4,7 +4,6 @@ import * as files_actions from '../../actions/files';
 import * as debug_actions from '../../actions/debug';
 
 import process_file, { save_csv } from './process_file';
-import { join_paths, return_filename_dir_from_path } from "../../helpers/renderer_path_helpers";
 
 function* watch_cancel_process_files(process_files_task) {
   yield take(files_actions.CANCEL_PROCESS_FILES);

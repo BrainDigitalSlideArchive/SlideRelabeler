@@ -76,6 +76,7 @@ function get_browser_window_by_title(title) {
 function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size) {
   return new Promise(async (resolve, reject) => {
     read(fd, file_buffer, 0, chunk_size, -1, async (err, bytesRead, buffer) => {
+      const start_time = new Date();
       if (err) {
         console.error("Error reading file", err);
         reject(false);
@@ -88,6 +89,11 @@ function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path
       } else {
         response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
       }
+      const end_time = new Date();
+      const time_diff_ms = end_time - start_time;
+      const rate_bytes_per_ms = bytesRead / time_diff_ms;
+
+
 
       data_offset += bytesRead;
       if (response && response[0]) {
@@ -97,7 +103,7 @@ function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path
           window.webContents.send('dsa-upload-file-complete', file_row_idx);
           close(fd);
         } else {
-          window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx });
+          window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
         }
         resolve(true);
       } else {

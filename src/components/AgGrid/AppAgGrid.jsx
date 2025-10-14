@@ -3,11 +3,8 @@ import { AgGridReact } from 'ag-grid-react';
 import { useDispatch, useSelector } from "react-redux";
 
 // Setup the community module
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule]);
-
-import "ag-grid-community/styles/ag-grid.css"; // Core CSS
-import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
 
 import {
   setupRemoveColumn,
@@ -107,39 +104,9 @@ const AppAgGrid = (props) => {
     column_defs = setupRenameCellRenderer(column_defs, filename_config);
     column_defs = setupTooltipValueGetter(column_defs);
     set_column_defs(column_defs);
-  }, [file_cols, file_rows, filename_config, reserved_cols]);
-
-  // useEffect(() => {
-  //   if (gridRef && gridRef.current && gridRef.current.api) {
-  //     // Validate row data before refreshing
-  //     const validRows = file_rows.filter(row => {
-  //       return row && typeof row === 'object' && row.__reserved;
-  //     });
-
-  //     if (validRows.length !== file_rows.length) {
-  //       console.warn('Some rows were filtered out due to invalid data structure');
-  //     }
-
-  //     // gridRef.current.api.purgeInfiniteCache();
-  //     // gridRef.current.api.refreshCells()
-  //     // gridRef.current.api.refreshClientSideRowModel()
-  //     // gridRef.current.api.
-  //     // gridRef.current.api.applyTransaction({
-  //     //   remove: [...file_rows]
-  //     // })
-  //     // gridRef.current.api.applyTransaction({
-  //     //   add: [...file_rows]
-  //     // })
-  //     // />
-  //   }
-  // }, [file_rows]);
+  }, [file_cols, filename_config, reserved_cols]);
 
   function getRowStyle(params) {
-    // Add safety checks to prevent undefined errors
-    if (!params || !params.data) {
-      return {};
-    }
-
     if (params.data.__reserved && params.data.__reserved.progress === 100) {
       return {
         backgroundColor: 'lightgreen'
@@ -159,6 +126,7 @@ const AppAgGrid = (props) => {
         ref={gridRef}
         rowData={validatedFileRows}
         columnDefs={column_defs}
+        theme={themeQuartz}
         rowStyle={{
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
