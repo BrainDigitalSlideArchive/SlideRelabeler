@@ -666,18 +666,26 @@ class DeidTools:
                     qr_code_string = ''
 
         if qr_code_string is not None:
-            qr_code = qrcode.make(qr_code_string)
+            qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+            qr.add_data(qr_code_string)
+            qr.make(fit=True)
+            qr_code = qr.make_image(fill_color='black', back_color='white').convert('RGB')
+            # qr_code.save('test_qr_code.png')
             image_cropped = image.crop((0, 0, image.size[0], output_height))
             width = max(qr_code.size[0], image_cropped.size[0])
+
+            qr_code_left = width // 2 - qr_code.size[0] // 2
+            qr_code_top = output_height + self.sep_height
+            qr_loc = (qr_code_left, qr_code_top, qr_code_left + qr_code.size[0], qr_code_top + qr_code.size[1])
 
             if qr_code.size[1] > (750 - output_height - self.sep_height):
                 image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
                 image.paste(image_cropped, (0,0))
-                image.paste(qr_code, (width // 2 - qr_code.size[0] // 2, output_height + self.sep_height))
+                image.paste(qr_code, qr_loc)
             else:
                 image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
                 image.paste(image_cropped, (0,0))
-                image.paste(qr_code, (width // 2 - qr_code.size[0] // 2, output_height + self.sep_height))
+                image.paste(qr_code, qr_loc)
 
             output_height = qr_code.size[1] + output_height + self.sep_height + self.sep_height
 
@@ -823,12 +831,18 @@ class DeidTools:
         redact_square = redact_square_default or redact_square_manual
         if redact_square or macro_geojson:
             try:
-                if 'label' in output_dict['config'] and 'wsi' in output_dict['config']['label']:
-                    if output_dict['config']['label']['wsi']['save_macro_image']:
+                if 'wsi' in output_dict['config']:
+                    if output_dict['config']['wsi']['save_macro_image']:
                         macroImage = PIL.Image.open(
                             io.BytesIO(tileSource.getAssociatedImage("macro")[0])
                         )
-                # ImageItem().removeThumbnailFiles(item)
+                        if redact_square:
+                            macroImage = redact_topleft_square(macroImage)
+                        elif macro_geojson:
+                            macroImage = redact_image_area(macroImage, macro_geojson)
+
+                        # ImageItem().removeThumbnailFiles(item)
+                # 
             except Exception:
                 pass
 
@@ -838,7 +852,10 @@ class DeidTools:
             elif macro_geojson:
                 macroImage = redact_image_area(macroImage, macro_geojson)
         else:
-            macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
+            if not output_dict['config']['wsi']['save_macro_image']:
+                macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
+            else:
+                macroImage = PIL.Image.open(io.BytesIO(tileSource.getAssociatedImage("macro")[0]))
 
         return macroImage
 
@@ -1004,6 +1021,17 @@ class DeidTools:
                 return prior_ifds, ifds
             else:
                 return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ndpi")
+            
+    def determine_format(self, tileSource):
+        internal_metadata = tileSource.getInternalMetadata()
+        if internal_metadata.get('Make').lower() == 'hamamatsu':
+            return 'hamamatsu'
+        elif internal_metadata.get('Make').lower() == 'aperio':
+            return 'aperio'
+        elif internal_metadata.get('Make').lower() == 'philips':
+            return 'philips'
+        else:
+            return None
 
     def setup_deid(self, output_dict):
         filename = output_dict['__reserved']['source']['path']
@@ -1030,12 +1058,16 @@ class DeidTools:
         macroImage = self.get_deid_macro(output_dict)
 
         format = determine_format(tileSource)
+
+        if format is None:
+            format = self.determine_format(tileSource)
+            
         func = None
         if format is not None:
             # fadvise_willneed(curItem)  ## DETERMINE WHAT THIS FUNCTION DOSE..
             func = getattr(self, "redact_format_" + format)
         if func is None:
-            return json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: {}".format(format)})
+            raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: {}".format(format)}))
 
         return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func
 
@@ -1071,6 +1103,7 @@ class DeidTools:
         file, mimetype = func(
             curItem, output_dir, redactList, newTitle, labelImage, macroImage
         )
+
         info = {
             # "format": format,
             "model": model_information(tileSource, format),
@@ -1106,3 +1139,6 @@ class DeidTools:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
         self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
+
+        from . import __version__
+        self.version = __version__

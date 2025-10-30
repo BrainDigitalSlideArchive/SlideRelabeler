@@ -1,10 +1,10 @@
 import React from 'react';
-import { useState, useEffect, useLayoutEffect} from 'react';
-import { useSelector, useDispatch} from 'react-redux';
+import { useState, useEffect, useLayoutEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import OpenSeadragon from '../../components/OpenSeaDragon/OpenSeadragon';
 
-import {decodeURLParameters, encodeURLParameters} from "../../helpers/url_helpers";
+import { decodeURLParameters, encodeURLParameters } from "../../helpers/url_helpers";
 import './Viewer.scss';
 
 import * as app_actions from '../../actions/app';
@@ -26,7 +26,7 @@ function use_param(name) {
   return value
 }
 
-function Viewer(props){
+function Viewer(props) {
   let file = use_param('file');
   let [row_idx, set_row_idx] = useState(use_param('row_idx'));
   let [thumbnail_url, set_thumbnail_url] = useState(null);
@@ -44,8 +44,8 @@ function Viewer(props){
   const [metadata, setMetadata] = useState(null);
   const [image_type, set_image_type] = useState('');
 
-  useEffect(()=>{
-    if(file){
+  useEffect(() => {
+    if (file) {
       window.electronAPI.getMetadata(file).then(md => {
         md.file = file;
         setMetadata(md);
@@ -54,17 +54,21 @@ function Viewer(props){
       console.log('No file found in query params')
       console.log(urlParams)
     }
-    dispatch({type: app_actions.START_VIEWER});
+    dispatch({ type: app_actions.START_VIEWER });
   }, []);
 
   function view_image(type) {
     set_image_type(type)
-    dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'image'}})
+    dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'image' } })
   }
 
   useEffect(() => {
     // set_row_data({...files.fileRows[row_idx], config: config})
-    let output_dict = {...files.file_rows[row_idx], config: config}
+    console.log('row_idx', row_idx);
+    let output_dict = { ...files.file_rows[row_idx], config: config }
+
+    console.log('files.file_rows[row_idx]', files.file_rows);
+    console.log('output_dict', output_dict);
 
 
     const file_encoded = encodeURIComponent(file);
@@ -80,14 +84,17 @@ function Viewer(props){
       }
       if (output_dict['__reserved']['associatedImages'].includes('macro')) {
         set_macro_url(`macro://${file_encoded}?${params}`);
-        set_preview_macro_url(`preview-macro://${file_encoded}?${params}`)
+        set_preview_macro_url(`preview-macro://${file_encoded}?${params}`);
       }
 
-      dispatch({type: preview_actions.GET_METADATA_PREVIEW, payload: {row_idx: row_idx, file_row: files.file_rows[row_idx]}})
+      dispatch({ type: preview_actions.GET_METADATA_PREVIEW, payload: { row_idx: row_idx, file_row: files.file_rows[row_idx] } })
     }
 
-    
+
   }, [file, row_idx, files, config])
+
+  console.log("Macro URL:", macro_url);
+  console.log("Preview Macro URL:", preview_macro_url);
 
   return ([
     <div key={0} className={"viewer-container"}>
@@ -107,7 +114,7 @@ function Viewer(props){
                 <tr>
                   <td>Thumbnail:</td>
                   <td><img onClick={() => view_image('thumbnail')} src={thumbnail_url}></img></td>
-                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1? <td><img onClick={() => view_image('thumbnail')} src={thumbnail_url}></img></td> : <td>Row processed</td>}
+                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1 ? <td><img onClick={() => view_image('thumbnail')} src={thumbnail_url}></img></td> : <td>Row processed</td>}
                 </tr>
               )
             }
@@ -116,8 +123,8 @@ function Viewer(props){
                 <tr>
                   <td>Label:</td>
                   <td><img onClick={() => view_image('label')} src={label_url}></img></td>
-                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1? <td><img onClick={() => view_image('preview_label')} src={preview_label_url}></img></td> :
-                  <td>Row processed</td>}
+                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1 ? <td><img onClick={() => view_image('preview_label')} src={preview_label_url}></img></td> :
+                    <td>Row processed</td>}
                 </tr>
               )
             }
@@ -126,25 +133,25 @@ function Viewer(props){
                 <tr>
                   <td>Macro:</td>
                   <td><img onClick={() => view_image('macro')} src={macro_url}></img></td>
-                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1?
-                    config.wsi && !config.wsi.save_macro_image?
+                  {files.file_rows[row_idx] && files.file_rows[row_idx].__reserved.processed !== 1 ?
+                    config.wsi && !config.wsi.save_macro_image ?
                       <td><img onClick={() => view_image('preview_macro')} src={preview_macro_url}></img></td> :
                       <td><img onClick={() => view_image('macro')} src={macro_url}></img></td>
-                  : <td>Row processed</td>}
+                    : <td>Row processed</td>}
                 </tr>
               )
             }
             <tr>
               <td>Metadata:</td>
-              <td><button onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'metadata'}})}>View</button></td>
-              <td><button onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'metadata'}})}>View</button></td>
+              <td><button onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}>View</button></td>
+              <td><button onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}>View</button></td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>,
-    <Modal key={1} file={file} row_idx={row_idx} image_type={image_type} preview_macro_url={preview_macro_url} thumbnail_url={thumbnail_url} label_url={label_url} preview_label_url={preview_label_url} macro_url={macro_url}/>
-      ]
+    <Modal key={1} file={file} row_idx={row_idx} image_type={image_type} preview_macro_url={preview_macro_url} thumbnail_url={thumbnail_url} label_url={label_url} preview_label_url={preview_label_url} macro_url={macro_url} />
+  ]
   )
 }
 

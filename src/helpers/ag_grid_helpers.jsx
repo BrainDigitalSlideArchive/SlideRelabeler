@@ -1,13 +1,12 @@
 import React from "react";
-import {displayBytes, formatLeftEllipsis} from "./fe_helpers";
+import { displayBytes } from "./fe_helpers";
 import * as files_actions from "../actions/files";
-import {UPDATE_FILE_ROW_WITHOUT_METADATA} from "../actions/files";
 
 export function addFieldToColumn(file_cols, match_field_header_class, field, field_value) {
   let outputFileCols = [...file_cols];
-  for (let i= 0; i < file_cols.length; i++) {
+  for (let i = 0; i < file_cols.length; i++) {
     if (file_cols[i].field === match_field_header_class || file_cols[i].headerClass === match_field_header_class) {
-      outputFileCols[i] = Object.assign({}, file_cols[i], {[field]: field_value});
+      outputFileCols[i] = Object.assign({}, file_cols[i], { [field]: field_value });
     }
   }
   return outputFileCols;
@@ -51,12 +50,12 @@ export function setupRemoveColumn(file_cols, processing, disable_changes, dispat
     'remove-row',
     params => {
       if (processing || disable_changes) {
-        return <div className="__remove-row-placeholder"/>
+        return <div className="__remove-row-placeholder" />
       } else {
         return (
           <button
             className='__clear-row _remove-button'
-            onClick={() => dispatch({type: files_actions.REMOVE_FILE, payload: params.node.rowIndex})}>
+            onClick={() => dispatch({ type: files_actions.REMOVE_FILE, payload: params.node.rowIndex })}>
             X
           </button>
         )
@@ -69,7 +68,7 @@ export function setupThumbnailColumnOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.source.path',
-    (params) => params.data.__reserved.processed === 1? electronAPI.openViewer(params.data.__reserved.output_path) : electronAPI.openViewer(params.data.__reserved.source.path, params.node.rowIndex)
+    (params) => (params.data.__reserved.processed === 1 && !params.data.__reserved.deleted_after) ? electronAPI.openViewer(params.data.__reserved.output_path, params.node.rowIndex) : electronAPI.openViewer(params.data.__reserved.source.path, params.node.rowIndex)
   )
 }
 
@@ -78,11 +77,11 @@ export function setupRenameCellRenderer(file_cols, filename_config) {
     file_cols,
     '__reserved.rename',
     params => {
-      if (params.data.__reserved.processed === 1) {
+      if (params.data && params.data.__reserved && params.data.__reserved.processed === 1) {
         return <span>{params.data.__reserved.output_path}</span>
-      } else if (params.data.__reserved.processed !== 1 && filename_config.use_uuid) {
+      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1 && filename_config.use_uuid) {
         return <span>{filename_config.use_prefix && filename_config.prefix}{params.data.__reserved.uuid}{filename_config.use_suffix && filename_config.suffix}</span>
-      } else if (params.data.__reserved.processed !== 1 && !filename_config.use_uuid) {
+      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1 && !filename_config.use_uuid) {
         return <span>{filename_config.use_prefix && filename_config.prefix}{params.data.__reserved.rename}{filename_config.use_suffix && filename_config.suffix}</span>
       }
     }
@@ -94,14 +93,19 @@ export function setupThumbnailColumnCellRenderer(file_cols) {
     file_cols,
     '__reserved.source.path',
     params => {
-      const thumbURL = window.encodeURIComponent(params.value);
-      if (params.data.__reserved && params.data.__reserved.metadata) {
-        return (
-          <div className='__thumbnail _center-horizontally' title='Open in viewer'>
-            <img src={`thumbnail://${thumbURL}`}></img>
-          </div>
-        )
-      } else {
+      try {
+        const thumbURL = window.encodeURIComponent(params.value);
+        if (params.data.__reserved && params.data.__reserved.metadata) {
+          return (
+            <div className='__thumbnail _center-horizontally' title='Open in viewer'>
+              <img src={`thumbnail://${thumbURL}`}></img>
+            </div>
+          )
+        } else {
+          return <>No thumbnail yet.</>
+        }
+      }
+      catch (err) {
         return <>No thumbnail yet.</>
       }
     }
@@ -114,7 +118,7 @@ export function setupAssociatedImagesColumn(file_cols) {
     '__reserved.associatedImages',
     (params) => {
       // console.log('cellRenderer params', params)
-      if (params.data.__reserved && params.data.__reserved.associatedImages) {
+      if (params.data && params.data.__reserved && params.data.__reserved.associatedImages) {
         const images = params.data.__reserved.associatedImages;
         return <>{images.join(', ')}</>
       } else {
@@ -129,26 +133,52 @@ export function setupDestinationDirectoryColumn(file_cols, targetDirectory) {
     file_cols,
     'reserved.destinationDirectory',
     params => {
-      if(params.data.reserved.processed !== 0) {
+      if (params.data.reserved.processed !== 0) {
         return params.data.reserved.destinationDirectory;
       }
-      return params.value? params.value : '[Not selected]'
+      return params.value ? params.value : '[Not selected]'
     }
   )
+}
+
+function render_progress_text(data) {
+  try {
+    if (data && data.__reserved && typeof data.__reserved.upload_progress === 'number') {
+      return `Uploading: ${Math.trunc(data.__reserved.upload_progress)}%`;
+    }
+    else if (data && data.__reserved && data.__reserved.progress && data.__reserved.progress !== 0) {
+      return `Processing: ${Math.trunc(data.__reserved.progress)}%`;
+    } else {
+      return 'Not started';
+    }
+  }
+  catch (err) {
+    console.log('Error rendering progress text', err);
+    return 'Not started';
+  }
 }
 
 export function setupProgressColumn(file_cols) {
   return addCellRenderer(
     file_cols,
     '__reserved.progress',
-    ({data}) => {
+    ({ data }) => {
       return (
         <div className={'__progress-indicator'}>
-          <div className={'__progress-indicator-fill'} style={data.__reserved.progress && data.__reserved.progress !== 0 ? {width: `${Math.trunc(data.__reserved.progress)}%`} : {width: '0%'}}>
-            
-          </div>
+          {
+            (data && data.__reserved && typeof data.__reserved.upload_progress === 'number') && (
+              <div className={'__progress-indicator-upload-fill'} style={data.__reserved.upload_progress && data.__reserved.upload_progress !== 0 ? { width: `${Math.trunc(data.__reserved.upload_progress)}%` } : { width: '0%' }}>
+              </div>
+            )
+          }
+          {
+            data && data.__reserved && data.__reserved.progress && data.__reserved.progress !== 0 && typeof data.__reserved.upload_progress !== 'number' && (
+              <div className={'__progress-indicator-process-fill'} style={data.__reserved.progress && data.__reserved.progress !== 0 ? { width: `${Math.trunc(data.__reserved.progress)}%` } : { width: '0%' }}>
+              </div>
+            )
+          }
           <div className={'__progress-indicator-text'}>
-          {data.__reserved.progress && data.__reserved.progress !== 0 ? `${Math.trunc(data.__reserved.progress)}%` : 'Not started'}
+            {render_progress_text(data)}
           </div>
         </div>
       )
@@ -161,17 +191,17 @@ export function setupRenameEditorColumn(file_cols, filename_config) {
     file_cols,
     '__reserved.rename',
     (params) => {
-      if (params.data.__reserved.processed === 0) {
+      if (params && params.data && params.data.__reserved && params.data.__reserved.processed === 0) {
         return (
           <>
-            <div style={{display: 'flex', overflow: 'hidden'}} className='center-horizontally'>
+            <div style={{ display: 'flex', overflow: 'hidden' }} className='center-horizontally'>
               <span>
                 {filename_config.use_prefix && filename_config.prefix}
               </span>
               {
-                filename_config.use_uuid? <span>{params.data.__reserved.uuid}</span> :
+                filename_config.use_uuid ? <span>{params.data.__reserved.uuid}</span> :
                   <span>
-                    <input className={"__input-text"} value={params.value} onChange={() => null}/>
+                    <input className={"__input-text"} value={params.value} onChange={() => null} />
                   </span>
               }
               <span>
@@ -195,13 +225,18 @@ export function setupTooltipValueGetter(file_cols) {
   let output_file_cols = [];
 
   function tooltipValueGetter(params) {
-    if (params.data.__reserved.error) {
-      return params.data.__reserved.error;
+    try {
+      if (params.data && params.data.__reserved && params.data.__reserved.error) {
+        return params.data.__reserved.error;
+      }
+      else if (params.data && params.data.__reserved && !params.data.__reserved.bytes) {
+        return "Loading metadata...";
+      }
+      else {
+        return null;
+      }
     }
-    else if (!params.data.__reserved.bytes) {
-      return "Loading metadata...";
-    }
-    else {
+    catch (err) {
       return null;
     }
   }
@@ -219,7 +254,7 @@ export function setupSourceDirValueFormater(file_cols) {
   return addValueFormatter(
     file_cols,
     '__reserved.source.directory',
-    ({value}) => value
+    ({ value }) => value
   )
 }
 
@@ -227,7 +262,7 @@ export function setup_source_directory_cell_renderer(file_cols) {
   return addCellRenderer(
     file_cols,
     '__reserved.source.directory',
-    ({value}) => {
+    ({ value }) => {
       return <div className="__source-directory">{value}</div>
     }
   )
@@ -237,7 +272,7 @@ export function setupSizeValueFormatter(file_cols) {
   return addValueFormatter(
     file_cols,
     '__reserved.bytes',
-    ({value}) => displayBytes(value)
+    ({ value }) => displayBytes(value)
   )
 }
 
@@ -277,7 +312,7 @@ export function setupDestinationDirectoryOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.destinationDirectory',
-    ({data}) => data.__reserved.processed === 1 && electronAPI.openViewer(data.__reserved.output_path)
+    ({ data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
   )
 }
 
@@ -296,11 +331,13 @@ export function setupRenameCellValueSetter(file_cols, dispatch) {
     file_cols,
     '__reserved.rename',
     params => {
-      let replace_row = {...params.data};      
+      let replace_row = { ...params.data };
       let reserved = replace_row.__reserved;
-      reserved = Object.assign({}, reserved, {rename: params.newValue});
-      replace_row = Object.assign({}, replace_row, {__reserved: reserved});
-      dispatch({type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA, payload: {idx: params.node.rowIndex, row: replace_row}})
+      if (reserved) {
+        reserved = Object.assign({}, reserved, { rename: params.newValue });
+        replace_row = Object.assign({}, replace_row, { __reserved: reserved });
+      }
+      dispatch({ type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA, payload: { idx: params.node.rowIndex, row: replace_row } })
     }
   )
 }
@@ -309,7 +346,7 @@ export function setupRenameCellClass(file_cols) {
   return addCellClass(
     file_cols,
     '__reserved.rename',
-    ({data}) => data.__reserved.processed === 0 ? 'editable copy-as' : ''
+    ({ data }) => data && data.__reserved && data.__reserved.processed === 0 ? 'editable copy-as' : ''
   )
 }
 
@@ -317,6 +354,6 @@ export function setupRenameCellOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.rename',
-    ({value, data}) => data.__reserved.processed === 1 && electronAPI.openViewer(data.__reserved.output_path)
+    ({ value, data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
   )
 }

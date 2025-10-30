@@ -5,6 +5,7 @@ import modal from './modal';
 import config from './config';
 import viewer from './viewer';
 import debug from './debug';
+import dsa from './dsa';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -12,7 +13,8 @@ export const root_reducer = combineReducers({
     modal: modal,
     config: config,
     viewer: viewer,
-    debug: debug
+    debug: debug,
+    dsa: dsa
 });
 
 export default root_reducer;

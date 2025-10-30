@@ -20,46 +20,17 @@ print("In module products sys.path[0], __package__ ==", sys.path[0], __package__
 #         print("Unable to set libtiff GET/SET field arguments %s", exc)
 
 from src.python.DeidTools import DeidTools
+from src.python.tests.common_output_dict import output_dict
 
-test_file_path = os.path.join('C:/', 'temp', 'deid', 'input', 'E22-02_ABETA_2.svs')
-icon_file_path = os.path.join(".", "src", "assets", "BDSA_clear.png")
-test_filename = 'E22-02_ABETA_2.svs'
-test_ext = '.svs'
-
-# an output dict in a similar form that would be used to call the DeidTools object
-output_dict = {
-    'config': {
-    'filename': {'use_uuid': True, 'use_prefix': True, 'use_suffix': False, 'prefix': 'deid_', 'suffix': 'deid'},
-    'label': {
-        'qr_mode': {'value': 'uuid'},
-        'add_text': True,
-        'add_icon': True,
-        'add_qr': True,
-        'icon_file': {'source': {'path': str(icon_file_path)}},
-        'text_column_field': {'value': 'rename'},
-        'qr_column_fields': [{'value': 'source.path'}],
-        'qr_column_field': {'value': 'rename'}
-    }
-    },
-    'source': {
-        'path': str(test_file_path),
-        'filename': test_filename,
-        'parsed': {
-            'ext': test_ext
-        }
-    },
-    'rename': "1234",
-    'uuid': str(uuid.uuid1())
-}
-
-if os.path.exists(test_file_path):
+if os.path.exists(output_dict['source']['path']):
     deid_tools = DeidTools()
 
     # output should return information about the redacted file
-    # print("Testing test case text, icon, and qr")
-    # output = deid_tools.preview_label(output_dict)
-    # base64_str = deid_tools.pil_to_base64(output)
-    # output.save('test_all_output.png')
+    print("Testing test case text, icon, and qr")
+    output = deid_tools.preview_label(output_dict)
+    base64_str = deid_tools.pil_to_base64(output)
+    output.save('test_all_output.png')
+    pass
     #
     #
     # print("Testing only text")
