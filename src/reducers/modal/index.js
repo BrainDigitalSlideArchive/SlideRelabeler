@@ -67,6 +67,16 @@ const modal_reducer  = createReducer(default_state, (builder) => {
         draft.active = false;
       });
     })
+    .addCase(modal_actions.CHANGE_NETWORK, (state, action) => {
+      return produce(state, draft => {
+        draft.network_type = action.payload;
+      });
+    })
+    .addCase(modal_actions.TOGGLE_DISPLAY_CHANGED_ONLY, (state, action) => {
+      return produce(state, draft => {
+        draft.display_changed_only = !draft.display_changed_only;
+      });
+    })
 })
 
 export default modal_reducer;

@@ -9,6 +9,7 @@ function ModalMetadata(props) {
     const {file, row_idx} = props;
     const tiff_tags = useSelector(state => state.viewer.tiff_tags);
     const ifds = useSelector(state => state.files.ifds);
+    const display_changed_only = useSelector(state => state.modal.display_changed_only);
     let [table, set_table] = useState(null);
 
     useEffect(() => {
@@ -19,12 +20,13 @@ function ModalMetadata(props) {
 
     return (
         <div className="__modal">
-        <ModalHeader title={"Metadata"} type={"metadata"}/>
+        <ModalHeader title={"Metadata"} type={"metadata"} display_changed_only={display_changed_only}/>
         <div className="__content">
             <div className="__metadata_viewer">
                 {
                     table && Object.keys(table).length > 0 && (
                         <MetadataAgGrid 
+                        display_changed_only={display_changed_only}
                         autoSizeStrategy={{type: 'fitCellContents'}} 
                         suppressMovableColumns={true}
                         ensureDomOrder={true}

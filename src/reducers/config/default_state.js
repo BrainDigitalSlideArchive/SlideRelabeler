@@ -27,6 +27,9 @@ export const default_state = {
   },
   debug: {
     enable_debug: false
+  },
+  copy: {
+    enable_copy_mode: false
   }
 };
 

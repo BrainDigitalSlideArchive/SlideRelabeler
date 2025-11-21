@@ -5,6 +5,8 @@ import './Dropdown.scss';
 
 const Dropdown = ({
                     label = null,
+                    label_width = null,
+                    width = null,
                     disabled,
                     items,
                     onSelect,
@@ -84,8 +86,8 @@ const Dropdown = ({
   const selectedLabels = selectedItems.map(item => item && item.label).join(', ');
 
   return (
-    <div className={disabled? "Dropdown _disabled" : "Dropdown"} ref={dropdownRef}>
-      <div className={"__label"}>{label? label : placeholder}</div>
+    <div className={disabled? "Dropdown _disabled" : "Dropdown"} ref={dropdownRef} style={width ? { width: width } : {}}>
+      <div className={"__label"} style={label_width ? { width: label_width } : {}}>{label? label : placeholder}</div>
       <div
         className={disabled? "__trigger _disabled" : "__trigger"}
         tabIndex={0}

@@ -10,6 +10,7 @@ import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
 import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
+import ModalNetwork from './ModalNetwork';
 
 function render_modal(type, props) {
   switch(type) {
@@ -25,6 +26,8 @@ function render_modal(type, props) {
       return <ModalError/>;
     case 'warning':
       return <ModalWarning/>;
+    case 'network':
+      return <ModalNetwork network_type={props.network_type}/>;
     case 'metadata':
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
     default:

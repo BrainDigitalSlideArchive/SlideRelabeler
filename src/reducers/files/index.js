@@ -218,6 +218,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(files_actions.UPDATE_FILE_UPLOAD_PROGRESS, (state, action) => {
       return produce(state, draft => {
         draft.file_rows[action.payload.row_idx].__reserved.upload_progress = action.payload.progress;
+        draft.upload_transfer_rate_bytes_per_ms = action.payload.rate_bytes_per_ms;
       })
     })
     .addCase(files_actions.UPLOAD_DELETE_AFTER, (state, action) => {
