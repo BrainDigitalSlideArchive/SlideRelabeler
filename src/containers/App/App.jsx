@@ -13,8 +13,6 @@ import * as debug_actions from "../../actions/debug";
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
 
-import { headerInfo } from "../../helpers/fe_helpers";
-
 import './App.scss';
 import Modal from "../Modal/Modal";
 
