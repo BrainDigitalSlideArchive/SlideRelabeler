@@ -13,6 +13,7 @@ export const default_state = {
     processing_files: [],
     progress_infos: [],
     transfer_rate: null, // in bytes per second
+    upload_transfer_rate_bytes_per_ms: null,
     reserved_column_names: [
       '__reserved.source',
       '__reserved.source.directory',

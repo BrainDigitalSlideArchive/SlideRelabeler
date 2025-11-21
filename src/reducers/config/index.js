@@ -124,6 +124,11 @@ const config_reducer  = createReducer(default_state, (builder) => {
     .addCase(app_actions.RESET_STORE, (state, action) => {
       return default_state;
     })
+    .addCase(config_actions.TOGGLE_ENABLE_COPY_MODE, (state, action) => {
+      return produce(state, draft => {
+        draft.copy.enable_copy_mode = !state.copy.enable_copy_mode;
+      })
+    })
     // .addCase(files_actions.CLEAR_FILES, (state, aciton) => {
     //   return produce(state, draft => {
     //     draft.csv.file_path_column = default_state.csv.file_path_column;

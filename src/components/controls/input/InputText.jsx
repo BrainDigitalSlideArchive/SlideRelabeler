@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import './InputText.scss';
 
@@ -14,11 +14,18 @@ function get_input_text_class(disabled, error) {
 }
 
 function InputText(props) {
-  const {label, value, onChange, disabled, type, error} = props;
+  const {label, value, onChange, disabled, type, error, input_style, tooltip} = props;
+  const [hover, set_hover] = useState(false);
   return (
-    <div className={"InputText"}>
+    <div onMouseOver={() => set_hover(true)} onMouseLeave={() => set_hover(false)} className={"InputText"}>
       <label>{label}</label>
-      <input type={type? type : "text"} disabled={disabled} className={get_input_text_class(disabled, error)} value={value} onChange={(e) => onChange(e.target.value)}/>
+      {
+        tooltip &&
+        <div className={hover? "__tooltip _visible" : "__tooltip"}>
+          {tooltip}
+        </div>
+      }
+      <input style={input_style? input_style : {}} type={type? type : "text"} disabled={disabled} className={get_input_text_class(disabled, error)} value={value} onChange={(e) => onChange(e.target.value)}/>
     </div>
   );
 }

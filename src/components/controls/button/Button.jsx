@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import './Button.scss';
 
 function Button(props) {
-  const { onClick, text, label, result, disabled, extra_class_name } = props;
+  const { onClick, text, label, result, disabled, extra_class_name, tooltip } = props;
+
+  const [hover, set_hover] = useState(false);
 
   function get_button_class_name() {
     let class_name = "__button";
@@ -14,12 +16,18 @@ function Button(props) {
   }
 
   return (
-    <div className={extra_class_name ? `Button ${extra_class_name}` : "Button"}>
+    <div className={extra_class_name ? `Button ${extra_class_name}` : "Button"} onMouseOver={() => set_hover(true)} onMouseLeave={() => set_hover(false)}>
       {
         label &&
         <button className={get_button_class_name()}>
           {label}
         </button>
+      }
+      {
+        tooltip && 
+        <div className={hover? "__button-tooltip _visible" : "__button-tooltip"}>
+          {tooltip}
+        </div>
       }
       <button disabled={disabled} className={get_button_class_name()} onClick={() => onClick()}>{text}</button>
       {result &&
