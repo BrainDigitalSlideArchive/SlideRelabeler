@@ -16,10 +16,11 @@ export default function FileHeaderInfo(props) {
   const metadata_updating = useSelector(state => state.files.metadata_updating);
   const upload_remaining_bytes = useSelector(state => state.files.upload_remaining_bytes);
   const upload_transfer_rate_bytes_per_ms = useSelector(state => state.files.upload_transfer_rate_bytes_per_ms);
+  const uploading = useSelector(state => state.files.uploading);
 
   return (
     <h3 className={"FileHeaderInfo"}>
-      {headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms)}
+      {headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, uploading, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms)}
     </h3>
   )
 }

@@ -10,6 +10,18 @@ export function displayBytes(bytes = null, places = 2) {
   return output.toFixed(places) + ' ' + units[numDivisions]
 }
 
+export function displayUploadRate(upload_transfer_rate_bytes_per_ms, places = 2) {
+  if (upload_transfer_rate_bytes_per_ms === null) return '?';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s'];
+  let numDivisions = 0;
+  let output = upload_transfer_rate_bytes_per_ms*1000;
+  while (output > 1000 && numDivisions < units.length - 1) {
+    output = output / 1024;
+    numDivisions += 1;
+  }
+  return output.toFixed(places) + ' ' + units[numDivisions]
+}
+
 export function formatLeftEllipsis(text = '') {
   if (text == '') {
     return '';
@@ -18,7 +30,7 @@ export function formatLeftEllipsis(text = '') {
   return m[3].split('').reverse() + m[2] + m[1].split('').reverse();
 }
 
-export function headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms) {
+export function headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, uploading, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms) {
   let bytes_being_copied = 0;
 
   for (let row_idx = 0; row_idx < file_rows.length; row_idx++) {
@@ -73,7 +85,7 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
   } else {
     return <>
     <p>
-      {metadata_updating && "Loading files..."} &nbsp;
+      {metadata_updating && "Loading files..." && <span>&nbsp;</span>} 
 
       Total size: {displayBytes(totalBytes)} for {file_rows.length} files. &nbsp;
 
@@ -82,10 +94,10 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
       {timeDisplay.length > 0 && processing && `Estimated time remaining: ${timeDisplay}`}
     </p>
     {
-      upload_progress && 
+      uploading && upload_transfer_rate_bytes_per_ms && upload_remaining_bytes && 
       <p>
-        Uploading rate: {displayBytes(upload_transfer_rate_bytes_per_ms)*1000}/s
-        Estimated time remaining: {upload_timeDisplay}
+        Upload rate: {displayUploadRate(upload_transfer_rate_bytes_per_ms)} &nbsp;
+        Estimated upload time remaining: {upload_timeDisplay}
       </p>
     }
     </>

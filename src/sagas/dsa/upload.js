@@ -14,6 +14,7 @@ function* watch_complete_upload(row_idx) {
         break;
     }
     let action_finalize = yield put({ type: dsa_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
+    yield put({ type: dsa_actions.SET_UPLOADING, payload: false })
 
     let delete_after = yield select(state => state.dsa.delete_after);
     if (delete_after) {
@@ -29,7 +30,7 @@ function* watch_upload() {
     while (true) {
         // payload should be the file row
         const action = yield take(dsa_actions.UPLOAD_FILE);
-        console.log("Upload file", action.payload);
+        yield put({ type: dsa_actions.SET_UPLOADING, payload: true })
         yield put({ type: dsa_actions.ADD_UPLOAD_FILE_TO_QUEUE, payload: action.payload })
     }
 }
