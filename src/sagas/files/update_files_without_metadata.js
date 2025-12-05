@@ -44,11 +44,23 @@ export function* update_files_without_metadata_worker() {
 }
 
 export function* update_files_without_metadata_loop() {
-    let files_not_found = true;
+    console.log("Update files without metadata loop started");
+    const file_rows = yield select(state => state.files.file_rows);
+
+    let files_not_found = false;
+
+    for (let i = 0; i < file_rows.length; i++) {
+        let file_row = file_rows[i];
+        if (!file_row.__reserved.bytes) {
+            files_not_found = true;
+            break;
+        }
+    }
+    
     while (files_not_found) {
         let metadata_update = 0;
 
-        const file_rows = yield select(state => state.files.file_rows);
+        
 
         // if (file_rows.length > 0) {
         //     files_not_found = false;
@@ -61,14 +73,17 @@ export function* update_files_without_metadata_loop() {
                 metadata_update += 1;
             }
         }
+
+
         yield delay(100);
 
         if (metadata_update === file_rows.length) {
             files_not_found = false;
             yield put({ type: files_actions.SET_METADATA_UPDATING, payload: false });
-            break;
+            // break;
         }
     }
+    console.log("Update files without metadata loop ended");
 }
 
 export function* cancel_update_files_without_metadata_worker(update_files_metadata_worker_task) {
@@ -80,8 +95,8 @@ export function* cancel_update_files_without_metadata_worker(update_files_metada
 export default function* update_files_without_metadata() {
     while (true) {
         const action = yield take(files_actions.UPDATE_FILES_WITHOUT_METADATA);
+        let update_files_metadata_worker_task = yield fork(update_files_without_metadata_worker);
         yield put({ type: files_actions.SET_METADATA_UPDATING, payload: true });
-        let update_files_metadata_worker_task = yield call(update_files_without_metadata_worker);
         // yield cancel(cancel_update_files_metadata_worker_task);
 
     }
