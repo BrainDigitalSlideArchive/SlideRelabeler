@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { useDispatch, useSelector } from "react-redux";
-import Diff from 'text-diff';
+import { diffChars } from 'diff';
 
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -11,6 +10,11 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 import './MetadataAgGrid.scss';
 
+export function getTextDiffHTML(oldText, newText) {
+    const differences = diffChars(oldText, newText);
+
+    return `<span>${differences.map((part) => `<span class="${part.added ? 'ins' : part.removed ? 'del' : 'common'}">${part.value}</span>`).join('')}</span>`;
+}
 
 const MetadataAgGrid = (props) => {
     const { table } = props;
@@ -89,15 +93,14 @@ const MetadataAgGrid = (props) => {
 
     function handle_display_data(params) {
         set_display_visible(true);
-        let diff = new Diff();
-        let text_diff = diff.main(String(params.data.prior), String(params.data.after));
-        let data = {
-            ...params.data,
-        }
+        let text_diff = getTextDiffHTML(params.data.prior, params.data.after);
 
-        data.diff = diff.prettyHtml(text_diff);
-        console.log(data);
-        set_display_data(data);
+        console.log(text_diff);
+        
+        set_display_data({
+            ...params.data,
+            diff: text_diff
+        });
     }
 
     function getRowStyle(params) {

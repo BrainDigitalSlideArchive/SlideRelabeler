@@ -84,11 +84,11 @@
                     width: 33%;
                     padding: 1em;
                     overflow-y: auto;
-                    ins {
+                    .ins {
                         background-color: $green;
                         color: white;
                     }
-                    del {
+                    .del {
                         background-color: $red;
                         color: white;
                     }
