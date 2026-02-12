@@ -13,8 +13,7 @@ Blanket rules and background context:
 Prompt: Please read analysis/todo.md, and create a detailed analysis including code snippets/locations in the existing code base, and make a plan for how to address the items in the TODO list. Ask any necessary clarifying questions rather than making assumptions about desired behavior unless otherwise specified. The items under the NOTES heading can be ignored for now.
 
 # TODO list
-1. The first thing I want to do is test the build process on Mac. We have done testing on windows to date, and I see there is an empty build_readme for macosx.
-2. Make a plan to update the build_readme/macosx/README.md document with thorough instructions on how to build the application, assuming that we are starting from a fresh clone of the repository from github and need to build entirely from scratch.
+1. We currently support the DSA as an upload endpoint. Now I want to add support for Globus too. It should be a configurable option to use globus and provide credentials, like we do already for DSA.
 
 # NOTES [agent: do not make a plan to implement these things, these are my notes only]
 - Features to add

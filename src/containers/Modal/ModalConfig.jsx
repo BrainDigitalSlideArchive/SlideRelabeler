@@ -245,7 +245,7 @@ function ModalConfig(props) {
             <div className={"__config-control-section-description"}>
               Enable copy mode to just copy files to output directory without deidentifying them.
             </div>
-            <Checkbox label={"Enable copy mode"} checked={copy_config.enable_copy_mode} onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_COPY_MODE })} />
+            <Checkbox label={"Enable copy mode"} checked={copy_config?.enable_copy_mode ?? false} onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_COPY_MODE })} />
           </div>
           <div className={"__divider"} />
           <div className={"__config-control-section"}>

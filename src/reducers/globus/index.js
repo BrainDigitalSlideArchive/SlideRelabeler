@@ -1,0 +1,182 @@
+import { createReducer } from "@reduxjs/toolkit";
+
+import default_state from './default_state';
+import * as globus_actions from '../../actions/globus';
+import { produce } from "immer";
+
+const globus_reducer = createReducer(default_state, (builder) => {
+  builder
+    .addCase(globus_actions.LOGIN_SUCCESS, (state, action) => {
+      console.log('[Globus Reducer] LOGIN_SUCCESS action received');
+      console.log('[Globus Reducer] Current state:', {
+        api_auth: state.api_auth,
+        login_pending: state.login_pending,
+        login_url: state.login_url,
+        access_code: state.access_code,
+        login_error: state.login_error,
+        login_error_message: state.login_error_message
+      });
+      console.log('[Globus Reducer] Action payload:', action.payload);
+      return produce(state, draft => {
+        draft.api_auth = action.payload;
+        draft.login_error = false;
+        draft.login_error_message = null;
+        // Clear login info when authentication succeeds
+        draft.login_url = null;
+        draft.access_code = null;
+        draft.login_pending = false;
+      })
+    })
+    .addCase(globus_actions.LOGIN_FAILURE, (state, action) => {
+      console.log('[Globus Reducer] LOGIN_FAILURE action received');
+      console.log('[Globus Reducer] Current state:', {
+        api_auth: state.api_auth,
+        login_pending: state.login_pending,
+        login_url: state.login_url,
+        access_code: state.access_code,
+        login_error: state.login_error,
+        login_error_message: state.login_error_message
+      });
+      console.log('[Globus Reducer] Action payload (error message):', action.payload);
+      return produce(state, draft => {
+        draft.api_auth = null;
+        draft.login_error = true;
+        draft.login_error_message = action.payload;
+        console.log('[Globus Reducer] New state after LOGIN_FAILURE:', {
+          api_auth: draft.api_auth,
+          login_pending: draft.login_pending,
+          login_url: draft.login_url,
+          access_code: draft.access_code,
+          login_error: draft.login_error,
+          login_error_message: draft.login_error_message
+        });
+      })
+    })
+    .addCase(globus_actions.LOGOUT_SUCCESS, (state, action) => {
+      return produce(state, draft => {
+        draft.api_auth = null;
+        draft.login_error = false;
+        draft.login_error_message = null;
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_USERNAME, (state, action) => {
+      return produce(state, draft => {
+        draft.username = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_PASSWORD, (state, action) => {
+      return produce(state, draft => {
+        draft.password = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_COLLECTION_NAME, (state, action) => {
+      return produce(state, draft => {
+        draft.collection_name = action.payload;
+        // Update collection_path if it doesn't already have a collection name
+        if (draft.collection_path && !draft.collection_path.includes('#')) {
+          draft.collection_path = `${action.payload}#${draft.collection_path}`;
+        }
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_COLLECTION_PATH, (state, action) => {
+      return produce(state, draft => {
+        draft.collection_path = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_SOURCE_ENDPOINT, (state, action) => {
+      return produce(state, draft => {
+        draft.source_endpoint = action.payload;
+      })
+    })
+    .addCase(globus_actions.TOGGLE_UPLOAD_TO_GLOBUS, (state, action) => {
+      return produce(state, draft => {
+        draft.upload = !draft.upload;
+      })
+    })
+    .addCase(globus_actions.TOGGLE_DELETE_AFTER_GLOBUS_UPLOAD, (state, action) => {
+      return produce(state, draft => {
+        draft.delete_after = !draft.delete_after;
+      })
+    })
+    .addCase(globus_actions.ADD_UPLOAD_FILE_TO_QUEUE, (state, action) => {
+      return produce(state, draft => {
+        draft.upload_queue.push(action.payload);
+      })
+    })
+    .addCase(globus_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, (state, action) => {
+      return produce(state, draft => {
+        for (let idx in draft.upload_queue) {
+          if (draft.upload_queue[idx].row_idx === action.payload) {
+            draft.upload_queue.splice(idx, 1);
+            break;
+          }
+        }
+      })
+    })
+    .addCase(globus_actions.GLOBUS_COLLECTION_EXISTS, (state, action) => {
+      return produce(state, draft => {
+        draft.globus_collection_exists = true;
+        draft.globus_collection_error_message = null;
+      })
+    })
+    .addCase(globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST, (state, action) => {
+      return produce(state, draft => {
+        draft.globus_collection_exists = false;
+        draft.globus_collection_error_message = action.payload;
+      })
+    })
+    .addCase(globus_actions.CHECK_CLI_AVAILABLE, (state, action) => {
+      return produce(state, draft => {
+        draft.cli_available = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_LOGIN_URL, (state, action) => {
+      console.log('[Globus Reducer] SET_LOGIN_URL action received');
+      console.log('[Globus Reducer] Current login_url:', state.login_url);
+      console.log('[Globus Reducer] New login_url:', action.payload);
+      return produce(state, draft => {
+        draft.login_url = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_ACCESS_CODE, (state, action) => {
+      console.log('[Globus Reducer] SET_ACCESS_CODE action received');
+      console.log('[Globus Reducer] Current access_code:', state.access_code);
+      console.log('[Globus Reducer] New access_code:', action.payload);
+      return produce(state, draft => {
+        draft.access_code = action.payload;
+      })
+    })
+    .addCase(globus_actions.SET_LOGIN_PENDING, (state, action) => {
+      console.log('[Globus Reducer] SET_LOGIN_PENDING action received');
+      console.log('[Globus Reducer] Current login_pending:', state.login_pending);
+      console.log('[Globus Reducer] New login_pending:', action.payload);
+      console.log('[Globus Reducer] Current state context:', {
+        login_url: state.login_url,
+        access_code: state.access_code,
+        api_auth: state.api_auth
+      });
+      return produce(state, draft => {
+        draft.login_pending = action.payload;
+      })
+    })
+    .addCase(globus_actions.CLEAR_LOGIN_INFO, (state, action) => {
+      return produce(state, draft => {
+        draft.login_url = null;
+        draft.access_code = null;
+        draft.login_pending = false;
+        draft.authorization_code_input = '';
+      })
+    })
+    .addCase(globus_actions.SET_AUTHORIZATION_CODE_INPUT, (state, action) => {
+      return produce(state, draft => {
+        draft.authorization_code_input = action.payload;
+      })
+    })
+    .addCase(globus_actions.TOGGLE_SSL_VERIFICATION, (state, action) => {
+      return produce(state, draft => {
+        draft.disable_ssl_verification = !draft.disable_ssl_verification;
+      })
+    })
+})
+
+export default globus_reducer;

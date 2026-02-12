@@ -1,0 +1,601 @@
+import React, { useState, useEffect, useRef } from 'react';
+import ModalHeader from './ModalHeader';
+import Button from '../../components/controls/button/Button';
+import InputText from '../../components/controls/input/InputText';
+import Checkbox from '../../components/controls/checkbox/Checkbox';
+
+function ModalGlobusTest(props) {
+  const [cliAvailable, setCliAvailable] = useState(null);
+  const [cliStatus, setCliStatus] = useState('');
+  const [authStatus, setAuthStatus] = useState(null);
+  const [currentUser, setCurrentUser] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [sourceEndpoint, setSourceEndpoint] = useState('');
+  const [collectionPath, setCollectionPath] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [connectionWarning, setConnectionWarning] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginUrl, setLoginUrl] = useState(null);
+  const [accessCode, setAccessCode] = useState(null);
+  const [loginPending, setLoginPending] = useState(false);
+  const [authorizationCodeInput, setAuthorizationCodeInput] = useState('');
+  const [disableSslVerification, setDisableSslVerification] = useState(false);
+  const cleanupRef = useRef({ progress: null, complete: null, error: null });
+
+  // Check CLI availability on mount
+  useEffect(() => {
+    checkCliAvailable();
+    checkAuth();
+    
+    // Cleanup listeners on unmount
+    return () => {
+      if (cleanupRef.current.progress) cleanupRef.current.progress();
+      if (cleanupRef.current.complete) cleanupRef.current.complete();
+      if (cleanupRef.current.error) cleanupRef.current.error();
+    };
+  }, []);
+
+  async function checkCliAvailable() {
+    setIsLoading(true);
+    try {
+      const response = await window.electronAPI.globusCheckCliAvailable();
+      if (response && response[0]) {
+        setCliAvailable(true);
+        setCliStatus(response[1].status || 'Available');
+      } else {
+        setCliAvailable(false);
+        setCliStatus(response[1]?.status || 'Not available');
+      }
+    } catch (error) {
+      setCliAvailable(false);
+      setCliStatus('Error checking CLI availability');
+      setErrorMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function checkAuth() {
+    setIsLoading(true);
+    try {
+      const response = await window.electronAPI.globusCheckAuth();
+      if (response && response[0]) {
+        setAuthStatus(true);
+        // Extract username from whoami response
+        const username = response[1].username || response[1].sub || response[1].id || 'Authenticated';
+        setCurrentUser(username);
+        // Clear login pending state on successful auth
+        setLoginPending(false);
+        setLoginUrl(null);
+        setAccessCode(null);
+        setAuthorizationCodeInput('');
+      } else {
+        setAuthStatus(false);
+        setCurrentUser('');
+      }
+    } catch (error) {
+      setAuthStatus(false);
+      setCurrentUser('');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleLogin() {
+    setIsLoading(true);
+    setErrorMessage('');
+    setConnectionWarning(false);
+    setLoginUrl(null);
+    setAccessCode(null);
+    setLoginPending(false);
+    setAuthorizationCodeInput('');
+    try {
+      const response = await window.electronAPI.globusLogin();
+      if (response && response[0]) {
+        // If URL is provided, store it and set pending state
+        if (response[1]?.url) {
+          setLoginUrl(response[1].url);
+          setAccessCode(response[1].access_code || null);
+          setLoginPending(true);
+          setErrorMessage(''); // Clear error message, URL will be shown in UI
+        } else {
+          setErrorMessage(response[1]?.message || 'Login initiated. Please check your browser.');
+        }
+        // Show connection warning if present
+        if (response[1]?.hasConnectionWarning) {
+          setConnectionWarning(true);
+        }
+      } else {
+        // Show connection errors more prominently
+        const errorMsg = response[1]?.message || 'Login failed';
+        if (response[1]?.connectionError) {
+          setErrorMessage(`Connection Error: ${errorMsg}. Please check your network connection and firewall settings.`);
+        } else {
+          setErrorMessage(errorMsg);
+        }
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Login error');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleSubmitAuthorizationCode() {
+    if (!authorizationCodeInput || !authorizationCodeInput.trim()) {
+      setErrorMessage('Please enter an authorization code');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await window.electronAPI.globusSubmitAuthorizationCode(authorizationCodeInput.trim());
+      if (response && response[0]) {
+        setAuthorizationCodeInput('');
+        // Wait a moment for the auth to process, then check status
+        setTimeout(() => {
+          checkAuth();
+        }, 1000);
+      } else {
+        setErrorMessage(response[1]?.message || 'Failed to submit authorization code');
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Error submitting authorization code');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await window.electronAPI.globusLogout();
+      if (response && response[0]) {
+        setAuthStatus(false);
+        setCurrentUser('');
+      } else {
+        setErrorMessage(response[1]?.message || 'Logout failed');
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Logout error');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleSelectFile() {
+    try {
+      const files = await window.electronAPI.openFileSingleDialog();
+      if (files && files.length > 0) {
+        setSelectedFile(files[0].source.path);
+        setErrorMessage('');
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Error selecting file');
+    }
+  }
+
+  async function handleValidatePath() {
+    if (!collectionPath) {
+      setErrorMessage('Please enter a collection path');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await window.electronAPI.globusCheckCollectionPath(collectionPath);
+      if (response && response[0]) {
+        setErrorMessage('Path is valid');
+      } else {
+        setErrorMessage(response[1]?.message || 'Path validation failed');
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Error validating path');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) {
+      setErrorMessage('Please select a file');
+      return;
+    }
+    if (!sourceEndpoint) {
+      setErrorMessage('Please enter a source endpoint (e.g., endpoint-id:/path/to/file). For local files, use Globus Connect Personal.');
+      return;
+    }
+    if (!collectionPath) {
+      setErrorMessage('Please enter a collection path');
+      return;
+    }
+    if (!authStatus) {
+      setErrorMessage('Please login first');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadStatus('Initiating transfer...');
+    setErrorMessage('');
+
+    // Setup progress listeners
+    const progressListener = (event, progress) => {
+      setUploadProgress(progress.progress || 0);
+      setUploadStatus(`Status: ${progress.status || 'Transferring'} - ${Math.round(progress.progress || 0)}%`);
+    };
+
+    const completeListener = (event, rowIdx) => {
+      setUploadProgress(100);
+      setUploadStatus('Transfer completed successfully!');
+      setIsUploading(false);
+      if (cleanupRef.current.progress) cleanupRef.current.progress();
+      if (cleanupRef.current.complete) cleanupRef.current.complete();
+      if (cleanupRef.current.error) cleanupRef.current.error();
+      cleanupRef.current = { progress: null, complete: null, error: null };
+    };
+
+    const errorListener = (event, error) => {
+      setErrorMessage(error.error || 'Upload failed');
+      setUploadStatus('Transfer failed');
+      setIsUploading(false);
+      if (cleanupRef.current.progress) cleanupRef.current.progress();
+      if (cleanupRef.current.complete) cleanupRef.current.complete();
+      if (cleanupRef.current.error) cleanupRef.current.error();
+      cleanupRef.current = { progress: null, complete: null, error: null };
+    };
+
+    cleanupRef.current.progress = window.electronAPI.globusSetupUploadProgress(progressListener);
+    cleanupRef.current.complete = window.electronAPI.globusSetupUploadComplete(completeListener);
+    cleanupRef.current.error = window.electronAPI.globusSetupUploadError(errorListener);
+
+    try {
+      // Use the source endpoint provided by user
+      // Format should be: endpoint-id:/path/to/file
+      const sourcePath = sourceEndpoint;
+      const response = await window.electronAPI.globusUploadFile(sourcePath, collectionPath, selectedFile, 0);
+      
+      if (!response || !response[0]) {
+        setErrorMessage(response[1]?.message || 'Failed to initiate transfer');
+        setIsUploading(false);
+      }
+      // Progress will be updated via event listeners
+    } catch (error) {
+      setErrorMessage(error.message || 'Upload error');
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <div className="__modal">
+      <ModalHeader title={"Globus Test"} type={"globus_test"} />
+      <div className={"__content"}>
+        <div className={"__divider"} />
+        <div className={"__config-controls"}>
+          <div className={"__config-control-section"}>
+            <div className={"__config-control-section-title"}>CLI Status</div>
+            <div className={"__config-control-section-description"}>
+              Check if globus-cli is available and ready to use.
+            </div>
+            <div style={{ marginBottom: '1em' }}>
+              <div style={{ 
+                padding: '0.5em', 
+                backgroundColor: '#ffffff',
+                border: '1px solid #cccccc',
+                borderRadius: '4px',
+                color: '#000000'
+              }}>
+                <strong>Status:</strong> {cliStatus || 'Checking...'}
+              </div>
+              {!cliAvailable && (
+                <div style={{ marginTop: '0.5em', color: '#000000' }}>
+                  <p>Globus CLI is not available. For development:</p>
+                  <ul>
+                    <li>Add globus-cli to environment.yml</li>
+                    <li>Run: conda env update -f environment.yml</li>
+                  </ul>
+                  <p>For production: Use a packaged build with globus-cli bundled.</p>
+                </div>
+              )}
+              <Button 
+                text="Refresh Status" 
+                onClick={checkCliAvailable}
+                disabled={isLoading}
+                extra_class_name="_align-center"
+                style={{ marginTop: '0.5em' }}
+              />
+            </div>
+
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>Authentication</div>
+            <div className={"__config-control-section-description"}>
+              Login to Globus to authenticate for file transfers.
+            </div>
+            <div style={{ marginBottom: '1em' }}>
+              {authStatus ? (
+                <div>
+                  <div style={{ 
+                    padding: '0.5em', 
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #333333',
+                    borderRadius: '4px',
+                    marginBottom: '0.5em',
+                    color: '#000000'
+                  }}>
+                    <strong>Authenticated as:</strong> {currentUser}
+                  </div>
+                  <Button 
+                    text="Logout" 
+                    onClick={handleLogout}
+                    disabled={isLoading || isUploading}
+                    extra_class_name="_align-center"
+                  />
+                </div>
+              ) : (
+                <div>
+                  {loginPending && loginUrl ? (
+                    <div>
+                      <div style={{ 
+                        padding: '1em', 
+                        backgroundColor: '#e7f3ff', 
+                        border: '1px solid #b3d9ff', 
+                        borderRadius: '4px', 
+                        marginBottom: '1em' 
+                      }}>
+                        <div style={{ marginBottom: '0.5em' }}>
+                          <strong>Step 1: Visit this URL:</strong>
+                          <div style={{ 
+                            marginTop: '0.25em', 
+                            padding: '0.5em', 
+                            backgroundColor: '#ffffff', 
+                            border: '1px solid #ccc',
+                            borderRadius: '2px',
+                            wordBreak: 'break-all',
+                            fontSize: '0.9em',
+                            color: '#000000'
+                          }}>
+                            {loginUrl}
+                          </div>
+                          <Button 
+                            text="Copy URL" 
+                            onClick={() => navigator.clipboard.writeText(loginUrl)}
+                            extra_class_name="_align-center"
+                            style={{ marginTop: '0.25em' }}
+                          />
+                        </div>
+                        
+                        {accessCode && (
+                          <div style={{ marginBottom: '0.5em' }}>
+                            <strong>Step 2: Enter this access code in your browser:</strong>
+                            <div style={{ 
+                              marginTop: '0.25em', 
+                              padding: '0.5em', 
+                              backgroundColor: '#fff3cd', 
+                              border: '1px solid #ffc107',
+                              borderRadius: '2px',
+                              fontFamily: 'monospace',
+                              fontSize: '1.2em',
+                              textAlign: 'center',
+                              color: '#000000'
+                            }}>
+                              {accessCode}
+                            </div>
+                            <Button 
+                              text="Copy Code" 
+                              onClick={() => navigator.clipboard.writeText(accessCode)}
+                              extra_class_name="_align-center"
+                              style={{ marginTop: '0.25em' }}
+                            />
+                          </div>
+                        )}
+                        
+                        <div style={{ marginTop: '0.5em', fontSize: '0.9em', color: '#666' }}>
+                          After completing authentication in your browser, you will receive an authorization code. Enter that code below.
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginBottom: '1em' }}>
+                        <InputText
+                          label="Authorization Code (from browser)"
+                          value={authorizationCodeInput || ''}
+                          onChange={(new_value) => setAuthorizationCodeInput(new_value)}
+                          placeholder="Enter the authorization code shown in your browser"
+                          disabled={isLoading || isUploading}
+                          style={{ marginBottom: '0.5em' }}
+                        />
+                        <Button 
+                          text="Submit Code" 
+                          onClick={handleSubmitAuthorizationCode}
+                          extra_class_name="_align-center"
+                          disabled={!authorizationCodeInput || !authorizationCodeInput.trim() || isLoading || isUploading}
+                          style={{ marginBottom: '0.5em' }}
+                        />
+                        <div style={{ fontSize: '0.9em', color: '#666', textAlign: 'center', marginTop: '0.5em' }}>
+                          Or click "Check Auth Status" if you've already submitted the code.
+                        </div>
+                        <Button 
+                          text="Check Auth Status" 
+                          onClick={checkAuth}
+                          extra_class_name="_align-center"
+                          disabled={isLoading || isUploading}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ 
+                        padding: '0.5em', 
+                        backgroundColor: '#f5f5f5',
+                        border: '1px solid #cccccc',
+                        borderRadius: '4px',
+                        marginBottom: '0.5em',
+                        color: '#000000'
+                      }}>
+                        Not authenticated
+                      </div>
+                      <div style={{ marginBottom: '1em', padding: '0.75em', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '4px' }}>
+                        <Checkbox 
+                          label={"Disable SSL Verification (testing only)"} 
+                          checked={disableSslVerification} 
+                          onClick={async () => {
+                            const newValue = !disableSslVerification;
+                            setDisableSslVerification(newValue);
+                            // Update the GlobusAPI instance
+                            await window.electronAPI.globusSetSslVerification(newValue);
+                          }} 
+                        />
+                        <div style={{ fontSize: '0.85em', color: '#666', marginTop: '0.5em', fontStyle: 'italic' }}>
+                          <strong>Warning:</strong> This should only be used in development environments with SSL-inspecting firewalls. 
+                          Disabling SSL verification reduces security and should not be used in production.
+                        </div>
+                      </div>
+                      <Button 
+                        text="Login" 
+                        onClick={handleLogin}
+                        disabled={isLoading || !cliAvailable || isUploading}
+                        extra_class_name="_align-center"
+                      />
+                      <p style={{ fontSize: '0.9em', marginTop: '0.5em', color: '#333333' }}>
+                        Clicking Login will open your browser for OAuth2 authentication.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>File Selection</div>
+            <div className={"__config-control-section-description"}>
+              Select a file to upload to Globus. You'll need a source endpoint (e.g., from Globus Connect Personal).
+            </div>
+            <div style={{ marginBottom: '1em' }}>
+              <Button 
+                text="Select File" 
+                onClick={handleSelectFile}
+                disabled={isLoading || isUploading}
+                extra_class_name="_align-center"
+              />
+              {selectedFile && (
+                <div style={{ 
+                  marginTop: '0.5em', 
+                  padding: '0.5em',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cccccc',
+                  borderRadius: '4px',
+                  wordBreak: 'break-all',
+                  color: '#000000'
+                }}>
+                  <strong>Selected:</strong> {selectedFile}
+                </div>
+              )}
+              <div style={{ marginTop: '0.5em' }}>
+                <InputText 
+                  label="Source Endpoint (e.g., endpoint-id:/path/to/file)" 
+                  value={sourceEndpoint} 
+                  onChange={(new_value) => setSourceEndpoint(new_value)}
+                  disabled={isLoading || isUploading}
+                  placeholder="endpoint-id:/path/to/file"
+                />
+                <p style={{ fontSize: '0.9em', marginTop: '0.5em', color: '#333333' }}>
+                  For local files, you need Globus Connect Personal installed to create a local endpoint.
+                  Format: endpoint-id:/full/path/to/file
+                </p>
+              </div>
+            </div>
+
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>Collection Path</div>
+            <div className={"__config-control-section-description"}>
+              Enter the destination collection path (format: collectionname#/path/to/folder)
+            </div>
+            <div style={{ marginBottom: '1em' }}>
+              <InputText 
+                label="Collection Path" 
+                value={collectionPath} 
+                onChange={(new_value) => setCollectionPath(new_value)}
+                disabled={isLoading || isUploading}
+                placeholder="collectionname#/path/to/folder"
+              />
+              <Button 
+                text="Validate Path" 
+                onClick={handleValidatePath}
+                disabled={isLoading || !collectionPath || isUploading}
+                extra_class_name="_align-center"
+                style={{ marginTop: '0.5em' }}
+              />
+            </div>
+
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>Upload</div>
+            <div style={{ marginBottom: '1em' }}>
+              <Button 
+                text={isUploading ? "Uploading..." : "Upload File"} 
+                onClick={handleUpload}
+                disabled={isLoading || !selectedFile || !sourceEndpoint || !collectionPath || !authStatus || isUploading || !cliAvailable}
+                extra_class_name="_align-center"
+              />
+              
+              {isUploading && (
+                <div style={{ marginTop: '1em' }}>
+                  <div style={{ 
+                    width: '100%', 
+                    height: '20px', 
+                    backgroundColor: '#e0e0e0',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    border: '1px solid #999999'
+                  }}>
+                    <div style={{ 
+                      width: `${uploadProgress}%`, 
+                      height: '100%', 
+                      backgroundColor: '#666666',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  <div style={{ marginTop: '0.5em', textAlign: 'center', color: '#000000' }}>
+                    {uploadStatus || `${Math.round(uploadProgress)}%`}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {errorMessage && (
+              <div style={{ 
+                marginTop: '1em',
+                padding: '0.5em',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #333333',
+                borderRadius: '4px',
+                color: '#000000'
+              }}>
+                <strong>{errorMessage.includes('Error:') ? '' : 'Message: '}</strong>{errorMessage}
+              </div>
+            )}
+            {connectionWarning && (
+              <div style={{ 
+                marginTop: '0.5em',
+                padding: '0.5em',
+                backgroundColor: '#fff8e1',
+                border: '1px solid #ff9900',
+                borderRadius: '4px',
+                color: '#000000'
+              }}>
+                <strong>Note:</strong> Connection warning detected, but authentication URL was retrieved. You can still proceed with authentication.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className={"__footer"}>
+      </div>
+    </div>
+  );
+}
+
+export default ModalGlobusTest;

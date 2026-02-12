@@ -6,6 +6,7 @@ import config from './config';
 import viewer from './viewer';
 import debug from './debug';
 import dsa from './dsa';
+import globus from './globus';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -14,7 +15,8 @@ export const root_reducer = combineReducers({
     config: config,
     viewer: viewer,
     debug: debug,
-    dsa: dsa
+    dsa: dsa,
+    globus: globus
 });
 
 export default root_reducer;

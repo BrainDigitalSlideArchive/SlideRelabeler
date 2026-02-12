@@ -6,6 +6,7 @@ import Switch from '../../components/controls/switch/Switch';
 
 const network_types = [
   {label: "DSA", value: "dsa"},
+  {label: "Globus", value: "globus"},
 ];
 
 const get_network_type_item = (network_type) => {

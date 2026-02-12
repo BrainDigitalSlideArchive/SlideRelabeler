@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow, app, safeStorage } from 'electron';
+import { ipcMain, dialog, BrowserWindow, app, safeStorage, shell } from 'electron';
 import { PythonBridge } from './bridge/pythonBridge';
 import path, { join } from 'path';
 import fs from 'fs/promises';
@@ -8,6 +8,7 @@ import { registerRoute } from './routers/main-electron-router';
 import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
+import GlobusAPI from './api/GlobusAPI';
 
 let bridge = new PythonBridge();
 
@@ -17,6 +18,7 @@ let upload_status = {
 };
 
 let dsa_client = null;
+let globus_client = null;
 
 function normalizePath(path) {
   return path.replaceAll('\\', '/');
@@ -155,6 +157,258 @@ ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {
     return response[1];
   }
 })
+
+// Globus IPC handlers
+ipcMain.handle('globus-check-cli-available', async (event) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  return [globus_client.isAvailable(), { status: globus_client.getStatus() }];
+});
+
+ipcMain.handle('globus-check-auth', async (event) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  return globus_client.check_auth();
+});
+
+ipcMain.handle('globus-login', async (event) => {
+  console.log('[Handlers] ===== globus-login IPC handler called =====');
+  
+  if (!globus_client) {
+    console.log('[Handlers] Creating new GlobusAPI instance');
+    globus_client = new GlobusAPI();
+  }
+  
+  const isAvailable = globus_client.isAvailable();
+  console.log('[Handlers] globus_client.isAvailable():', isAvailable);
+  if (!isAvailable) {
+    console.log('[Handlers] Globus CLI not available, returning error');
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  
+  console.log('[Handlers] Calling globus_client.login()...');
+  const response = await globus_client.login();
+  console.log('[Handlers] globus_client.login() response structure:', {
+    isArray: Array.isArray(response),
+    length: response?.length,
+    response0: response?.[0],
+    response1: response?.[1],
+    hasUrl: !!response?.[1]?.url,
+    url: response?.[1]?.url,
+    hasAccessCode: !!response?.[1]?.access_code,
+    accessCode: response?.[1]?.access_code,
+    message: response?.[1]?.message,
+    fullResponse: response
+  });
+  
+  // If login returned a URL, open it in the user's browser
+  const hasUrl = response && response[0] && response[1]?.url;
+  console.log('[Handlers] Checking if URL should be opened:', {
+    responseExists: !!response,
+    response0IsTrue: response?.[0] === true,
+    response1Exists: !!response?.[1],
+    urlExists: !!response?.[1]?.url,
+    hasUrl: hasUrl
+  });
+  
+  if (hasUrl) {
+    const url = response[1].url;
+    const accessCode = response[1].access_code;
+    console.log('[Handlers] Login returned URL:', url);
+    console.log('[Handlers] Login returned access_code:', accessCode || 'none');
+    
+    try {
+      console.log('[Handlers] Attempting to open URL in browser:', url);
+      await shell.openExternal(url);
+      console.log('[Handlers] Browser opened successfully');
+      const returnValue = [true, { 
+        message: 'Please complete authentication in your browser. After authenticating, click "Check Auth Status" to verify.',
+        url: url,
+        access_code: accessCode,
+        hasConnectionWarning: response[1].hasConnectionWarning
+      }];
+      console.log('[Handlers] Returning success with URL (browser opened):', returnValue);
+      return returnValue;
+    } catch (error) {
+      console.log('[Handlers] Error opening browser:', error);
+      console.log('[Handlers] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      // If we can't open browser, still return success with URL for user to copy
+      const returnValue = [true, { 
+        message: `Please visit this URL to authenticate: ${url}`,
+        url: url,
+        access_code: accessCode,
+        hasConnectionWarning: response[1].hasConnectionWarning
+      }];
+      console.log('[Handlers] Returning success with URL (browser open failed):', returnValue);
+      return returnValue;
+    }
+  }
+  
+  console.log('[Handlers] No URL found in response, returning original response');
+  console.log('[Handlers] Response[0]:', response?.[0]);
+  console.log('[Handlers] Response[1]:', response?.[1]);
+  console.log('[Handlers] ===== globus-login handler complete =====');
+  return response;
+});
+
+ipcMain.handle('globus-submit-authorization-code', async (event, code) => {
+  console.log('[Handlers] globus-submit-authorization-code IPC handler called with code:', code ? code.substring(0, 4) + '...' : 'null');
+  
+  if (!globus_client) {
+    console.log('[Handlers] Creating new GlobusAPI instance');
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    console.log('[Handlers] Globus CLI not available');
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  
+  if (!code || !code.trim()) {
+    console.log('[Handlers] No authorization code provided');
+    return [false, { message: 'Authorization code is required' }];
+  }
+  
+  console.log('[Handlers] Calling globus_client.submitAuthorizationCode()...');
+  const response = await globus_client.submitAuthorizationCode(code.trim());
+  console.log('[Handlers] globus_client.submitAuthorizationCode() response:', response);
+  
+  return response;
+});
+
+ipcMain.handle('globus-set-ssl-verification', async (event, disable) => {
+  console.log('[Handlers] globus-set-ssl-verification IPC handler called with disable:', disable);
+  
+  if (!globus_client) {
+    console.log('[Handlers] Creating new GlobusAPI instance');
+    globus_client = new GlobusAPI();
+  }
+  
+  globus_client.setDisableSslVerification(disable);
+  console.log('[Handlers] SSL verification setting updated on GlobusAPI instance');
+  return [true, { message: 'SSL verification setting updated' }];
+});
+
+ipcMain.handle('globus-logout', async (event) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  return globus_client.logout();
+});
+
+ipcMain.handle('globus-check-collection-path', async (event, collection_path) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  return globus_client.validate_collection_path(collection_path);
+});
+
+async function poll_globus_transfer_status(window, task_id, file_row_idx, file_path) {
+  const max_polls = 1000; // Prevent infinite polling
+  let poll_count = 0;
+  
+  while (poll_count < max_polls) {
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
+    
+    const status_response = await globus_client.get_transfer_status(task_id);
+    if (!status_response[0]) {
+      window.webContents.send('globus-upload-file-error', { 
+        file_path: file_path, 
+        error: status_response[1].message, 
+        row_idx: file_row_idx 
+      });
+      return;
+    }
+    
+    const task = status_response[1];
+    const status = task.status || task.state;
+    
+    // Calculate progress if available
+    let progress = 0;
+    if (task.bytes_transferred && task.bytes_expected) {
+      progress = (task.bytes_transferred / task.bytes_expected) * 100;
+    } else if (task.files_transferred && task.files_expected) {
+      progress = (task.files_transferred / task.files_expected) * 100;
+    }
+    
+    // Send progress update
+    window.webContents.send('globus-upload-file-progress', { 
+      file_path: file_path, 
+      progress: progress, 
+      status: status,
+      row_idx: file_row_idx 
+    });
+    
+    // Check if transfer is complete
+    if (status === 'SUCCEEDED') {
+      window.webContents.send('globus-upload-file-complete', file_row_idx);
+      return;
+    } else if (status === 'FAILED' || status === 'INACTIVE') {
+      window.webContents.send('globus-upload-file-error', { 
+        file_path: file_path, 
+        error: task.message || `Transfer ${status}`, 
+        row_idx: file_row_idx 
+      });
+      return;
+    }
+    
+    poll_count++;
+  }
+  
+  // Timeout after max polls
+  window.webContents.send('globus-upload-file-error', { 
+    file_path: file_path, 
+    error: 'Transfer polling timeout', 
+    row_idx: file_row_idx 
+  });
+}
+
+ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  
+  // Initiate transfer
+  const transfer_response = await globus_client.submit_transfer(source_path, dest_collection_path);
+  if (!transfer_response[0]) {
+    return transfer_response;
+  }
+  
+  // Extract task_id from response
+  // The response format may vary, but typically includes a task_id or similar
+  const task_id = transfer_response[1].task_id || transfer_response[1].id || transfer_response[1].DATA?.[0]?.task_id;
+  
+  if (!task_id) {
+    return [false, { message: 'Could not extract task_id from transfer response', response: transfer_response[1] }];
+  }
+  
+  // Start polling for progress in background
+  const window = get_browser_window_by_title('SlideRelabeler');
+  if (window) {
+    poll_globus_transfer_status(window, task_id, file_row_idx, file_path).catch(err => {
+      console.error('Error polling globus transfer:', err);
+    });
+  }
+  
+  return [true, { task_id: task_id, message: 'Transfer initiated' }];
+});
 
 ipcMain.handle('get-platform', async () => {
   return process.platform;

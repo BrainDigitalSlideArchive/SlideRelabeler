@@ -110,3 +110,6 @@ dist
 build
 src/python/tests/dist
 src/python/tests/build
+
+# Reference directory for external repositories (for code review only)
+reference/

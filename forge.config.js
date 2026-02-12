@@ -7,10 +7,10 @@ const { execSync } = require('child_process');
 let extraResource = [];
 
 if(os.platform() === 'darwin') {
-  extraResource = ['./dist/engine.app'];
+  extraResource = ['./dist/engine.app', './dist/globus-cli.app'];
 }
 else {
-  extraResource = ['./dist/engine'];
+  extraResource = ['./dist/engine', './dist/globus-cli'];
 }
 
 module.exports = {
@@ -46,8 +46,20 @@ module.exports = {
         os.platform() === 'win32' ? execSync('rmdir /s /q .\\output') : execSync('rm -rf ./output');
       }
 
+      // Prepare environment variables for pyinstaller subprocess
+      // engine.spec needs CONDA_PREFIX to copy DLLs
+      // If conda is properly activated, CONDA_PREFIX will already be in process.env
+      const execEnv = { ...process.env };
+
       console.log('** Running pyinstaller on ./pyinstaller/engine.spec **');
-      execSync('pyinstaller -y --clean ./pyinstaller/engine.spec');
+      execSync('pyinstaller -y --clean ./pyinstaller/engine.spec', {
+        env: execEnv
+      });
+
+      console.log('** Running pyinstaller on ./pyinstaller/globus-cli.spec **');
+      execSync('pyinstaller -y --clean ./pyinstaller/globus-cli.spec', {
+        env: execEnv
+      });
     }
   },
   makers: [

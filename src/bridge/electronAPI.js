@@ -3,6 +3,7 @@
 import { contextBridge, ipcRenderer, BrowserWindow } from 'electron';
 
 import * as files_actions from '../actions/files';
+import * as globus_actions from '../actions/globus';
 
 
 const API = {
@@ -59,6 +60,44 @@ const API = {
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
   dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
+  globusCheckCliAvailable: () => ipcRenderer.invoke('globus-check-cli-available'),
+  globusCheckAuth: () => ipcRenderer.invoke('globus-check-auth'),
+  globusLogin: () => {
+    console.log('[electronAPI] globusLogin() called, invoking IPC...');
+    const result = ipcRenderer.invoke('globus-login');
+    console.log('[electronAPI] globusLogin() IPC invoke returned (promise):', result);
+    result.then((response) => {
+      console.log('[electronAPI] globusLogin() IPC response received:', {
+        isArray: Array.isArray(response),
+        length: response?.length,
+        response0: response?.[0],
+        response1: response?.[1],
+        hasUrl: !!response?.[1]?.url,
+        url: response?.[1]?.url
+      });
+    }).catch((error) => {
+      console.log('[electronAPI] globusLogin() IPC error:', error);
+    });
+    return result;
+  },
+  globusSubmitAuthorizationCode: (code) => ipcRenderer.invoke('globus-submit-authorization-code', code),
+  globusSetSslVerification: (disable) => ipcRenderer.invoke('globus-set-ssl-verification', disable),
+  globusLogout: () => ipcRenderer.invoke('globus-logout'),
+  globusUploadFile: (source_path, dest_collection_path, file_path, file_row_idx = 0) => 
+    ipcRenderer.invoke('globus-upload-file', source_path, dest_collection_path, file_path, file_row_idx),
+  globusCheckCollectionPath: (collection_path) => ipcRenderer.invoke('globus-check-collection-path', collection_path),
+  globusSetupUploadFileProgress: (dispatch) => ipcRenderer.on('globus-upload-file-progress', (event, progress) => {
+    dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
+  }),
+  globusSetupUploadComplete: (dispatch) => ipcRenderer.on('globus-upload-file-complete', (event, file_row_idx) => {
+    dispatch({ type: globus_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
+  }),
+  globusSetupUploadFileError: (dispatch) => ipcRenderer.on('globus-upload-file-error', (event, error) => {
+    dispatch({ type: files_actions.UPLOAD_FILE_ERROR, payload: error });
+  }),
+  globusStopUploadFileProgress: () => ipcRenderer.removeAllListeners('globus-upload-file-progress'),
+  globusStopUploadComplete: () => ipcRenderer.removeAllListeners('globus-upload-file-complete'),
+  globusStopUploadFileError: () => ipcRenderer.removeAllListeners('globus-upload-file-error'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);
