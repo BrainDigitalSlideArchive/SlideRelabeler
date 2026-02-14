@@ -63,11 +63,9 @@ function* transformSlideToFileRow(slide) {
         }
     };
 
-    // Set destination directory if available
+    // Set destination directory (always set, matching Add Files behavior)
     const output_dir = yield select(state => state.files.output_dir);
-    if (output_dir) {
-        file_row.__reserved.destinationDirectory = output_dir;
-    }
+    file_row.__reserved.destinationDirectory = output_dir; // Can be null
 
     return file_row;
 }
