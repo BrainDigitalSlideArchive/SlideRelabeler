@@ -6,6 +6,7 @@ import output_csv from "./output_csv";
 
 import * as files_actions from '../../actions/files';
 import * as dsa_actions from '../../actions/dsa';
+import { getFileRowIdentifier } from '../../helpers/file_row_helpers';
 
 export function* save_csv() {
   // Make new CSV file if save_csv is true
@@ -66,7 +67,8 @@ export default function* process_file(file_row_idx, file_row) {
     yield call(save_csv);
   } catch (error) {
     let message = "Error processing file. Please check the path to the file and verify you have the correct permissions for reading the file and writing the file to desired output directory."
-    yield put({ type: files_actions.UPDATE_FILE_ROW_WITH_ERROR, payload: { file_row_idx, error: message } })
+    const file_row_identifier = getFileRowIdentifier(file_row);
+    yield put({ type: files_actions.UPDATE_FILE_ROW_WITH_ERROR, payload: { file_row_identifier, error: message } })
     yield put({ type: files_actions.ADD_BACKEND_ERROR_MESSAGE, payload: { message: `Error processing file. ${message}. ${error.message}` } });
 
     yield call(save_csv);

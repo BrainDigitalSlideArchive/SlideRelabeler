@@ -96,42 +96,30 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITH_METADATA, (state, action) => {
       return produce(state, draft => {
-        let row_idx = -1;
-        
-        // Support both new format (identifier-based) and old format (index-based) for backward compatibility
-        if (action.payload.file_row_identifier !== undefined) {
-          // New format: find row by UUID or path
-          const identifier = action.payload.file_row_identifier;
-          row_idx = draft.file_rows.findIndex(
-            row => row.__reserved?.uuid === identifier || 
-                   row.__reserved?.source?.path === identifier
-          );
-        } else if (action.payload.file_row_idx !== undefined) {
-          // Old format: use index directly (for backward compatibility)
-          row_idx = action.payload.file_row_idx;
-        } else if (action.payload.idx !== undefined) {
-          // Alternative old format used by update_input_dir.js
-          row_idx = action.payload.idx;
+        const identifier = action.payload.file_row_identifier;
+        if (!identifier) {
+          console.warn('UPDATE_FILE_ROW_WITH_METADATA: Missing file_row_identifier');
+          return;
         }
+        
+        const row_idx = draft.file_rows.findIndex(
+          row => row.__reserved?.uuid === identifier || 
+                 row.__reserved?.source?.path === identifier
+        );
         
         // Validate that the row exists
         if (row_idx === -1 || row_idx >= draft.file_rows.length) {
-          // Row was removed or doesn't exist, skip update silently
-          const identifier = action.payload.file_row_identifier || action.payload.file_row_idx || action.payload.idx;
-          console.warn(`File row not found for identifier/index: ${identifier}. Row may have been removed.`);
+          console.warn(`File row not found for identifier: ${identifier}. Row may have been removed.`);
+          return;
+        }
+        
+        const updated_file_row = action.payload.updated_file_row;
+        if (!updated_file_row) {
+          console.warn('UPDATE_FILE_ROW_WITH_METADATA: Missing updated_file_row');
           return;
         }
         
         let previous_file_row = draft.file_rows[row_idx];
-        
-        // Handle different payload structures for backward compatibility
-        const updated_file_row = action.payload.updated_file_row || action.payload.row;
-        
-        if (!updated_file_row) {
-          console.warn('UPDATE_FILE_ROW_WITH_METADATA: No updated_file_row or row in payload');
-          return;
-        }
-        
         draft.file_rows[row_idx] = Object.assign({}, previous_file_row, updated_file_row);
         if (updated_file_row.__reserved?.bytes) {
           draft.totalBytes += updated_file_row.__reserved.bytes;
@@ -141,26 +129,20 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITH_ERROR, (state, action) => {
       return produce(state, draft => {
-        let row_idx = -1;
-        
-        // Support both new format (identifier-based) and old format (index-based) for backward compatibility
-        if (action.payload.file_row_identifier !== undefined) {
-          // New format: find row by UUID or path
-          const identifier = action.payload.file_row_identifier;
-          row_idx = draft.file_rows.findIndex(
-            row => row.__reserved?.uuid === identifier || 
-                   row.__reserved?.source?.path === identifier
-          );
-        } else if (action.payload.file_row_idx !== undefined) {
-          // Old format: use index directly (for backward compatibility)
-          row_idx = action.payload.file_row_idx;
+        const identifier = action.payload.file_row_identifier;
+        if (!identifier) {
+          console.warn('UPDATE_FILE_ROW_WITH_ERROR: Missing file_row_identifier');
+          return;
         }
+        
+        const row_idx = draft.file_rows.findIndex(
+          row => row.__reserved?.uuid === identifier || 
+                 row.__reserved?.source?.path === identifier
+        );
         
         // Validate that the row exists
         if (row_idx === -1 || row_idx >= draft.file_rows.length) {
-          // Row was removed or doesn't exist, skip update silently
-          const identifier = action.payload.file_row_identifier || action.payload.file_row_idx;
-          console.warn(`File row not found for error update (identifier/index: ${identifier}). Row may have been removed.`);
+          console.warn(`File row not found for error update (identifier: ${identifier}). Row may have been removed.`);
           return;
         }
         

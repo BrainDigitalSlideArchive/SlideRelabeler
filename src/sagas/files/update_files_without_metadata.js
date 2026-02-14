@@ -2,15 +2,7 @@ import { take, put, call, fork, delay, select, cancel, join } from 'redux-saga/e
 
 import * as files_actions from '../../actions/files';
 import * as debug_actions from '../../actions/debug';
-
-/**
- * Get a stable identifier for a file row (UUID or file path)
- * @param {object} file_row - The file row object
- * @returns {string} - UUID if available, otherwise file path
- */
-function getFileRowIdentifier(file_row) {
-    return file_row.__reserved?.uuid || file_row.__reserved?.source?.path;
-}
+import { getFileRowIdentifier } from '../../helpers/file_row_helpers';
 
 export function* update_file_metadata(file_row_identifier, file_row) {
     try {

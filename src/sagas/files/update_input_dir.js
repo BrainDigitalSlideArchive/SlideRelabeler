@@ -2,6 +2,7 @@ import { put, select } from "redux-saga/effects";
 import add_metadata_to_row from "./add_metadata_to_row";
 import * as files_actions from "../../actions/files";
 import {return_if_path_absolute, return_if_path_relative, return_filename_dir_from_path, join_paths} from "../../helpers/renderer_path_helpers";
+import { getFileRowIdentifier } from "../../helpers/file_row_helpers";
 
 export default function* update_input_dir(input_dir) {
   const fileRows = yield select(state => state.files.fileRows);
@@ -31,6 +32,7 @@ export default function* update_input_dir(input_dir) {
       console.log(`Failed to add metadata for row ${row} row with error ${err}`)
     }
 
-    yield put({type: files_actions.UPDATE_FILE_ROW_WITH_METADATA, payload: {idx: row_idx, row: row}});
+    const file_row_identifier = getFileRowIdentifier(row);
+    yield put({type: files_actions.UPDATE_FILE_ROW_WITH_METADATA, payload: {file_row_identifier, updated_file_row: row}});
   }
 }
