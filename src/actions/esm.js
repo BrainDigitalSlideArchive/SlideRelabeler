@@ -1,0 +1,12 @@
+export const SET_ESM_URL = 'SET_ESM_URL';
+export const SET_ESM_USERNAME = 'SET_ESM_USERNAME';
+export const SET_ESM_PASSWORD = 'SET_ESM_PASSWORD';
+export const ESM_LOGIN = 'ESM_LOGIN';
+export const ESM_LOGIN_SUCCESS = 'ESM_LOGIN_SUCCESS';
+export const ESM_LOGIN_ERROR = 'ESM_LOGIN_ERROR';
+export const ESM_LOGOUT = 'ESM_LOGOUT';
+export const ESM_LOGOUT_SUCCESS = 'ESM_LOGOUT_SUCCESS';
+export const ESM_SEARCH = 'ESM_SEARCH';
+export const ESM_SEARCH_SUCCESS = 'ESM_SEARCH_SUCCESS';
+export const ESM_SEARCH_ERROR = 'ESM_SEARCH_ERROR';
+export const ESM_SET_LOADING = 'ESM_SET_LOADING';

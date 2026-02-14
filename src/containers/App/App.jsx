@@ -153,6 +153,10 @@ const App = (props) => {
                         onClick={() => dispatch({type: file_actions.SELECT_IMPORT_CSV_XSLX})}>
                   CSV Import
                 </button>
+                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"}
+                        onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'esm'}})}>
+                  eSlideManager
+                </button>
               </div>
               <div className={"__spacer"}/>
               {

@@ -10,7 +10,11 @@ import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
 import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
+<<<<<<< HEAD
 import ModalNetwork from './ModalNetwork';
+=======
+import ModalESlideManager from './ModalESlideManager';
+>>>>>>> c93d999 (adds eSlideManager integration)
 
 function render_modal(type, props) {
   switch(type) {
@@ -30,6 +34,8 @@ function render_modal(type, props) {
       return <ModalNetwork network_type={props.network_type}/>;
     case 'metadata':
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
+    case 'esm':
+      return <ModalESlideManager/>;
     default:
       return <ModalHelp/>;
   }

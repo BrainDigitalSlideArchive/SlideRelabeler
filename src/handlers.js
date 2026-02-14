@@ -8,6 +8,7 @@ import { registerRoute } from './routers/main-electron-router';
 import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
+import ESMAPI from './api/ESMAPI';
 
 let bridge = new PythonBridge();
 
@@ -17,6 +18,7 @@ let upload_status = {
 };
 
 let dsa_client = null;
+let esm_client = null;
 
 function normalizePath(path) {
   return path.replaceAll('\\', '/');
@@ -61,6 +63,64 @@ ipcMain.handle('dsa-logout', async (event) => {
   let response = dsa_client.logout();
   dsa_client = null;
   return response;
+});
+
+/**
+ * IPC handler for eSlideManager login
+ * @returns {Promise<[boolean, Object]>} [success, response/error]
+ */
+ipcMain.handle('esm-login', async (event, url, username, password) => {
+  try {
+    esm_client = new ESMAPI(url);
+    const response = await esm_client.tryLogin(username, password);
+    if (response.ok) {
+      return [true, { ok: true }];
+    } else {
+      return [false, { message: response.error || 'Login failed' }];
+    }
+  } catch (error) {
+    console.error('eSlideManager login error:', error.message || error);
+    return [false, { message: error.message || 'Login failed' }];
+  }
+});
+
+/**
+ * IPC handler for eSlideManager slide search by accession number
+ * @returns {Promise<[boolean, Array|Object]>} [success, slides array or error]
+ */
+ipcMain.handle('esm-search-accession', async (event, url, username, password, accession) => {
+  try {
+    // Create new client if URL changed or client doesn't exist
+    if (!esm_client || esm_client.api_url !== url) {
+      esm_client = new ESMAPI(url);
+    }
+    const data = await esm_client.searchByAccession(username, password, accession);
+    if (data && data.error) {
+      return [false, { message: data.error }];
+    }
+    return [true, data];
+  } catch (error) {
+    console.error('eSlideManager search error:', error.message || error);
+    return [false, { message: error.message || 'Search failed' }];
+  }
+});
+
+/**
+ * IPC handler for eSlideManager logout
+ * @returns {Promise<[boolean, Object]>} [success, response]
+ */
+ipcMain.handle('esm-logout', async (event) => {
+  try {
+    if (esm_client) {
+      const response = esm_client.logout();
+      esm_client = null;
+      return [true, response];
+    }
+    return [true, { ok: true, message: "Logged out" }];
+  } catch (error) {
+    console.error('eSlideManager logout error:', error.message || error);
+    return [false, { message: error.message || 'Logout failed' }];
+  }
 });
 
 function get_browser_window_by_title(title) {
