@@ -57,6 +57,8 @@ const API = {
   dsaStopUploadFileProgress: () => ipcRenderer.removeAllListeners('dsa-upload-file-progress'),
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
+  invalidateCache: (filePath) => ipcRenderer.send('invalidate-cache', filePath),
+  clearAllCache: () => ipcRenderer.send('clear-all-cache'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);

@@ -60,6 +60,13 @@ const files_reducer = createReducer(default_state, (builder) => {
           draft.totalBytes -= file_row.__reserved.bytes;
           draft.remainingBytes -= file_row.__reserved.bytes;
         }
+        
+        // Invalidate cache for removed file
+        if (file_row.__reserved && file_row.__reserved.source && file_row.__reserved.source.path) {
+          if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.invalidateCache) {
+            window.electronAPI.invalidateCache(file_row.__reserved.source.path);
+          }
+        }
       })
     })
     .addCase(files_actions.ADD_FILE_ROW, (state, action) => {
@@ -89,17 +96,75 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITH_METADATA, (state, action) => {
       return produce(state, draft => {
-        let previous_file_row = draft.file_rows[action.payload.file_row_idx];
-        draft.file_rows[action.payload.file_row_idx] = Object.assign({}, previous_file_row, action.payload.updated_file_row);
-        if (action.payload.updated_file_row.__reserved.bytes) {
-          draft.totalBytes += action.payload.updated_file_row.__reserved.bytes;
-          draft.remainingBytes += action.payload.updated_file_row.__reserved.bytes;
+        let row_idx = -1;
+        
+        // Support both new format (identifier-based) and old format (index-based) for backward compatibility
+        if (action.payload.file_row_identifier !== undefined) {
+          // New format: find row by UUID or path
+          const identifier = action.payload.file_row_identifier;
+          row_idx = draft.file_rows.findIndex(
+            row => row.__reserved?.uuid === identifier || 
+                   row.__reserved?.source?.path === identifier
+          );
+        } else if (action.payload.file_row_idx !== undefined) {
+          // Old format: use index directly (for backward compatibility)
+          row_idx = action.payload.file_row_idx;
+        } else if (action.payload.idx !== undefined) {
+          // Alternative old format used by update_input_dir.js
+          row_idx = action.payload.idx;
+        }
+        
+        // Validate that the row exists
+        if (row_idx === -1 || row_idx >= draft.file_rows.length) {
+          // Row was removed or doesn't exist, skip update silently
+          const identifier = action.payload.file_row_identifier || action.payload.file_row_idx || action.payload.idx;
+          console.warn(`File row not found for identifier/index: ${identifier}. Row may have been removed.`);
+          return;
+        }
+        
+        let previous_file_row = draft.file_rows[row_idx];
+        
+        // Handle different payload structures for backward compatibility
+        const updated_file_row = action.payload.updated_file_row || action.payload.row;
+        
+        if (!updated_file_row) {
+          console.warn('UPDATE_FILE_ROW_WITH_METADATA: No updated_file_row or row in payload');
+          return;
+        }
+        
+        draft.file_rows[row_idx] = Object.assign({}, previous_file_row, updated_file_row);
+        if (updated_file_row.__reserved?.bytes) {
+          draft.totalBytes += updated_file_row.__reserved.bytes;
+          draft.remainingBytes += updated_file_row.__reserved.bytes;
         }
       })
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITH_ERROR, (state, action) => {
       return produce(state, draft => {
-        draft.file_rows[action.payload.file_row_idx].__reserved.error = action.payload.error;
+        let row_idx = -1;
+        
+        // Support both new format (identifier-based) and old format (index-based) for backward compatibility
+        if (action.payload.file_row_identifier !== undefined) {
+          // New format: find row by UUID or path
+          const identifier = action.payload.file_row_identifier;
+          row_idx = draft.file_rows.findIndex(
+            row => row.__reserved?.uuid === identifier || 
+                   row.__reserved?.source?.path === identifier
+          );
+        } else if (action.payload.file_row_idx !== undefined) {
+          // Old format: use index directly (for backward compatibility)
+          row_idx = action.payload.file_row_idx;
+        }
+        
+        // Validate that the row exists
+        if (row_idx === -1 || row_idx >= draft.file_rows.length) {
+          // Row was removed or doesn't exist, skip update silently
+          const identifier = action.payload.file_row_identifier || action.payload.file_row_idx;
+          console.warn(`File row not found for error update (identifier/index: ${identifier}). Row may have been removed.`);
+          return;
+        }
+        
+        draft.file_rows[row_idx].__reserved.error = action.payload.error;
       })
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA, (state, action) => {
@@ -138,6 +203,11 @@ const files_reducer = createReducer(default_state, (builder) => {
         draft.processing = false;
         draft.csv = default_state.csv;
         draft.file_columns = [];
+        
+        // Clear all cache when files are cleared
+        if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.clearAllCache) {
+          window.electronAPI.clearAllCache();
+        }
       })
     })
     .addCase(files_actions.SET_OUTPUT_DIR, (state, action) => {
