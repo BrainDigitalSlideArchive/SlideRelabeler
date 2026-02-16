@@ -60,13 +60,6 @@ const files_reducer = createReducer(default_state, (builder) => {
           draft.totalBytes -= file_row.__reserved.bytes;
           draft.remainingBytes -= file_row.__reserved.bytes;
         }
-        
-        // Invalidate cache for removed file
-        if (file_row.__reserved && file_row.__reserved.source && file_row.__reserved.source.path) {
-          if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.invalidateCache) {
-            window.electronAPI.invalidateCache(file_row.__reserved.source.path);
-          }
-        }
       })
     })
     .addCase(files_actions.ADD_FILE_ROW, (state, action) => {
@@ -185,11 +178,6 @@ const files_reducer = createReducer(default_state, (builder) => {
         draft.processing = false;
         draft.csv = default_state.csv;
         draft.file_columns = [];
-        
-        // Clear all cache when files are cleared
-        if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.clearAllCache) {
-          window.electronAPI.clearAllCache();
-        }
       })
     })
     .addCase(files_actions.SET_OUTPUT_DIR, (state, action) => {

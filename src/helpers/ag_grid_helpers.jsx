@@ -55,7 +55,11 @@ export function setupRemoveColumn(file_cols, processing, disable_changes, dispat
         return (
           <button
             className='__clear-row _remove-button'
-            onClick={() => dispatch({ type: files_actions.REMOVE_FILE, payload: params.node.rowIndex })}>
+            onClick={() => dispatch({ 
+              type: files_actions.REMOVE_FILE, 
+              payload: params.node.rowIndex,
+              meta: { filePath: params.data?.__reserved?.source?.path }
+            })}>
             X
           </button>
         )
