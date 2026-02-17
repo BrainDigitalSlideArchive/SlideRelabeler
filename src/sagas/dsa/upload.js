@@ -29,7 +29,6 @@ function* watch_upload() {
     while (true) {
         // payload should be the file row
         const action = yield take(dsa_actions.UPLOAD_FILE);
-        console.log("Upload file", action.payload);
         yield put({ type: dsa_actions.ADD_UPLOAD_FILE_TO_QUEUE, payload: action.payload })
     }
 }
@@ -38,11 +37,13 @@ function* upload_queue() {
     while (true) {
         const queue = yield select(state => state.dsa.upload_queue);
         if (queue.length > 0) {
+            yield put({ type: files_actions.SET_UPLOADING, payload: true })
             const upload_payload = queue[0];
             yield fork(upload_file, upload_payload)
             yield take(dsa_actions.UPLOAD_FILE_COMPLETE);
             yield put({ type: dsa_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, payload: upload_payload.row_idx })
         }
+        yield put({ type: files_actions.SET_UPLOADING, payload: false })
         yield delay(1000);
     }
 }

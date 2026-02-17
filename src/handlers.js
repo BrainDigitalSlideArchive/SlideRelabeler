@@ -147,6 +147,15 @@ ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_pa
   return response;
 });
 
+ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {
+  let response = await dsa_client.get_folder_by_id(folder_id);
+  if (response[0]) {
+    return response[1];
+  } else {
+    return response[1];
+  }
+})
+
 ipcMain.handle('get-platform', async () => {
   return process.platform;
 })
@@ -525,6 +534,10 @@ ipcMain.handle('clear-debugs', async (event) => {
 
 ipcMain.handle('get-output-path', async (event, info) => {
   return bridge.invoke('get-output-path', info);
+});
+
+ipcMain.handle('copy-file', async (event, source, destination) => {
+  return fs.copyFile(source, destination);
 });
 
 

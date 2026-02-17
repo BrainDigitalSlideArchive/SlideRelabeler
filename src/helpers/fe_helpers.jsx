@@ -10,6 +10,18 @@ export function displayBytes(bytes = null, places = 2) {
   return output.toFixed(places) + ' ' + units[numDivisions]
 }
 
+export function displayUploadRate(upload_transfer_rate_bytes_per_ms, places = 2) {
+  if (upload_transfer_rate_bytes_per_ms === null) return '?';
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s'];
+  let numDivisions = 0;
+  let output = upload_transfer_rate_bytes_per_ms*1000;
+  while (output > 1000 && numDivisions < units.length - 1) {
+    output = output / 1024;
+    numDivisions += 1;
+  }
+  return output.toFixed(places) + ' ' + units[numDivisions]
+}
+
 export function formatLeftEllipsis(text = '') {
   if (text == '') {
     return '';
@@ -18,7 +30,7 @@ export function formatLeftEllipsis(text = '') {
   return m[3].split('').reverse() + m[2] + m[1].split('').reverse();
 }
 
-export function headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate) {
+export function headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, uploading, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms) {
   let bytes_being_copied = 0;
 
   for (let row_idx = 0; row_idx < file_rows.length; row_idx++) {
@@ -29,6 +41,7 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
   }
 
   let timeDisplay = '';
+  let upload_timeDisplay = '';
 
   if (transfer_rate) {
     let estimated_remaining_bytes = remainingBytes - bytes_being_copied;
@@ -48,13 +61,31 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
     timeDisplay += `${estimated_remaining_seconds_remaining}s`;
   }
 
+  if (upload_remaining_bytes) {
+    let upload_estimated_remaining_ms = upload_remaining_bytes / upload_transfer_rate_bytes_per_ms;
+    let upload_estimated_remaining_seconds = upload_estimated_remaining_ms / 1000;
+
+    let upload_estimated_remaining_hours = Math.floor(upload_estimated_remaining_seconds / 3600);
+    let upload_estimated_remaining_minutes = Math.floor((upload_estimated_remaining_seconds % 3600) / 60);
+    let upload_estimated_remaining_seconds_remaining = Math.floor(upload_estimated_remaining_seconds % 60);
+
+    if (upload_estimated_remaining_hours > 0) {
+      upload_timeDisplay += `${upload_estimated_remaining_hours}h `;
+    }
+    if (upload_estimated_remaining_minutes > 0 || upload_estimated_remaining_hours > 0) {
+      upload_timeDisplay += `${upload_estimated_remaining_minutes}m `;
+    }
+    upload_timeDisplay += `${upload_estimated_remaining_seconds_remaining}s`;
+  }
+
   if (file_rows.length === 0) {
     return <p>No Files Loaded</p>
   } else if (count < file_rows.length) {
     return <p>Found info for {count} of {file_rows.length} files; {file_rows.length - count} remaining.</p>
   } else {
-    return <p>
-      {metadata_updating && "Loading files..."} &nbsp;
+    return <>
+    <p>
+      {metadata_updating && "Loading files..." && <span>&nbsp;</span>} 
 
       Total size: {displayBytes(totalBytes)} for {file_rows.length} files. &nbsp;
 
@@ -62,6 +93,14 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
 
       {timeDisplay.length > 0 && processing && `Estimated time remaining: ${timeDisplay}`}
     </p>
+    {
+      uploading && upload_transfer_rate_bytes_per_ms && upload_remaining_bytes && 
+      <p>
+        Upload rate: {displayUploadRate(upload_transfer_rate_bytes_per_ms)} &nbsp;
+        Estimated upload time remaining: {upload_timeDisplay}
+      </p>
+    }
+    </>
   }
 }
 

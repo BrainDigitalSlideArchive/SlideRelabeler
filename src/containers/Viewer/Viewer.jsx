@@ -63,12 +63,7 @@ function Viewer(props) {
   }
 
   useEffect(() => {
-    // set_row_data({...files.fileRows[row_idx], config: config})
-    console.log('row_idx', row_idx);
     let output_dict = { ...files.file_rows[row_idx], config: config }
-
-    console.log('files.file_rows[row_idx]', files.file_rows);
-    console.log('output_dict', output_dict);
 
 
     const file_encoded = encodeURIComponent(file);
@@ -92,9 +87,6 @@ function Viewer(props) {
 
 
   }, [file, row_idx, files, config])
-
-  console.log("Macro URL:", macro_url);
-  console.log("Preview Macro URL:", preview_macro_url);
 
   return ([
     <div key={0} className={"viewer-container"}>

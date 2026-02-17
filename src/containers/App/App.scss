@@ -1,5 +1,5 @@
 @import '../../styles/colors';
-@import url('https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css');
+@import url('https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css');
 
 .logo {
   height: 5em;
@@ -98,6 +98,9 @@
   justify-content: center;
   align-items: center;
   margin-left: 0.25em;
+  &._connected {
+    background-color: $green;
+  }
 }
 
 .App {

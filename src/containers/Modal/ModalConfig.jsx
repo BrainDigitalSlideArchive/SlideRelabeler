@@ -23,6 +23,7 @@ function ModalConfig(props) {
   const wsi_config = useSelector(state => state.config.wsi);
   const debug_config = useSelector(state => state.config.debug);
   const processing = useSelector(state => state.files.processing);
+  const copy_config = useSelector(state => state.config.copy);
   const disable_changes = useSelector(state => state.files.disable_changes);
   const dsa = useSelector(state => state.dsa);
 
@@ -205,6 +206,9 @@ function ModalConfig(props) {
                   {/* <Dropdown disabled={processing || disable_changes} items={column_options} label={"Destination directory (optional)"} placeholder={"Select column"} selectedItems={csv_config.file_destination_directory_column? column_options.filter(option => option.value === csv_config.file_destination_directory_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: item.value})}/> */}
                   <InputText disabled={processing || disable_changes} label={"Destination directory (optional)"} value={csv_config.file_destination_directory_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: new_value })} />
                 </div>
+                <div className={"__config-control-subsection-row _top-margin _align-center"}>
+                  <Button text={"Export Sample CSV"} onClick={() => dispatch({ type: config_actions.EXPORT_SAMPLE_CSV_TEMPLATE })} tooltip={"Export a sample CSV file to the output directory using the currently loaded files as a template."} />
+                </div>
                 <div className={"__config-control-subsection-note"}>
                   <div className={"__config-control-subsection-note-title"}>
                     Note:
@@ -237,6 +241,14 @@ function ModalConfig(props) {
           </div>
           <div className={"__divider"} />
           <div className={"__config-control-section"}>
+            <div className={"__config-control-section-title"}>Copy</div>
+            <div className={"__config-control-section-description"}>
+              Enable copy mode to just copy files to output directory without deidentifying them.
+            </div>
+            <Checkbox label={"Enable copy mode"} checked={copy_config.enable_copy_mode} onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_COPY_MODE })} />
+          </div>
+          <div className={"__divider"} />
+          <div className={"__config-control-section"}>
             <div className={"__config-control-section-title"}>Debug</div>
             <div className={"__config-control-section-description"}>
               Enable debug messages to be displayed in the debug modal.
@@ -251,66 +263,6 @@ function ModalConfig(props) {
               Please manually restart the application after using this feature.
             </div>
             <Button text={"Reset"} onClick={() => dispatch({ type: app_actions.DELETE_STORE })} />
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>DSA</div>
-            <div className={"__config-control-section-description"}>
-              Configure the DSA connection for transfering deidentified files to the DSA.
-            </div>
-            <div className={"__config-control-section-dsa-group"}>
-              <div className={"__config-control-section-dsa-subgroup"}>
-                <InputText disabled={api_auth} error={login_error} label={"API URL"} value={api_url ? api_url : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_API_URL, payload: new_value })} />
-                <InputText disabled={api_auth} error={login_error} label={"Username"} value={username ? username : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_USERNAME, payload: new_value })} />
-                <InputText disabled={api_auth} error={login_error} type={"password"} label={"Password"} value={password ? password : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_PASSWORD, payload: new_value })} />
-                {
-                  !api_auth ?
-                    <Button extra_class_name={"_align-center"} disabled={!(username !== '' && password !== '' && !api_auth)} text={"Login"} onClick={() => dispatch({ type: dsa_actions.LOGIN, payload: { api_url, username, password } })} /> :
-                    <Button extra_class_name={"_align-center"} disabled={!(username !== '' && password !== '' && api_auth)} text={"Logout"} onClick={() => dispatch({ type: dsa_actions.LOGOUT })} />
-                }
-                {
-                  login_error && <div className={"__config-control-section-error"}>{login_error_message}</div>
-                }
-              </div>
-              <div className={"__config-control-section-dsa-subgroup"}>
-                {
-                  api_auth &&
-                  <div className={"__dsa-auth-group"}>
-                    <div className={"__dsa-auth-item"}>
-                      <div className={"__dsa-auth-item-label"}>
-                        API URL:
-                      </div>
-                      <div className={"__dsa-auth-item-value"}>
-                        {api_url}
-                      </div>
-                    </div>
-                    <div className={"__dsa-auth-item"}>
-                      <div className={"__dsa-auth-item-label"}>
-                        Username:
-                      </div>
-                      <div className={"__dsa-auth-item-value"}>
-                        {username}
-                      </div>
-                    </div>
-                    <div className={"__dsa-auth-item"}>
-                      <div className={"__dsa-auth-item-label"}>
-                        Expiration:
-                      </div>
-                      <div className={"__dsa-auth-item-value"}>
-                        {expiration_date.toString()}
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-            <div className={"__config-control-section-dsa-group"}>
-              <div className={"__config-control-section-dsa-subgroup"}>
-                <Checkbox label={"Upload"} checked={upload} onClick={() => dispatch({ type: dsa_actions.TOGGLE_UPLOAD_TO_DSA })} />
-                <Checkbox label={"Delete local after"} checked={delete_after} onClick={() => dispatch({ type: dsa_actions.TOGGLE_DELETE_AFTER_DSA_UPLOAD })} />
-                <InputText label={"DSA folder ID"} value={folder_id} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_FOLDER_ID, payload: new_value })} />
-              </div>
-            </div>
           </div>
         </div>
       </div>

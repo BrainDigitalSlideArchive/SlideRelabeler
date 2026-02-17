@@ -1,0 +1,65 @@
+.Switch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75em;
+    margin-right: 1em;
+    label {
+        margin-right: 0.5em;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    input {
+        position: relative;
+        width: 3em;
+        height: 1.6em;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        background-color: rgba(0, 0, 0, 0.15);
+        appearance: none;
+        outline: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0.15em;
+            transform: translateY(-50%);
+            width: 1.2em;
+            height: 1.2em;
+            border-radius: 50%;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease;
+        }
+        &:checked {
+            background-color: #3291ff;
+            border-color: rgba(50, 145, 255, 0.5);
+            &::after {
+                transform: translate(1.4em, -50%);
+            }
+        }
+        &:focus-visible {
+            box-shadow: 0 0 0 3px rgba(50, 145, 255, 0.35);
+        }
+        &:disabled {
+            cursor: not-allowed;
+            background-color: rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.12);
+            &::after {
+                background-color: rgba(255, 255, 255, 0.7);
+                box-shadow: none;
+            }
+        }
+    }
+    &._disabled {
+        label {
+            cursor: default;
+            color: rgba(0, 0, 0, 0.45);
+        }
+        input {
+            cursor: not-allowed;
+        }
+    }
+}

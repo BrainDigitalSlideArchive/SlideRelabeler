@@ -37,13 +37,17 @@ export default function* process_file(file_row_idx, file_row) {
     };
 
     let output_path = yield call(electronAPI.getOutputPath, info);
+    let output_dir = yield select(state => state.files.output_dir);
+    const monitor_progress = yield fork(monitor_process_progress, file_row_idx, info, output_path);
 
     yield put({ type: files_actions.ADD_PROCESSING_FILE, payload: { file_row_idx, output_path } });
 
-    const monitor_progress = yield fork(monitor_process_progress, file_row_idx, info, output_path);
+    let enable_copy_mode = yield select(state => state.config.copy.enable_copy_mode);
+
     // process file
     const processed_file = yield call(electronAPI.processFile, info);
-    let processed_file_json = JSON.parse(processed_file)
+    let processed_file_json = JSON.parse(processed_file);
+    
 
     // get metadata from output file 
     let encoded = encodeURIComponent(output_path);

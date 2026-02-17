@@ -13,6 +13,9 @@ export const default_state = {
     processing_files: [],
     progress_infos: [],
     transfer_rate: null, // in bytes per second
+    upload_transfer_rates_bytes_per_ms: [],
+    upload_transfer_rate_bytes_per_ms: null,
+    upload_remaining_bytes: null,
     reserved_column_names: [
       '__reserved.source',
       '__reserved.source.directory',
@@ -100,7 +103,8 @@ export const default_state = {
     ifds: {},
     output_dir: null,
     input_dir: null,
-  processing: false,
+    processing: false,
+    uploading: false,
 };
 
 export default default_state;

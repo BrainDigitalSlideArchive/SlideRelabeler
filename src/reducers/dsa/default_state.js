@@ -11,6 +11,8 @@ const default_state = {
     // folder_id: '689ca9edbc6082acbe2389b4',
     folder_id: '67225cffd5d50b15122597b2',
     upload_queue: [],
+    dsa_folder_exists: null,
+    dsa_folder_error_message: null,
 };
 
 export default default_state;

@@ -310,75 +310,76 @@ class DeidTools:
         :returns: (filepath, mimetype) The redacted filepath in the tempdir and
             its mimetype.
         """
-        tileSource = ImageItem().tileSource(item)
-        sourcePath = tileSource._getLargeImagePath()
-        tiffinfo = tifftools.read_tiff(sourcePath)
-        xmldict = tileSource._tiffDirectories[-1]._description_record
-        ifds = tiffinfo['ifds']
-        prior_ifds = copy.deepcopy(ifds)
-        if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
-            ifds = redact_format_aperio_philips_redact_wsi(
-                tileSource, ifds, redactList['area']['_wsi']['geojson'], output_dir)
-            ImageItem().removeThumbnailFiles(item)
-        # redact images from xmldict
-        images = philips_tag(xmldict, 'PIM_DP_SCANNED_IMAGES')
-        for key, pkey in [('macro', 'MACROIMAGE'), ('label', 'LABELIMAGE')]:
-            if key in redactList['images'] and images:
-                if key == 'macro' and macroImage:
-                    continue
-                tag = philips_tag(
-                    xmldict, 'PIM_DP_SCANNED_IMAGES', None, 'PIM_DP_IMAGE_TYPE', pkey)
-                if tag:
-                    tag[-1][0].pop(tag[-1][1])
-        # redact images from ifds
-        ifds = [ifd for ifd in ifds
-                if ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
-                'data', '').split()[0].lower() not in redactList['images'] or (
-                    ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
-                        'data', '').split()[0].lower() == 'macro' and macroImage)]
-
-        redactList = copy.copy(redactList)
-        title_redaction_list_entry = generate_system_redaction_list_entry(title)
-        redactList['metadata']['internal;xml;PIIM_DP_SCANNER_OPERATOR_ID'] = title_redaction_list_entry
-        redactList['metadata']['internal;xml;PIM_DP_UFS_BARCODE'] = \
-            generate_system_redaction_list_entry(title + '|' + get_deid_field(item))
-        # redact general tiff tags
-        redact_tiff_tags(ifds, redactList, title)
-        add_deid_metadata(item, ifds)
-        # remove redacted philips tags
-        for key in redactList['metadata']:
-            if not key.startswith('internal;xml;'):
-                continue
-            key = key.split(';', 2)[-1]
-            parts = key.split('|') + [None]
-            tag = philips_tag(xmldict, parts[0], None, parts[1])
-            if tag:
-                if parts[1] is not None:
-                    tag[-1][2].pop(tag[-1][3])
-                else:
-                    tag[2].pop(tag[3])
-        # Add back philips tags with values
-        for key, value in redactList['metadata'].items():
-            if not key.startswith('internal;xml;'):
-                continue
-            key = key.split(';', 2)[-1]
-            if value is not None and '|' not in key and key in PhilipsTagElements:
-                value = value['value'] if isinstance(value, dict) else value
-                plist = xmldict['DataObject']['Attribute']
-                pelem = PhilipsTagElements[key]
-                entry = {
-                    'Name': key,
-                    'Group': pelem[0],
-                    'Element': pelem[1],
-                    'PMSVR': pelem[2],
-                    'text': (
-                        value if key != 'PIM_DP_UFS_BARCODE' else
-                        base64.b64encode(value.encode()).decode()),
-                }
-                plist.insert(0, entry)
-        tag = philips_tag(xmldict, 'PIM_DP_SCANNED_IMAGES')
-
         with tempfile.TemporaryDirectory() as temp_dir:
+            tileSource = ImageItem().tileSource(item)
+            sourcePath = tileSource._getLargeImagePath()
+            tiffinfo = tifftools.read_tiff(sourcePath)
+            xmldict = tileSource._tiffDirectories[-1]._description_record
+            ifds = tiffinfo['ifds']
+            prior_ifds = copy.deepcopy(ifds)
+            if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
+                ifds = redact_format_aperio_philips_redact_wsi(
+                    tileSource, ifds, redactList['area']['_wsi']['geojson'], output_dir)
+                ImageItem().removeThumbnailFiles(item)
+            # redact images from xmldict
+            images = philips_tag(xmldict, 'PIM_DP_SCANNED_IMAGES')
+            for key, pkey in [('macro', 'MACROIMAGE'), ('label', 'LABELIMAGE')]:
+                if key in redactList['images'] and images:
+                    if key == 'macro' and macroImage:
+                        continue
+                    tag = philips_tag(
+                        xmldict, 'PIM_DP_SCANNED_IMAGES', None, 'PIM_DP_IMAGE_TYPE', pkey)
+                    if tag:
+                        tag[-1][0].pop(tag[-1][1])
+            # redact images from ifds
+            ifds = [ifd for ifd in ifds
+                    if ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
+                    'data', '').split()[0].lower() not in redactList['images'] or (
+                        ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
+                            'data', '').split()[0].lower() == 'macro' and macroImage)]
+
+            redactList = copy.copy(redactList)
+            title_redaction_list_entry = generate_system_redaction_list_entry(title)
+            redactList['metadata']['internal;xml;PIIM_DP_SCANNER_OPERATOR_ID'] = title_redaction_list_entry
+            redactList['metadata']['internal;xml;PIM_DP_UFS_BARCODE'] = \
+                generate_system_redaction_list_entry(title + '|' + get_deid_field(item))
+            # redact general tiff tags
+            redact_tiff_tags(ifds, redactList, title)
+            add_deid_metadata(item, ifds)
+            # remove redacted philips tags
+            for key in redactList['metadata']:
+                if not key.startswith('internal;xml;'):
+                    continue
+                key = key.split(';', 2)[-1]
+                parts = key.split('|') + [None]
+                tag = philips_tag(xmldict, parts[0], None, parts[1])
+                if tag:
+                    if parts[1] is not None:
+                        tag[-1][2].pop(tag[-1][3])
+                    else:
+                        tag[2].pop(tag[3])
+            # Add back philips tags with values
+            for key, value in redactList['metadata'].items():
+                if not key.startswith('internal;xml;'):
+                    continue
+                key = key.split(';', 2)[-1]
+                if value is not None and '|' not in key and key in PhilipsTagElements:
+                    value = value['value'] if isinstance(value, dict) else value
+                    plist = xmldict['DataObject']['Attribute']
+                    pelem = PhilipsTagElements[key]
+                    entry = {
+                        'Name': key,
+                        'Group': pelem[0],
+                        'Element': pelem[1],
+                        'PMSVR': pelem[2],
+                        'text': (
+                            value if key != 'PIM_DP_UFS_BARCODE' else
+                            base64.b64encode(value.encode()).decode()),
+                    }
+                    plist.insert(0, entry)
+            tag = philips_tag(xmldict, 'PIM_DP_SCANNED_IMAGES')
+
+        
             redact_format_philips_replace_macro(
                 macroImage, ifds, temp_dir, tag[2][tag[3]]['Array']['DataObject'])
         
@@ -592,9 +593,12 @@ class DeidTools:
 
 
     def get_output_path(self, output_dict):
-        rename = self.get_rename(output_dict)
-        output_path = os.path.join(output_dict['__reserved']['destinationDirectory'], rename)
-        output_path = self.get_final_output_path(output_path)
+        if output_dict['config']['copy']['enable_copy_mode']:
+            return os.path.join(output_dict['__reserved']['destinationDirectory'], output_dict['__reserved']['source']['filename'])
+        else:
+            rename = self.get_rename(output_dict)
+            output_path = os.path.join(output_dict['__reserved']['destinationDirectory'], rename)
+            output_path = self.get_final_output_path(output_path)
         return output_path
 
     def add_icon_to_image(self, image, output_dict, output_height=0):
@@ -876,86 +880,87 @@ class DeidTools:
 
         import large_image_source_ometiff
 
-        tileSource = ImageItem().tileSource(item)
-        sourcePath = tileSource._getLargeImagePath()
-        tiffinfo = tifftools.read_tiff(sourcePath)
-        ifds = tiffinfo['ifds']
-        prior_ifds = copy.deepcopy(ifds)
-        if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
-            ifds = redact_format_aperio_philips_redact_wsi(
-                tileSource, ifds, redactList['area']['_wsi']['geojson'], tempdir)
-            ImageItem().removeThumbnailFiles(item)
-        tiffSource = large_image_source_ometiff.open(item.filePath)
-        mainImageDir = [dir._directoryNum for dir in tiffSource._tiffDirectories[::-1] if dir]
-        firstAssociatedIdx = max(mainImageDir) + 1
-        # redact other images
-        for idx in range(len(ifds) - 1, 0, -1):
-            ifd = ifds[idx]
-            key = None
-            keyparts = ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
-                'data', '').split('\n', 1)[-1].strip().split()
-            if len(keyparts) and keyparts[0].lower() and not keyparts[0][0].isdigit():
-                key = keyparts[0].lower()
-            if (key is None and ifd['tags'].get(tifftools.Tag.NewSubfileType.value) and
-                    ifd['tags'][tifftools.Tag.NewSubfileType.value]['data'][0] &
-                    tifftools.Tag.NewSubfileType.bitfield.ReducedImage.value):
-                key = 'label' if ifd['tags'][
-                    tifftools.Tag.NewSubfileType.value]['data'][0] == 1 else 'macro'
-            if key in redactList['images'] or key == 'label' or (key == 'macro' and macroImage):
-                ifds.pop(idx)
-        
-        # redact general tiff tags
-        redact_tiff_tags(ifds, redactList, title)
-
-        reduced = {}
-        refs = {}
-        xmldict = tileSource.getInternalMetadata()['omeinfo']
-        tileSource._reduceInternalMetadata(reduced, xmldict, refs=refs)
-        process = []
-        for key in redactList.get('metadata', {}):
-            rkey = key
-            if key.startswith('internal;omereduced;') and key not in refs:
-                rkey = key.split('internal;omereduced;', 1)[1]
-            if rkey in refs:
-                newval = redactList['metadata'][key].get('value')
-                dref, dkey, didx, dskey = refs[rkey]
-                process.append((didx, dkey, dskey, rkey, dref, newval))
-        process.sort(reverse=True)
-        for didx, dkey, dskey, _, dref, newval in process:
-            if newval is None:
-                if didx is None:
-                    del dref[dkey]
-                else:
-                    dref[dkey][didx:didx + 1] = []
-            else:
-                if didx is None:
-                    if dskey:
-                        dref[dkey][dskey] = newval
-                    else:
-                        dref[dkey] = newval
-                else:
-                    if dskey:
-                        dref[dkey][didx][dskey] = newval
-                    else:
-                        dref[dkey][didx] = newval
-        ifds[0]['tags'][tifftools.Tag.ImageDescription.value] = {
-            'datatype': tifftools.Datatype.ASCII,
-            'data':
-                '<?xml version="1.0" encoding="UTF-8"?>'
-                '<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" '
-                'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-                # Should we inject a UUID here?
-                # 'UUID="urn:uuid:..." '
-                # where that would be the uuid v5 of the sha-1 hash of the rest of
-                # the xml
-                'xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 '
-                'http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">' +
-                ''.join(xml.etree.ElementTree.tostring(child, encoding='unicode')
-                        for child in dictToEtree(xmldict)) +
-                '</OME>',
-        }
-
         with tempfile.TemporaryDirectory() as temp_dir:
+            tileSource = ImageItem().tileSource(item)
+            sourcePath = tileSource._getLargeImagePath()
+            tiffinfo = tifftools.read_tiff(sourcePath)
+            ifds = tiffinfo['ifds']
+            prior_ifds = copy.deepcopy(ifds)
+            if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
+                ifds = redact_format_aperio_philips_redact_wsi(
+                    tileSource, ifds, redactList['area']['_wsi']['geojson'], temp_dir)
+                ImageItem().removeThumbnailFiles(item)
+            tiffSource = large_image_source_ometiff.open(item.filePath)
+            mainImageDir = [dir._directoryNum for dir in tiffSource._tiffDirectories[::-1] if dir]
+            firstAssociatedIdx = max(mainImageDir) + 1
+            # redact other images
+            for idx in range(len(ifds) - 1, 0, -1):
+                ifd = ifds[idx]
+                key = None
+                keyparts = ifd['tags'].get(tifftools.Tag.ImageDescription.value, {}).get(
+                    'data', '').split('\n', 1)[-1].strip().split()
+                if len(keyparts) and keyparts[0].lower() and not keyparts[0][0].isdigit():
+                    key = keyparts[0].lower()
+                if (key is None and ifd['tags'].get(tifftools.Tag.NewSubfileType.value) and
+                        ifd['tags'][tifftools.Tag.NewSubfileType.value]['data'][0] &
+                        tifftools.Tag.NewSubfileType.bitfield.ReducedImage.value):
+                    key = 'label' if ifd['tags'][
+                        tifftools.Tag.NewSubfileType.value]['data'][0] == 1 else 'macro'
+                if key in redactList['images'] or key == 'label' or (key == 'macro' and macroImage):
+                    ifds.pop(idx)
+            
+            # redact general tiff tags
+            redact_tiff_tags(ifds, redactList, title)
+
+            reduced = {}
+            refs = {}
+            xmldict = tileSource.getInternalMetadata()['omeinfo']
+            tileSource._reduceInternalMetadata(reduced, xmldict, refs=refs)
+            process = []
+            for key in redactList.get('metadata', {}):
+                rkey = key
+                if key.startswith('internal;omereduced;') and key not in refs:
+                    rkey = key.split('internal;omereduced;', 1)[1]
+                if rkey in refs:
+                    newval = redactList['metadata'][key].get('value')
+                    dref, dkey, didx, dskey = refs[rkey]
+                    process.append((didx, dkey, dskey, rkey, dref, newval))
+            process.sort(reverse=True)
+            for didx, dkey, dskey, _, dref, newval in process:
+                if newval is None:
+                    if didx is None:
+                        del dref[dkey]
+                    else:
+                        dref[dkey][didx:didx + 1] = []
+                else:
+                    if didx is None:
+                        if dskey:
+                            dref[dkey][dskey] = newval
+                        else:
+                            dref[dkey] = newval
+                    else:
+                        if dskey:
+                            dref[dkey][didx][dskey] = newval
+                        else:
+                            dref[dkey][didx] = newval
+            ifds[0]['tags'][tifftools.Tag.ImageDescription.value] = {
+                'datatype': tifftools.Datatype.ASCII,
+                'data':
+                    '<?xml version="1.0" encoding="UTF-8"?>'
+                    '<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" '
+                    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+                    # Should we inject a UUID here?
+                    # 'UUID="urn:uuid:..." '
+                    # where that would be the uuid v5 of the sha-1 hash of the rest of
+                    # the xml
+                    'xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 '
+                    'http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">' +
+                    ''.join(xml.etree.ElementTree.tostring(child, encoding='unicode')
+                            for child in dictToEtree(xmldict)) +
+                    '</OME>',
+            }
+
+        
             # redact general tiff tags
             add_deid_metadata(item, ifds)
 
@@ -965,51 +970,52 @@ class DeidTools:
                 return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ome.tif")
 
     def redact_format_hamamatsu(self, item, output_dir, redactList, title, labelImage, macroImage, preview_metadata=False):
-        tileSource = ImageItem().tileSource(item)
-        sourcePath = tileSource._getLargeImagePath()
-        tiffinfo = tifftools.read_tiff(sourcePath)
-        ifds = tiffinfo['ifds']
-        prior_ifds = copy.deepcopy(ifds)
-        if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
-            ifds = redact_format_hamamatsu_redact_wsi(
-                tileSource, ifds, redactList['area']['_wsi']['geojson'], tempdir)
-            ImageItem().removeThumbnailFiles(item)
-        sourceLensTag = tifftools.Tag.NDPI_SOURCELENS.value
-        for key in redactList['images']:
-            if key == 'macro' and macroImage:
-                continue
-            lensval = {'macro': -1, 'nonempty': -2}
-            ifds = [ifd for ifd in ifds
-                    if sourceLensTag not in ifd['tags'] or
-                    ifd['tags'][sourceLensTag]['data'][0] != lensval.get(key)]
-        redact_tiff_tags(ifds, redactList, title)
-        add_deid_metadata(item, ifds)
-        propertyTag = tifftools.Tag.NDPI_PROPERTY_MAP.value
-        if propertyTag in ifds[0]['tags']:
-            propertyList = ifds[0]['tags'][propertyTag]['data'].replace('\r', '\n').split('\n')
-            ndpiProperties = {p.split('=')[0]: p.split('=', 1)[1] for p in propertyList if '=' in p}
-            for fullkey, value in redactList['metadata'].items():
-                if fullkey.startswith('internal;openslide;hamamatsu.'):
-                    key = fullkey.split('internal;openslide;hamamatsu.', 1)[1]
-                    if key in ndpiProperties:
-                        if value is None:
-                            del ndpiProperties[key]
-                        else:
-                            ndpiProperties[key] = value['value'] if isinstance(
-                                value, dict) and 'value' in value else value
-            propertyList = ['%s=%s\r\n' % (k, v) for k, v in ndpiProperties.items()]
-            propertyMap = ''.join(propertyList)
-            for ifd in ifds:
-                ifd['tags'][tifftools.Tag.NDPI_REFERENCE.value] = {
-                    'datatype': tifftools.Datatype.ASCII,
-                    'data': title,
-                }
-                ifd['tags'][propertyTag] = {
-                    'datatype': tifftools.Datatype.ASCII,
-                    'data': propertyMap,
-                }
-
         with tempfile.TemporaryDirectory() as temp_dir:
+            tileSource = ImageItem().tileSource(item)
+            sourcePath = tileSource._getLargeImagePath()
+            tiffinfo = tifftools.read_tiff(sourcePath)
+            ifds = tiffinfo['ifds']
+            prior_ifds = copy.deepcopy(ifds)
+            if redactList.get('area', {}).get('_wsi', {}).get('geojson'):
+                ifds = redact_format_hamamatsu_redact_wsi(
+                    tileSource, ifds, redactList['area']['_wsi']['geojson'], temp_dir)
+                ImageItem().removeThumbnailFiles(item)
+            sourceLensTag = tifftools.Tag.NDPI_SOURCELENS.value
+            for key in redactList['images']:
+                if key == 'macro' and macroImage:
+                    continue
+                lensval = {'macro': -1, 'nonempty': -2}
+                ifds = [ifd for ifd in ifds
+                        if sourceLensTag not in ifd['tags'] or
+                        ifd['tags'][sourceLensTag]['data'][0] != lensval.get(key)]
+            redact_tiff_tags(ifds, redactList, title)
+            add_deid_metadata(item, ifds)
+            propertyTag = tifftools.Tag.NDPI_PROPERTY_MAP.value
+            if propertyTag in ifds[0]['tags']:
+                propertyList = ifds[0]['tags'][propertyTag]['data'].replace('\r', '\n').split('\n')
+                ndpiProperties = {p.split('=')[0]: p.split('=', 1)[1] for p in propertyList if '=' in p}
+                for fullkey, value in redactList['metadata'].items():
+                    if fullkey.startswith('internal;openslide;hamamatsu.'):
+                        key = fullkey.split('internal;openslide;hamamatsu.', 1)[1]
+                        if key in ndpiProperties:
+                            if value is None:
+                                del ndpiProperties[key]
+                            else:
+                                ndpiProperties[key] = value['value'] if isinstance(
+                                    value, dict) and 'value' in value else value
+                propertyList = ['%s=%s\r\n' % (k, v) for k, v in ndpiProperties.items()]
+                propertyMap = ''.join(propertyList)
+                for ifd in ifds:
+                    ifd['tags'][tifftools.Tag.NDPI_REFERENCE.value] = {
+                        'datatype': tifftools.Datatype.ASCII,
+                        'data': title,
+                    }
+                    ifd['tags'][propertyTag] = {
+                        'datatype': tifftools.Datatype.ASCII,
+                        'data': propertyMap,
+                    }
+
+        
             if macroImage:
                 redact_format_hamamatsu_replace_macro(
                    macroImage, ifds, temp_dir
@@ -1099,10 +1105,22 @@ class DeidTools:
 
     def perform_deid(self, output_dict):
         curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func = self.setup_deid(output_dict)
-        
-        file, mimetype = func(
-            curItem, output_dir, redactList, newTitle, labelImage, macroImage
-        )
+
+        if output_dict['config']['copy']['enable_copy_mode']:
+            output_path = os.path.join(output_dir, '{}.{}'.format(newTitle, output_dict['__reserved']['source']['parsed']['ext'][1:]))
+            final_output_path = self.get_final_output_path(output_path)
+            partial_output_path = os.path.join('{}.partial'.format(final_output_path))
+
+            copy_path = os.path.join(output_dir, output_dict['__reserved']['source']['filename'])
+
+            shutil.copy(output_dict['__reserved']['source']['path'], partial_output_path)
+            shutil.move(partial_output_path, copy_path)
+            file = copy_path
+            mimetype = 'image/tiff'
+        else:
+            file, mimetype = func(
+                curItem, output_dir, redactList, newTitle, labelImage, macroImage
+            )
 
         info = {
             # "format": format,

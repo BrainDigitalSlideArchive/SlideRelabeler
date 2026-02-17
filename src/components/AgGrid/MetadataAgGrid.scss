@@ -71,14 +71,27 @@
 
                 }
                 .__prior {
-                    width: 50%;
+                    width: 33%;
                     padding: 1em;
                     overflow-y: auto;
                 }
                 .__after {
-                    width: 50%;
+                    width: 33%;
                     padding: 1em;
                     overflow-y: auto;
+                }
+                .__diff {
+                    width: 33%;
+                    padding: 1em;
+                    overflow-y: auto;
+                    .ins {
+                        background-color: $green;
+                        color: white;
+                    }
+                    .del {
+                        background-color: $red;
+                        color: white;
+                    }
                 }
             }
         }

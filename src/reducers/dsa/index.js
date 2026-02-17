@@ -9,6 +9,7 @@ const dsa_reducer = createReducer(default_state, (builder) => {
     .addCase(dsa_actions.LOGIN_SUCCESS, (state, action) => {
       return produce(state, draft => {
         draft.api_auth = action.payload;
+        draft.connected = true;
         draft.login_error = false;
         draft.login_error_message = null;
       })
@@ -70,6 +71,18 @@ const dsa_reducer = createReducer(default_state, (builder) => {
             break;
           }
         }
+      })
+    })
+    .addCase(dsa_actions.DSA_FOLDER_EXISTS, (state, action) => {
+      return produce(state, draft => {
+        draft.dsa_folder_exists = true;
+        draft.dsa_folder_error_message = null;
+      })
+    })
+    .addCase(dsa_actions.DSA_FOLDER_DOES_NOT_EXIST, (state, action) => {
+      return produce(state, draft => {
+        draft.dsa_folder_exists = false;
+        draft.dsa_folder_error_message = action.payload;
       })
     })
 })

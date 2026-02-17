@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { useDispatch, useSelector } from "react-redux";
+import { diffChars } from 'diff';
 
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -10,6 +10,11 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 import './MetadataAgGrid.scss';
 
+export function getTextDiffHTML(oldText, newText) {
+    const differences = diffChars(oldText, newText);
+
+    return `<span>${differences.map((part) => `<span class="${part.added ? 'ins' : part.removed ? 'del' : 'common'}">${part.value}</span>`).join('')}</span>`;
+}
 
 const MetadataAgGrid = (props) => {
     const { table } = props;
@@ -23,7 +28,8 @@ const MetadataAgGrid = (props) => {
         suppressDragLeaveHidesColumns,
         enableCellTextSelection,
         undoRedoCellEditing,
-        undoRedoCellEditingLimit
+        undoRedoCellEditingLimit,
+        display_changed_only
     } = props;
 
     function onCellClicked(params) {
@@ -59,7 +65,10 @@ const MetadataAgGrid = (props) => {
             headerName: 'Prior',
             field: 'prior',
             width: 100,
-            onCellClicked: onCellClicked
+            onCellClicked: onCellClicked,
+            cellRenderer: (params) => {
+                return React.createElement('div', { dangerouslySetInnerHTML: { __html: params.value } });
+            }
         },
         {
             headerName: 'After',
@@ -84,7 +93,14 @@ const MetadataAgGrid = (props) => {
 
     function handle_display_data(params) {
         set_display_visible(true);
-        set_display_data(params.data);
+        let text_diff = getTextDiffHTML(params.data.prior, params.data.after);
+
+        console.log(text_diff);
+        
+        set_display_data({
+            ...params.data,
+            diff: text_diff
+        });
     }
 
     function getRowStyle(params) {
@@ -95,10 +111,18 @@ const MetadataAgGrid = (props) => {
         }
     }
 
+    function display_changed_only_table(table) {
+        if (display_changed_only) {
+            return table.filter(row => row.diff);
+        } else {
+            return table;
+        }
+    }
+
     return (
         <div className={"ag-theme-quartz __ag-grid"}>
             <AgGridReact
-                rowData={table}
+                rowData={display_changed_only_table(table)}
                 columnDefs={column_defs}
                 rowStyle={{
                     textOverflow: 'ellipsis',
@@ -131,13 +155,19 @@ const MetadataAgGrid = (props) => {
                         <div className="__prior">
                             <h4>Prior</h4>
                             <div className="__prior-data">
-                                {display_data ? display_data.prior : ''}
+                                {display_data ? React.createElement('div', { dangerouslySetInnerHTML: { __html: display_data.prior } }) : ''}
                             </div>
                         </div>
                         <div className="__after">
                             <h4>After</h4>
                             <div className="__after-data">
                                 {display_data ? display_data.after : ''}
+                            </div>
+                        </div>
+                        <div className="__diff">
+                            <h4>Diff</h4>
+                            <div className="__diff-data">
+                                {display_data ? React.createElement('div', { dangerouslySetInnerHTML: { __html: display_data.diff } }) : ''}
                             </div>
                         </div>
                     </div>

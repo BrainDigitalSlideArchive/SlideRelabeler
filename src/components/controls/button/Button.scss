@@ -7,6 +7,26 @@
   font-size: 1em;
   align-items: center;
   margin-bottom: 0.5em;
+  position: relative;
+  cursor: pointer;
+
+  .__button-tooltip {
+    position: absolute;
+    top: 3em;
+    left: 3em;
+    background-color: $black;
+    color: $beige;
+    padding: 0.5em;
+    border-radius: 0.5em;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    &._visible {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
 
   .__button-label {
     &._disabled {

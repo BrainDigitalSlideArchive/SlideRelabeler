@@ -13,8 +13,6 @@ import * as debug_actions from "../../actions/debug";
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
 
-import { headerInfo } from "../../helpers/fe_helpers";
-
 import './App.scss';
 import Modal from "../Modal/Modal";
 
@@ -73,7 +71,7 @@ function render_output_dir_message(csv, output_dir) {
     )
 }
 
-function render_process_files_button(csv, output_dir, disable_changes, count, processing, dispatch) {
+function render_process_files_button(csv, dsa, output_dir, disable_changes, count, processing, dispatch) {
   let output_configured = false;
   let message = "";
 
@@ -98,7 +96,7 @@ function render_process_files_button(csv, output_dir, disable_changes, count, pr
       <button className={count === 0 || processing || !output_configured || disable_changes ? "__action-button _disabled" : "__action-button"}
               disabled={count === 0 || processing || !output_configured || disable_changes}
               onClick={() => dispatch({type: file_actions.PROCESS_FILES})}>
-                Process Files
+                {dsa.upload? "Process and Upload" : "Process Files"}
       </button>
       {message.length > 0 && <div className="__process-files-message">{message}</div>}
     </div>
@@ -114,6 +112,9 @@ const App = (props) => {
   let disable_changes = useSelector(state => state.files.disable_changes);
   let debug_config = useSelector(state => state.config.debug);
   let csv = useSelector(state => state.files.csv);
+
+  let dsa = useSelector(state => state.dsa);
+  let connected = dsa.connected;
 
   const dispatch = useDispatch();
   
@@ -165,6 +166,13 @@ const App = (props) => {
                   </button>
                 )
               }
+              <button className={connected ?"__button-icon _connected" : "__button-icon"}
+                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'network'}})}>
+                <i
+                  className=
+                    "fi fi-rr-globe"
+                ></i>
+              </button>
               <button className={"__button-icon"}
                       onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}>
                 <i
@@ -194,7 +202,7 @@ const App = (props) => {
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
-          {render_process_files_button(csv, output_dir, disable_changes, count, processing, dispatch)}
+          {render_process_files_button(csv, dsa, output_dir, disable_changes, count, processing, dispatch)}
         </div>
         <div className={"__disclaimer"}>
           Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.
