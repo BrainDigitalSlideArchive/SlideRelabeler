@@ -110,3 +110,6 @@ dist
 build
 src/python/tests/dist
 src/python/tests/build
+
+# reference directory for code to incorporate into the project; should not be tracked by git.
+reference/
