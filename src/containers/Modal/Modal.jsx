@@ -10,11 +10,8 @@ import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
 import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
-<<<<<<< HEAD
 import ModalNetwork from './ModalNetwork';
-=======
 import ModalESlideManager from './ModalESlideManager';
->>>>>>> c93d999 (adds eSlideManager integration)
 
 function render_modal(type, props) {
   switch(type) {

@@ -58,14 +58,11 @@ const API = {
   dsaStopUploadFileProgress: () => ipcRenderer.removeAllListeners('dsa-upload-file-progress'),
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
-<<<<<<< HEAD
   dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
-=======
   // eSlideManager API methods
   esmLogin: (url, username, password) => ipcRenderer.invoke('esm-login', url, username, password),
   esmSearchAccession: (url, username, password, accession) => ipcRenderer.invoke('esm-search-accession', url, username, password, accession),
   esmLogout: () => ipcRenderer.invoke('esm-logout'),
->>>>>>> c93d999 (adds eSlideManager integration)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);
