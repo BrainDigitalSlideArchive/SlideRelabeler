@@ -6,7 +6,9 @@ import parse_debug_messages from "./parse_debug_messages";
 
 export function* get_backend_debug_messages() {
     const debug_messages = yield electronAPI.getDebugs();
-    const parsed_debug_messages = yield parse_debug_messages(JSON.parse(debug_messages));
+    const parsed_debug_messages = yield parse_debug_messages(
+        Array.isArray(debug_messages) ? debug_messages : JSON.parse(debug_messages || "[]")
+    );
     yield put({type: debug_actions.SET_BACKEND_DEBUG_MESSAGES, payload: parsed_debug_messages});
 }
 

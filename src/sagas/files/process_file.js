@@ -6,6 +6,7 @@ import output_csv from "./output_csv";
 
 import * as files_actions from '../../actions/files';
 import * as dsa_actions from '../../actions/dsa';
+import { structToObject } from '../../helpers/grpc_helpers';
 
 export function* save_csv() {
   // Make new CSV file if save_csv is true
@@ -46,16 +47,18 @@ export default function* process_file(file_row_idx, file_row) {
 
     // process file
     const processed_file = yield call(electronAPI.processFile, info);
-    let processed_file_json = JSON.parse(processed_file);
+    let processed_file_object = yield structToObject(processed_file);
+    let processed_file_json = JSON.parse(processed_file_object.value);
     
 
     // get metadata from output file 
     let encoded = encodeURIComponent(output_path);
     let response = yield fetch(`metadata://${encoded}`);
-    let metadata = yield response.json();
+    let response_json = yield response.json();
+    response_json.metadata = yield structToObject(response_json.metadata);
 
     // Update associated images
-    processed_file_json.associatedImages = metadata.associatedImages;
+    processed_file_json.associatedImages = response_json.associatedImages;
 
     yield put({ type: files_actions.PROCESSED_FILE, payload: { row_idx: file_row_idx, processedFile: processed_file_json } });
     yield cancel(monitor_progress);

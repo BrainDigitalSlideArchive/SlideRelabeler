@@ -53,14 +53,15 @@ function onImageOpened(event){
 
 function makeTileSources(props){
     const {metadata, associatedImages} = props;
+    let metadata_fields = metadata.fields;
 
     // todo: move to helpers with singleTileSource replacement
 
     let tileSources = [];
-    if(metadata.tileWidth == metadata.sizeX && metadata.tileHeight == metadata.sizeY){
+    if(metadata_fields.tileWidth == metadata_fields.sizeX && metadata_fields.tileHeight == metadata_fields.sizeY){
         tileSources.push( makeSimpleImageTileSource(props.file) );
     } else {
-        tileSources.push( makeTiledImageTileSource(props.file, metadata) );
+        tileSources.push( makeTiledImageTileSource(props.file, metadata_fields) );
     }
 
     tileSources = tileSources.concat(makeAssociatedImageSources(props.file, associatedImages));
@@ -76,13 +77,17 @@ function makeSimpleImageTileSource(file){
 }
 
 function makeTiledImageTileSource(file, props){
+    let height = props.sizeY.numberValue;
+    let width = props.sizeX.numberValue;
+    let tileWidth = props.tileWidth.numberValue;
+    let levels = props.levels.numberValue;
     return {
         name: file,
-        height: props.sizeY,
-        width:  props.sizeX,
-        tileSize: props.tileWidth,
+        height: height,
+        width:  width,
+        tileSize: tileWidth,
         minLevel: 0,
-        maxLevel: props.levels - 1,
+        maxLevel: levels - 1,
         getTileUrl: function( level, x, y ){
             return `tile://` + window.encodeURIComponent(`${file}|${level}|${x}|${y}`);
         }

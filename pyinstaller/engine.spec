@@ -3,10 +3,12 @@
 # todo: Add binaries for ffmpeg in the windows production environment.
 # todo: Add help readmes based on build platform.
 
-from PyInstaller.utils.hooks import collect_entry_point, collect_all, collect_data_files
+from PyInstaller.utils.hooks import collect_entry_point, collect_all, collect_data_files, collect_submodules
 from PyInstaller.utils.hooks import copy_metadata
 import imagecodecs
 import os, sys, subprocess, shutil
+import grpc
+import grpc_health
 
 print("Current working directory: {}".format(os.getcwd()))
 
@@ -84,6 +86,25 @@ datas += d
 binaries += b
 hiddenimports += h
 
+# --- Force-collect gRPC core (grpcio) ---
+d_grpc, b_grpc, h_grpc = collect_all("grpc")
+datas += d_grpc
+binaries += b_grpc
+hiddenimports += h_grpc
+
+# grpcio uses a compiled extension grpc._cython.cygrpc; force it explicitly too
+hiddenimports += ["grpc._cython", "grpc._cython.cygrpc"]
+
+# --- Force-collect grpc_health (grpcio-health-checking) ---
+d_gh, b_gh, h_gh = collect_all("grpc_health")
+datas += d_gh
+binaries += b_gh
+hiddenimports += h_gh
+
+# (Optional but helpful) include distribution metadata
+datas += copy_metadata("grpcio")
+datas += copy_metadata("grpcio-health-checking")
+
 hiddenimports = hiddenimports + ["imagecodecs." + x for x in imagecodecs._extensions()] # + ["imagecodecs._shared"]
 
 print("hidden imports...", hiddenimports)
@@ -133,7 +154,13 @@ a = Analysis(
     pathex=[],
     binaries=bins,
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=hiddenimports + [
+        'grpc',
+        'grpc._cython.cygrpc',
+        'grpc_health.v1.health',
+        'grpc_health.v1.health_pb2',
+        'grpc_health.v1.health_pb2_grpc',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=runtime_hooks,
@@ -176,6 +203,7 @@ else:
     coll = COLLECT(
         exe,
         a.binaries,
+        a.zipfiles,
         a.datas,
         strip=False,
         upx=True,
