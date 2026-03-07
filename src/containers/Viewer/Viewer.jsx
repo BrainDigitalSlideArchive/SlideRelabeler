@@ -87,8 +87,6 @@ function Viewer(props) {
     } else {
       file_encoded = encodeURIComponent(file_row.__reserved.output_path);
     }
-
-    console.log("File encoded", file_encoded);
     
     const params = encodeURLParameters(output_dict);
     const associated_images = file_row.__reserved.associatedImages || [];
@@ -102,7 +100,13 @@ function Viewer(props) {
     set_macro_url(associated_images.includes('macro') ? `macro://${file_encoded}` : null);
     set_preview_macro_url(associated_images.includes('macro') ? `preview-macro://preview?${params}` : null);
 
-    if (file_row_idx !== row_idx && file_row.__reserved.processed !== file_processed) {
+    console.log("File encoded", file_encoded);
+    console.log("file_row_idx", file_row_idx);
+    console.log("row_idx", row_idx);
+    console.log("file_row.__reserved.processed", file_row.__reserved.processed);
+    console.log("file_processed", file_processed);
+
+    if (file_row_idx !== row_idx && file_row.__reserved.processed !== file_processed && !ifds[file_row.__reserved.source.path]) {
       set_file_row_idx(row_idx);
       set_file_processed(file_row.__reserved.processed);
       dispatch({ type: preview_actions.GET_METADATA_PREVIEW, payload: { row_idx: row_idx, file_row } });

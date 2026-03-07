@@ -26,7 +26,7 @@ import src.proto.engine_pb2_grpc as engine_pb2_grpc
 # Debug/error buffers (same as before)
 # -----------------------------
 
-debug = True
+debug = False
 def _resolve_engine_log_path() -> str:
   # Allow explicit override from parent process.
   env_path = os.environ.get("ENGINE_LOG_PATH", "").strip()
@@ -48,7 +48,7 @@ def _setup_engine_logger() -> logging.Logger:
   lg.setLevel(logging.DEBUG if debug else logging.INFO)
   lg.propagate = False
 
-  if not lg.handlers:
+  if debug and not lg.handlers:
     log_path = _resolve_engine_log_path()
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
@@ -104,8 +104,9 @@ def _set_internal_error(context: grpc.ServicerContext, operation: str, exc_text:
   _push_error(exc_text)
   # Mirror traceback to stderr so Electron logs expose the real cause.
   try:
-    logger.error("[engine:%s] %s", operation, exc_text)
-    print(f"[engine:{operation}] {exc_text}", file=sys.stderr, flush=True)
+    if debug:
+      logger.error("[engine:%s] %s", operation, exc_text)
+      print(f"[engine:{operation}] {exc_text}", file=sys.stderr, flush=True)
   except Exception:
     pass
   context.set_code(grpc.StatusCode.INTERNAL)
@@ -181,8 +182,9 @@ def bootstrap_env() -> Dict[str, Any]:
   os.environ["PROJ_DATA"] = pyproj.datadir.get_data_dir()
   json_setup["PROJ_DATA"] = os.environ["PROJ_DATA"]
 
-  debugMsg({"data": {"function": "bootstrap_env"}, "setup": json_setup})
-  logger.info("Engine bootstrap complete. log_path=%s", _resolve_engine_log_path())
+  if debug:
+    debugMsg({"data": {"function": "bootstrap_env"}, "setup": json_setup})
+    logger.info("Engine bootstrap complete. log_path=%s", _resolve_engine_log_path())
   return json_setup
 
 
@@ -199,10 +201,11 @@ large_image.config.setConfig('cache_sources', False)
 
 deid_tools = DeidTools(
   supress_print=True,
-  debug=True,
+  debug=debug,
   log_path=_resolve_deidtools_log_path(),
 )
-logger.info("DeidTools configured. log_path=%s", _resolve_deidtools_log_path())
+if debug:
+  logger.info("DeidTools configured. log_path=%s", _resolve_deidtools_log_path())
 
 openFiles: Dict[str, Any] = {}
 try:
@@ -635,8 +638,9 @@ def serve() -> None:
 
   port = server.add_insecure_port("127.0.0.1:0")
   if port == 0:
-    logger.error("FATAL: could not bind port")
-    print("FATAL: could not bind port", file=sys.stderr, flush=True)
+    if debug:
+      logger.error("FATAL: could not bind port")
+      print("FATAL: could not bind port", file=sys.stderr, flush=True)
     sys.exit(2)
 
   health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
@@ -671,5 +675,4 @@ def serve() -> None:
 
 
 if __name__ == "__main__":
-  
   serve()

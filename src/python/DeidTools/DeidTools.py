@@ -590,7 +590,8 @@ class DeidTools:
         tifftools.write_tiff(ifds, tracking_file_io)
         tracking_file_io.close()
         output_path = self.attempt_replace_wsi_file(partial_output_path, output_path)
-        self.logger.info("Redacted file %s to %s", sourcePath, output_path)
+        if self.debug:
+            self.logger.info("Redacted file %s to %s", sourcePath, output_path)
         return output_path, "image/tiff"
 
 
@@ -1169,47 +1170,50 @@ class DeidTools:
 
         return self.perform_deid(output_dict)
 
-    def __init__(self, supress_print=False, output_dir=os.path.join('./output/.'), debug=True, **kwargs):
+    def __init__(self, supress_print=False, output_dir=os.path.join('./output/.'), debug=False, **kwargs):
         self._config = kwargs
         self.supress_print = supress_print
         self.output_dir = output_dir
+        self.debug = debug
         log_path = kwargs.get("log_path") or os.path.abspath(
             os.path.join(self.output_dir, "deidtools.log")
         )
-        self.logger = logging.getLogger(__name__)
-        # Enable full logger output so diagnostics show in Electron console and log file.
-        if debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
-        self.logger.propagate = False
-        if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stderr for h in self.logger.handlers):
-            stderr_handler = logging.StreamHandler(sys.stderr)
-            stderr_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-            stderr_handler.setFormatter(logging.Formatter("[DeidTools Error] %(levelname)s %(message)s"))
-            self.logger.addHandler(stderr_handler)
-        if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stdout for h in self.logger.handlers):
-            stdout_handler = logging.StreamHandler(sys.stdout)
-            stdout_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-            stdout_handler.setFormatter(logging.Formatter("[DeidTools Debug] %(levelname)s %(message)s"))
-            self.logger.addHandler(stdout_handler)
-        if not any(isinstance(h, RotatingFileHandler) for h in self.logger.handlers):
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
-            file_handler = RotatingFileHandler(
-                log_path,
-                maxBytes=5 * 1024 * 1024,
-                backupCount=3,
-                encoding="utf-8",
-            )
-            file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-            file_handler.setFormatter(
-                logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s")
-            )
-            self.logger.addHandler(file_handler)
+        if self.debug:
+            self.logger = logging.getLogger(__name__)
+            # Enable full logger output so diagnostics show in Electron console and log file.
+            if debug:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
 
-        # Emit one startup line so file logging can be verified immediately.
-        self.logger.info("DeidTools logger initialized. log_path=%s debug=%s", log_path, debug)
+            self.logger.propagate = False
+            if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stderr for h in self.logger.handlers):
+                stderr_handler = logging.StreamHandler(sys.stderr)
+                stderr_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                stderr_handler.setFormatter(logging.Formatter("[DeidTools Error] %(levelname)s %(message)s"))
+                self.logger.addHandler(stderr_handler)
+            if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stdout for h in self.logger.handlers):
+                stdout_handler = logging.StreamHandler(sys.stdout)
+                stdout_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                stdout_handler.setFormatter(logging.Formatter("[DeidTools Debug] %(levelname)s %(message)s"))
+                self.logger.addHandler(stdout_handler)
+            if not any(isinstance(h, RotatingFileHandler) for h in self.logger.handlers):
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                file_handler = RotatingFileHandler(
+                    log_path,
+                    maxBytes=5 * 1024 * 1024,
+                    backupCount=3,
+                    encoding="utf-8",
+                )
+                file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                file_handler.setFormatter(
+                    logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s")
+                )
+                self.logger.addHandler(file_handler)
+
+            # Emit one startup line so file logging can be verified immediately.
+            self.logger.info("DeidTools logger initialized. log_path=%s debug=%s", log_path, debug)
 
         from . import __version__
         self.version = __version__
