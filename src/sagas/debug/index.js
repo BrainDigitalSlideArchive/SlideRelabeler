@@ -10,7 +10,6 @@ export function* debug_saga () {
   while(true) {
     // Start all async watchers
     yield take(debug_actions.START_DEBUG_SAGA);
-    console.log("Starting debug saga");
     // const watch_get_backend_error_messages = yield fork(get_backend_error_messages);
     // const watch_get_backend_debug_messages = yield fork(get_backend_debug_messages);
     const watch_clear_backend_error_messages = yield fork(clear_backend_error_messages);

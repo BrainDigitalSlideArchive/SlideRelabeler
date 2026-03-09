@@ -20,10 +20,6 @@ function* watch_save_store() {
     const store = yield select();
     const response = yield set_store(store);
 
-    console.log("window name", window.name);
-    console.log("store", store);
-    console.log("response", response);
-
     // Setup debug messages for continuous updates if needed
     const debug_config = yield select(state => state.config.debug);
 
