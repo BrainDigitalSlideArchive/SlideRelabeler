@@ -43,7 +43,7 @@ function add_file_row(state, draft, input_file_row) {
 
 const files_reducer = createReducer(default_state, (builder) => {
   builder
-    .addCase(files_actions.UPDATE_FILES, (state, action) => {
+    .addCase(app_actions.UPDATE_FILES, (state, action) => {
       return action.payload
     })
     .addCase(files_actions.TOGGLE_PROCESSING, (state, action) => {
@@ -256,6 +256,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(files_actions.PROCESSED_FILE, (state, action) => {
       return produce(state, draft => {
         let row_idx = action.payload.row_idx;
+        console.log("Processed file payload", action.payload);
         draft.file_rows[row_idx].__reserved.output_path = action.payload.processedFile.output_path;
         draft.file_rows[row_idx].__reserved.processed = 1;
         draft.file_rows[row_idx].__reserved.progress = 100;
@@ -363,7 +364,7 @@ const files_reducer = createReducer(default_state, (builder) => {
         }
       })
     })
-    .addCase(dsa_actions.SET_UPLOADING, (state, action) => {
+    .addCase(app_actions.SET_UPLOADING, (state, action) => {
       return produce(state, draft => {
         draft.uploading = action.payload;
       })

@@ -1,0 +1,97 @@
+syntax = "proto3";
+package engine;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+service EngineService {
+  // ---- WSI / images ----
+  rpc GetMetadata(FileRequest) returns (MetadataReply);
+
+  rpc GetThumbnail(FileRequest) returns (ImageReply);
+  rpc GetLabel(FileRequest) returns (ImageReply);
+  rpc GetMacro(FileRequest) returns (ImageReply);
+
+  // arbitrary associated image by name ("label", "macro", etc.)
+  rpc GetAssociatedImage(AssociatedImageRequest) returns (ImageReply);
+
+  rpc GetTile(TileRequest) returns (ImageReply);
+
+  // ---- DeidTools preview ----
+  rpc PreviewLabel(StructRequest) returns (ImageReply);
+  rpc PreviewMacro(StructRequest) returns (ImageReply);
+  rpc PreviewMetadata(StructRequest) returns (PreviewMetadataReply);
+
+  // ---- DeidTools workflow ----
+  rpc DeidProcess(StructRequest) returns (StructReply); // DeidReply = Struct
+
+  // ---- Utilities / diagnostics ----
+  rpc GetOutputPath(StructRequest) returns (StringReply);
+
+  rpc GetProgress(StructRequest) returns (ProgressReply); // typed; you’ll refine later
+
+  rpc GetErrors(google.protobuf.Empty) returns (StringListReply);
+  rpc ClearErrors(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+  rpc GetDebugs(google.protobuf.Empty) returns (StringListReply);
+  rpc ClearDebugs(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message FileRequest {
+  string path = 1;
+}
+
+message AssociatedImageRequest {
+  string path = 1;
+  string name = 2; // e.g. "macro", "label"
+}
+
+message TileRequest {
+  string path = 1;
+  int32 x = 2;
+  int32 y = 3;
+  int32 level = 4;
+}
+
+message MetadataReply {
+  google.protobuf.Struct metadata = 1;
+  repeated string associated_images = 2;
+  int64 bytes = 3;
+}
+
+message ImageReply {
+  string mime_type = 1;
+  bytes image_bytes = 2; // raw JPEG/PNG/etc bytes
+}
+
+message StructRequest {
+  google.protobuf.Struct data = 1;
+}
+
+message StructReply {
+  google.protobuf.Struct data = 1;
+}
+
+// ✅ Added: used by PreviewMetadata
+message PreviewMetadataReply {
+  google.protobuf.Struct data = 1;
+}
+
+message StringReply {
+  string value = 1;
+}
+
+message StringListReply {
+  repeated string values = 1;
+}
+
+// Placeholder typed progress message; adjust fields later.
+message ProgressReply {
+  float progress = 1;
+  int64 bytes = 2;
+  string message = 3;
+  int64 time_ms = 4;
+
+  // Optional: room for future without breaking clients
+  google.protobuf.Struct extra = 10;
+}

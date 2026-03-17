@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app, safeStorage } from 'electron';
-import { PythonBridge } from './bridge/pythonBridge';
+// import { PythonBridge } from './bridge/pythonBridge';
+import { GrpcPythonBridge } from './bridge/grpcPythonBridge';
 import path, { join } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
@@ -10,7 +11,10 @@ import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 
-let bridge = new PythonBridge();
+// let bridge = new PythonBridge();
+let bridge = new GrpcPythonBridge();
+
+export { bridge };
 
 const wsiCustomFilter = { name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff'] };
 

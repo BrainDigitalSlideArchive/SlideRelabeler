@@ -11,7 +11,7 @@ function* load_saved_store() {
   const store = yield get_store();
   if (store) {
     if (store.files) {
-      yield put({type: files_actions.UPDATE_FILES, payload: store.files});
+      yield put({type: app_actions.UPDATE_FILES, payload: store.files});
       // Always make interface allow changes if uploaded from disk
       yield put({type: files_actions.ENABLE_CHANGES});
     }

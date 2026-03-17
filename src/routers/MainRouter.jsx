@@ -12,13 +12,14 @@ import Viewer from "../containers/Viewer/Viewer";
 const MainRouter = () => {
     return [
         <Router
+            key="main-router"
             main={
-              <Route path="/" element={<Provider store={store}><App/></Provider>}/>
+              <Route key="main" path="/" element={<Provider store={store}><App/></Provider>}/>
             }
             viewer={
-              <Route path="/" element={<Provider store={viewer_store}><Viewer/></Provider>}>
-                <Route path={":file"} element={<Provider store={viewer_store}><Viewer/></Provider>}/>
-                <Route path={""} element={<Provider store={viewer_store}><Viewer/></Provider>}/>
+              <Route key="viewer" path="/" element={<Provider store={viewer_store}><Viewer/></Provider>}>
+                <Route key="viewer-file" path={":file"} element={<Provider store={viewer_store}><Viewer/></Provider>}/>
+                <Route key="viewer-root" path={""} element={<Provider store={viewer_store}><Viewer/></Provider>}/>
               </Route>
             }
         />,

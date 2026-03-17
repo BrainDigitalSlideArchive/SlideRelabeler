@@ -2,6 +2,8 @@ import {take, put, call, select} from 'redux-saga/effects'
 
 import * as preview_actions from '../../actions/preview';
 
+import { structToObject } from '../../helpers/grpc_helpers';
+
 function are_values_diff(prior, after) {
     let max_length = 0;
 
@@ -104,15 +106,21 @@ function* watch_preview_metadata() {
         const config = yield select(state => state.config);
         const tiff_tags = yield select(state => state.viewer.tiff_tags);
 
+        if (!file_row || !file_row.__reserved) {
+            continue;
+        }
+
         let info = {
-        config: config,
-        ...file_row
+            config: config,
+            ...file_row,
+            __reserved: file_row.__reserved,
         };
 
         const response = yield call(electronAPI.previewMetadata, info);
+        const response_object = structToObject(response);
 
-        let prior_ifds = response[0];
-        let new_ifds = response[1];
+        // gRPC preview-metadata returns an object:
+        let {prior_ifds, new_ifds, redactList} = response_object;
 
         convert_json_ifds(prior_ifds);
         convert_json_ifds(new_ifds);

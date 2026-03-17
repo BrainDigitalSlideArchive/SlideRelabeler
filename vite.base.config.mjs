@@ -23,7 +23,7 @@ export const getBuildConfig = (env) => {
             watch: command === 'serve' ? {} : null,
             minify: command === 'build',
         },
-        clearScreen: false,
+        clearScreen: false
     };
 };
 

@@ -470,6 +470,16 @@
       height: 100%;
       width: 100%;
     }
+
+    .__metadata-table-not-available {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      width: 100%;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
   }
 
   .__modal-background {

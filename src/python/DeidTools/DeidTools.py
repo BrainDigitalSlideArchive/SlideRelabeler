@@ -11,6 +11,7 @@ import pickle
 import hashlib
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import base64
 import xml.etree.ElementTree
 from multiprocessing import shared_memory
@@ -194,6 +195,8 @@ class DeidTools:
             textH = textB  # from old imageDraw.textsize(title, imageDrawFont)
             if iter != 1 and (textW > targetW * 0.95 or textW < targetW * 0.85):
                 fontSize = fontSize * targetW * 0.9 / textW
+                if fontSize < 0.01:
+                    fontSize = 0.01
         titleH = int(math.ceil(textH * 1.25))
         if square and (w != h or (not previouslyAdded or w != targetW or h < titleH)):
             if targetW < h + titleH:
@@ -444,7 +447,7 @@ class DeidTools:
 
         tileSource = item.tileSource  ##MODDED
         sourcePath = tileSource._getLargeImagePath()
-        self.logger.info("Redacting aperio file %s", sourcePath)
+
         # print(f"Redacting aperio file {sourcePath}")
         tiffinfo = tifftools.read_tiff(sourcePath)
         # print(f"Opened file using tifftools")
@@ -587,8 +590,8 @@ class DeidTools:
         tifftools.write_tiff(ifds, tracking_file_io)
         tracking_file_io.close()
         output_path = self.attempt_replace_wsi_file(partial_output_path, output_path)
-
-        self.logger.info("Redacted aperio file %s as %s", sourcePath, output_path)
+        if self.debug:
+            self.logger.info("Redacted file %s to %s", sourcePath, output_path)
         return output_path, "image/tiff"
 
 
@@ -629,7 +632,7 @@ class DeidTools:
         return image, output_height
 
     def get_field_data(self, output_dict, field):
-        if field == 'rename':
+        if field == '__reserved.rename':
             return self.get_rename(output_dict)
         else:
             field_split = field.split('.')
@@ -753,11 +756,13 @@ class DeidTools:
     def get_label_text(self, output_dict):
         text = ''
 
-        if 'config' in output_dict and 'label' in output_dict['config']:
+        if 'config' in output_dict and 'label' in output_dict['config'] and 'filename' in output_dict['config']:
             label_config = output_dict['config']['label']
+            filename_config = output_dict['config']['filename']
+
             if 'text_column_field' in label_config and label_config['text_column_field'] is not None:
                 field = label_config['text_column_field']['value']
-                text = self.get_field_data(output_dict, field)
+                text = self.get_field_data(output_dict, field)        
 
         return text
 
@@ -770,36 +775,51 @@ class DeidTools:
 
     def get_rename(self, output_dict):
         temp = ''
+        config = output_dict.get('config', {})
+        filename_config = config.get('filename', {})
+        reserved = output_dict.get('__reserved', {})
+        source = reserved.get('source', {})
 
-        if 'config' in output_dict and 'filename' in output_dict['config']:
-            filename_config = output_dict['config']['filename']
-            if 'use_uuid' in filename_config and filename_config['use_uuid']:
-                if 'uuid' in output_dict['__reserved']:
-                    temp += output_dict['__reserved']['uuid']
-            elif not filename_config['use_uuid'] and 'rename' in output_dict['__reserved'] and len(output_dict['__reserved']['rename']) > 0:
-                temp += output_dict['__reserved']['rename']
-            elif 'desired_title' == '' and 'source' in output_dict and 'filename' in output_dict['__reserved']['source']:
-                temp += output_dict['__reserved']['source']['filename']
-            else:
-                temp += 'None'
+        use_uuid = filename_config.get('use_uuid', True)
+        if isinstance(use_uuid, str):
+            use_uuid = use_uuid.strip().lower() in ('1', 'true', 'yes', 'on')
 
-            if 'use_prefix' in filename_config and filename_config['use_prefix'] and 'prefix' in filename_config:
-                temp = filename_config['prefix'] + temp
-            if 'use_suffix' in filename_config and filename_config['use_suffix'] and 'suffix' in filename_config:
-                temp = temp + filename_config['suffix']
+        uuid_value = reserved.get('uuid')
+        rename_value = reserved.get('rename')
 
-            temp = temp + output_dict['__reserved']['source']['parsed']['ext']
+        # Prefer configured mode, but keep deterministic fallbacks.
+        if use_uuid and uuid_value:
+            temp = str(uuid_value)
+        elif (not use_uuid) and rename_value:
+            temp = str(rename_value)
+        elif uuid_value:
+            temp = str(uuid_value)
+        elif rename_value:
+            temp = str(rename_value)
+        elif source.get('filename'):
+            temp = os.path.splitext(source.get('filename'))[0]
+        else:
+            temp = 'None'
+
+        if filename_config.get('use_prefix') and ('prefix' in filename_config):
+            temp = str(filename_config.get('prefix', '')) + temp
+        if filename_config.get('use_suffix') and ('suffix' in filename_config):
+            temp = temp + str(filename_config.get('suffix', ''))
+
+        ext = source.get('parsed', {}).get('ext')
+        if not ext and source.get('filename'):
+            ext = os.path.splitext(source.get('filename'))[1]
+        if ext:
+            temp = temp + ext
 
         return temp
 
     def preview_label(self, output_dict):
         labelImage = self.get_deid_label(output_dict)
-
         return labelImage
 
     def preview_macro(self, output_dict):
         macroImage = self.get_deid_macro(output_dict)
-
         return macroImage
 
     def return_deid_setup(self, output_dict):
@@ -1150,13 +1170,50 @@ class DeidTools:
 
         return self.perform_deid(output_dict)
 
-    def __init__(self, supress_print=False, output_dir=os.path.join('./output/.'), **kwargs):
+    def __init__(self, supress_print=False, output_dir=os.path.join('./output/.'), debug=False, **kwargs):
         self._config = kwargs
         self.supress_print = supress_print
         self.output_dir = output_dir
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
-        self.logger.setLevel(logging.DEBUG)  # Pass everything; let filters handle level-based filtering
+        self.debug = debug
+        log_path = kwargs.get("log_path") or os.path.abspath(
+            os.path.join(self.output_dir, "deidtools.log")
+        )
+
+        if self.debug:
+            self.logger = logging.getLogger(__name__)
+            # Enable full logger output so diagnostics show in Electron console and log file.
+            if debug:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
+
+            self.logger.propagate = False
+            if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stderr for h in self.logger.handlers):
+                stderr_handler = logging.StreamHandler(sys.stderr)
+                stderr_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                stderr_handler.setFormatter(logging.Formatter("[DeidTools Error] %(levelname)s %(message)s"))
+                self.logger.addHandler(stderr_handler)
+            if not any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) is sys.stdout for h in self.logger.handlers):
+                stdout_handler = logging.StreamHandler(sys.stdout)
+                stdout_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                stdout_handler.setFormatter(logging.Formatter("[DeidTools Debug] %(levelname)s %(message)s"))
+                self.logger.addHandler(stdout_handler)
+            if not any(isinstance(h, RotatingFileHandler) for h in self.logger.handlers):
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                file_handler = RotatingFileHandler(
+                    log_path,
+                    maxBytes=5 * 1024 * 1024,
+                    backupCount=3,
+                    encoding="utf-8",
+                )
+                file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+                file_handler.setFormatter(
+                    logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s")
+                )
+                self.logger.addHandler(file_handler)
+
+            # Emit one startup line so file logging can be verified immediately.
+            self.logger.info("DeidTools logger initialized. log_path=%s debug=%s", log_path, debug)
 
         from . import __version__
         self.version = __version__

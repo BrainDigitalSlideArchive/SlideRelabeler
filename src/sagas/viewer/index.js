@@ -18,6 +18,7 @@ function* sagas() {
   yield take(app_actions.STOP_VIEWER);
   yield cancel(update_store_watcher);
   yield cancel(constant_update_store_watcher);
+  yield cancel(watch_preview_metadata_watcher);
 };
 
 export default sagas;
