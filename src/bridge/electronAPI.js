@@ -98,6 +98,26 @@ const API = {
   globusStopUploadFileProgress: () => ipcRenderer.removeAllListeners('globus-upload-file-progress'),
   globusStopUploadComplete: () => ipcRenderer.removeAllListeners('globus-upload-file-complete'),
   globusStopUploadFileError: () => ipcRenderer.removeAllListeners('globus-upload-file-error'),
+  globusExecuteCommand: (args, useJsonFormat = false) => ipcRenderer.invoke('globus-execute-command', args, useJsonFormat),
+  globusCancelCommand: (commandId) => ipcRenderer.invoke('globus-cancel-command', commandId),
+  globusSetupCommandOutput: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('globus-command-output', handler);
+    return () => ipcRenderer.removeListener('globus-command-output', handler);
+  },
+  globusSetupCommandComplete: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('globus-command-complete', handler);
+    return () => ipcRenderer.removeListener('globus-command-complete', handler);
+  },
+  globusSetupCommandError: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('globus-command-error', handler);
+    return () => ipcRenderer.removeListener('globus-command-error', handler);
+  },
+  globusStopCommandOutput: () => ipcRenderer.removeAllListeners('globus-command-output'),
+  globusStopCommandComplete: () => ipcRenderer.removeAllListeners('globus-command-complete'),
+  globusStopCommandError: () => ipcRenderer.removeAllListeners('globus-command-error'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);

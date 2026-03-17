@@ -24,6 +24,16 @@ function ModalGlobusTest(props) {
   const [authorizationCodeInput, setAuthorizationCodeInput] = useState('');
   const [disableSslVerification, setDisableSslVerification] = useState(false);
   const cleanupRef = useRef({ progress: null, complete: null, error: null });
+  
+  // Terminal mode state
+  const [commandInput, setCommandInput] = useState('');
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [outputLines, setOutputLines] = useState([]);
+  const [currentCommandId, setCurrentCommandId] = useState(null);
+  const [useJsonFormat, setUseJsonFormat] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const terminalOutputRef = useRef(null);
+  const terminalCleanupRef = useRef({ output: null, complete: null, error: null });
 
   // Check CLI availability on mount
   useEffect(() => {
@@ -35,6 +45,10 @@ function ModalGlobusTest(props) {
       if (cleanupRef.current.progress) cleanupRef.current.progress();
       if (cleanupRef.current.complete) cleanupRef.current.complete();
       if (cleanupRef.current.error) cleanupRef.current.error();
+      // Cleanup terminal listeners
+      if (terminalCleanupRef.current.output) terminalCleanupRef.current.output();
+      if (terminalCleanupRef.current.complete) terminalCleanupRef.current.complete();
+      if (terminalCleanupRef.current.error) terminalCleanupRef.current.error();
     };
   }, []);
 
@@ -198,6 +212,175 @@ function ModalGlobusTest(props) {
       setErrorMessage(error.message || 'Error validating path');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  // Terminal mode functions
+  function parseCommand(input) {
+    // Simple command parsing - split by spaces, handle basic quoted strings
+    const parts = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+      if (char === '"' || char === "'") {
+        inQuotes = !inQuotes;
+      } else if (char === ' ' && !inQuotes) {
+        if (current.trim()) {
+          parts.push(current.trim());
+          current = '';
+        }
+      } else {
+        current += char;
+      }
+    }
+    if (current.trim()) {
+      parts.push(current.trim());
+    }
+    
+    // Remove 'globus' prefix if present (we'll add it in the backend)
+    if (parts.length > 0 && parts[0].toLowerCase() === 'globus') {
+      parts.shift();
+    }
+    
+    return parts;
+  }
+
+  function addOutputLine(type, content) {
+    setOutputLines(prev => [...prev, { 
+      type: type, 
+      content: content, 
+      timestamp: new Date() 
+    }]);
+    
+    // Auto-scroll to bottom
+    setTimeout(() => {
+      if (terminalOutputRef.current) {
+        terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
+      }
+    }, 10);
+  }
+
+  async function handleExecuteCommand() {
+    if (!commandInput.trim()) {
+      return;
+    }
+    
+    if (!cliAvailable) {
+      addOutputLine('error', 'Error: Globus CLI not available');
+      return;
+    }
+    
+    if (isExecuting) {
+      addOutputLine('error', 'Error: Command already executing');
+      return;
+    }
+    
+    const commandText = commandInput.trim();
+    const args = parseCommand(commandText);
+    
+    if (args.length === 0) {
+      addOutputLine('error', 'Error: Invalid command');
+      return;
+    }
+    
+    // Add command to history
+    setCommandHistory(prev => {
+      const newHistory = [...prev];
+      if (newHistory.length === 0 || newHistory[newHistory.length - 1] !== commandText) {
+        newHistory.push(commandText);
+        // Keep only last 50 commands
+        if (newHistory.length > 50) {
+          newHistory.shift();
+        }
+      }
+      return newHistory;
+    });
+    
+    // Display command prompt
+    addOutputLine('command', `$ globus ${args.join(' ')}`);
+    
+    setIsExecuting(true);
+    setCommandInput('');
+    
+    // Cleanup previous listeners
+    if (terminalCleanupRef.current.output) terminalCleanupRef.current.output();
+    if (terminalCleanupRef.current.complete) terminalCleanupRef.current.complete();
+    if (terminalCleanupRef.current.error) terminalCleanupRef.current.error();
+    
+    // Execute command first to get commandId
+    let commandId = null;
+    try {
+      const response = await window.electronAPI.globusExecuteCommand(args, useJsonFormat);
+      if (response && response[0]) {
+        commandId = response[1].commandId;
+        setCurrentCommandId(commandId);
+      } else {
+        setIsExecuting(false);
+        addOutputLine('error', response[1]?.message || 'Failed to start command');
+        return;
+      }
+    } catch (error) {
+      setIsExecuting(false);
+      addOutputLine('error', `Error: ${error.message || 'Unknown error'}`);
+      return;
+    }
+    
+    // Set up output listeners with captured commandId
+    const outputListener = window.electronAPI.globusSetupCommandOutput((data) => {
+      if (data.commandId === commandId) {
+        if (data.type === 'stdout') {
+          addOutputLine('stdout', data.chunk);
+        } else if (data.type === 'stderr') {
+          addOutputLine('stderr', data.chunk);
+        }
+      }
+    });
+    
+    const completeListener = window.electronAPI.globusSetupCommandComplete((data) => {
+      if (data.commandId === commandId) {
+        setIsExecuting(false);
+        setCurrentCommandId(null);
+        if (data.exitCode !== 0) {
+          addOutputLine('error', `Command exited with code ${data.exitCode}`);
+        }
+        // Cleanup listeners
+        if (terminalCleanupRef.current.output) terminalCleanupRef.current.output();
+        if (terminalCleanupRef.current.complete) terminalCleanupRef.current.complete();
+        if (terminalCleanupRef.current.error) terminalCleanupRef.current.error();
+        terminalCleanupRef.current = { output: null, complete: null, error: null };
+      }
+    });
+    
+    const errorListener = window.electronAPI.globusSetupCommandError((data) => {
+      if (data.commandId === commandId) {
+        setIsExecuting(false);
+        setCurrentCommandId(null);
+        addOutputLine('error', `Error: ${data.error}`);
+        // Cleanup listeners
+        if (terminalCleanupRef.current.output) terminalCleanupRef.current.output();
+        if (terminalCleanupRef.current.complete) terminalCleanupRef.current.complete();
+        if (terminalCleanupRef.current.error) terminalCleanupRef.current.error();
+        terminalCleanupRef.current = { output: null, complete: null, error: null };
+      }
+    });
+    
+    terminalCleanupRef.current = {
+      output: outputListener,
+      complete: completeListener,
+      error: errorListener
+    };
+  }
+
+  function handleClearOutput() {
+    setOutputLines([]);
+  }
+
+  function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleExecuteCommand();
     }
   }
 
@@ -589,6 +772,130 @@ function ModalGlobusTest(props) {
                 <strong>Note:</strong> Connection warning detected, but authentication URL was retrieved. You can still proceed with authentication.
               </div>
             )}
+
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>Terminal Mode</div>
+            <div className={"__config-control-section-description"}>
+              Execute globus CLI commands directly and see output in real-time. Enter commands without the "globus" prefix (e.g., "endpoint search pitt#dtn").
+              <br />
+              <span style={{ fontSize: '0.9em', fontStyle: 'italic', color: '#666' }}>
+                Note: SSL verification setting from the Authentication section above also applies to terminal commands.
+              </span>
+            </div>
+            <div style={{ marginBottom: '1em' }}>
+              <div style={{ marginBottom: '0.5em' }}>
+                <Checkbox 
+                  label={"Use JSON Format"} 
+                  checked={useJsonFormat} 
+                  onClick={() => setUseJsonFormat(!useJsonFormat)} 
+                />
+              </div>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: '0.5em', 
+                marginBottom: '0.5em',
+                alignItems: 'center'
+              }}>
+                <div style={{ 
+                  padding: '0.25em 0.5em',
+                  backgroundColor: '#1e1e1e',
+                  color: '#d4d4d4',
+                  fontFamily: 'monospace',
+                  fontSize: '0.9em',
+                  borderRadius: '2px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  $ globus
+                </div>
+                <input
+                  type="text"
+                  value={commandInput}
+                  onChange={(e) => setCommandInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isExecuting || !cliAvailable}
+                  placeholder="endpoint search pitt#dtn"
+                  style={{
+                    flex: 1,
+                    padding: '0.5em',
+                    fontFamily: 'monospace',
+                    fontSize: '0.9em',
+                    border: '1px solid #cccccc',
+                    borderRadius: '4px',
+                    backgroundColor: '#ffffff',
+                    color: '#000000'
+                  }}
+                />
+                <Button 
+                  text={isExecuting ? "Executing..." : "Execute"} 
+                  onClick={handleExecuteCommand}
+                  disabled={isExecuting || !commandInput.trim() || !cliAvailable}
+                  extra_class_name="_align-center"
+                />
+              </div>
+              
+              <div style={{ 
+                marginTop: '0.5em',
+                marginBottom: '0.5em'
+              }}>
+                <Button 
+                  text="Clear Output" 
+                  onClick={handleClearOutput}
+                  disabled={outputLines.length === 0}
+                  extra_class_name="_align-center"
+                />
+              </div>
+              
+              <div style={{ 
+                backgroundColor: '#1e1e1e',
+                border: '1px solid #333333',
+                borderRadius: '4px',
+                padding: '0.75em',
+                minHeight: '200px',
+                maxHeight: '400px',
+                overflowY: 'auto',
+                fontFamily: 'monospace',
+                fontSize: '0.85em',
+                color: '#d4d4d4',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
+              }} ref={terminalOutputRef}>
+                {outputLines.length === 0 ? (
+                  <div style={{ color: '#888888', fontStyle: 'italic' }}>
+                    No output yet. Enter a command above to get started.
+                  </div>
+                ) : (
+                  outputLines.map((line, index) => {
+                    let lineColor = '#d4d4d4';
+                    if (line.type === 'command') {
+                      lineColor = '#4ec9b0'; // Cyan for commands
+                    } else if (line.type === 'stderr') {
+                      lineColor = '#f48771'; // Orange/red for stderr
+                    } else if (line.type === 'error') {
+                      lineColor = '#f48771'; // Red for errors
+                    }
+                    
+                    return (
+                      <div 
+                        key={index}
+                        style={{ 
+                          color: lineColor,
+                          marginBottom: line.type === 'command' ? '0.25em' : '0',
+                          whiteSpace: 'pre-wrap'
+                        }}
+                      >
+                        {line.content}
+                      </div>
+                    );
+                  })
+                )}
+                {isExecuting && (
+                  <div style={{ color: '#888888' }}>
+                    ▋
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

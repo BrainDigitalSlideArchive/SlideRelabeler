@@ -164,6 +164,31 @@ class GlobusAPI {
         // Prepare environment - start with process.env
         const baseEnv = { ...process.env };
         
+        // Suppress PyInstaller debug output by default (unless explicitly enabled)
+        // Set GLOBUS_ENABLE_PYI_DEBUG=1 to enable PyInstaller debug output
+        if (!baseEnv.GLOBUS_ENABLE_PYI_DEBUG || baseEnv.GLOBUS_ENABLE_PYI_DEBUG === '0') {
+            // Remove PyInstaller debug environment variables
+            const removedVars = [];
+            if (baseEnv.PYI_DEBUG !== undefined) {
+                removedVars.push('PYI_DEBUG');
+                delete baseEnv.PYI_DEBUG;
+            }
+            if (baseEnv.PYINSTALLER_DEBUG !== undefined) {
+                removedVars.push('PYINSTALLER_DEBUG');
+                delete baseEnv.PYINSTALLER_DEBUG;
+            }
+            // Also check for any PYI_* variables that might enable debug
+            Object.keys(baseEnv).forEach(key => {
+                if (key.startsWith('PYI_') && key.includes('DEBUG')) {
+                    removedVars.push(key);
+                    delete baseEnv[key];
+                }
+            });
+            if (removedVars.length > 0) {
+                console.log('[GlobusAPI] executeCommandStream: Removed PyInstaller debug env vars:', removedVars);
+            }
+        }
+        
         // Add conda Python to PATH if using conda environment
         if (this._usingCondaEnv && this._condaPrefix) {
             const currentPath = baseEnv.PATH || '';
@@ -847,6 +872,175 @@ class GlobusAPI {
 
     isAvailable() {
         return this._pathToGlobus !== null;
+    }
+
+    executeCommandStream(args, useJsonFormat = false, additionalEnv = {}, outputCallbacks = {}) {
+        // Execute command with streaming output using spawn
+        // outputCallbacks: { onStdout: (chunk) => {}, onStderr: (chunk) => {}, onComplete: (exitCode, stdout, stderr) => {}, onError: (error) => {} }
+        // Returns the child process for potential cancellation
+        
+        if (!this._pathToGlobus) {
+            if (outputCallbacks.onError) {
+                outputCallbacks.onError(new Error('Globus CLI not available'));
+            }
+            return null;
+        }
+        
+        console.log('[GlobusAPI] executeCommandStream: Starting streaming command execution');
+        console.log('[GlobusAPI] executeCommandStream: Args:', args);
+        console.log('[GlobusAPI] executeCommandStream: Use JSON format:', useJsonFormat);
+        
+        // Build command args
+        const commandArgs = [...args];
+        if (useJsonFormat) {
+            commandArgs.push('--format', 'json');
+        }
+        
+        // Prepare environment - start with process.env
+        const baseEnv = { ...process.env };
+        
+        // Suppress PyInstaller debug output by default (unless explicitly enabled)
+        // Set GLOBUS_ENABLE_PYI_DEBUG=1 to enable PyInstaller debug output
+        if (!baseEnv.GLOBUS_ENABLE_PYI_DEBUG || baseEnv.GLOBUS_ENABLE_PYI_DEBUG === '0') {
+            // Remove PyInstaller debug environment variables
+            const removedVars = [];
+            if (baseEnv.PYI_DEBUG !== undefined) {
+                removedVars.push('PYI_DEBUG');
+                delete baseEnv.PYI_DEBUG;
+            }
+            if (baseEnv.PYINSTALLER_DEBUG !== undefined) {
+                removedVars.push('PYINSTALLER_DEBUG');
+                delete baseEnv.PYINSTALLER_DEBUG;
+            }
+            // Also check for any PYI_* variables that might enable debug
+            Object.keys(baseEnv).forEach(key => {
+                if (key.startsWith('PYI_') && key.includes('DEBUG')) {
+                    removedVars.push(key);
+                    delete baseEnv[key];
+                }
+            });
+            if (removedVars.length > 0) {
+                console.log('[GlobusAPI] executeCommandStream: Removed PyInstaller debug env vars:', removedVars);
+            }
+        }
+        
+        // Add conda Python to PATH if using conda environment
+        if (this._usingCondaEnv && this._condaPrefix) {
+            const currentPath = baseEnv.PATH || '';
+            const condaPath = process.platform === 'win32'
+                ? path.join(this._condaPrefix, 'Scripts') + path.delimiter + 
+                  path.join(this._condaPrefix, 'Library', 'bin') + path.delimiter +
+                  currentPath
+                : path.join(this._condaPrefix, 'bin') + path.delimiter + currentPath;
+            
+            baseEnv.PATH = condaPath;
+            baseEnv.CONDA_PREFIX = this._condaPrefix;
+        }
+        
+        // Set SSL verification setting if disabled
+        if (this._disableSslVerification) {
+            baseEnv.GLOBUS_SDK_VERIFY_SSL = 'false';
+            console.log('[GlobusAPI] executeCommandStream: SSL verification disabled');
+        }
+        
+        // Merge additional environment variables
+        const finalEnv = additionalEnv.env ? { ...baseEnv, ...additionalEnv.env } : baseEnv;
+        
+        let stdout = '';
+        let stderr = '';
+        let processExited = false;
+        let stderrBuffer = ''; // Buffer for incomplete stderr lines
+        
+        console.log('[GlobusAPI] executeCommandStream: Spawning process with args:', commandArgs);
+        
+        const child = spawn(this._pathToGlobus, commandArgs, {
+            env: finalEnv,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: false
+        });
+        
+        // Stream stdout
+        child.stdout.on('data', (data) => {
+            const chunk = data.toString();
+            stdout += chunk;
+            console.log('[GlobusAPI] executeCommandStream: stdout chunk:', chunk.substring(0, 200));
+            if (outputCallbacks.onStdout) {
+                outputCallbacks.onStdout(chunk);
+            }
+        });
+        
+        // Stream stderr with line buffering to filter PyInstaller debug output
+        child.stderr.on('data', (data) => {
+            const chunk = data.toString();
+            stderr += chunk;
+            console.log('[GlobusAPI] executeCommandStream: stderr chunk:', chunk.substring(0, 200));
+            
+            // Add chunk to buffer
+            stderrBuffer += chunk;
+            
+            // Process complete lines (ending with \n)
+            const lines = stderrBuffer.split('\n');
+            // Keep the last incomplete line in the buffer
+            stderrBuffer = lines.pop() || '';
+            
+            // Filter out PyInstaller debug output lines
+            // Pattern: [PYI-XXXXX:DEBUG] ... or [PYI-XXXXX:INFO] etc.
+            const filteredLines = lines.filter(line => {
+                // Remove lines that match PyInstaller debug pattern
+                // Match pattern anywhere in the line (not just at start) to catch chunked lines
+                // Also match partial patterns that might occur due to chunking
+                const trimmedLine = line.trim();
+                return !trimmedLine.match(/\[PYI-\d+:(DEBUG|INFO|WARN|ERROR)\]/) &&
+                       !trimmedLine.match(/^PYI-\d+:(DEBUG|INFO|WARN|ERROR)/) &&
+                       !trimmedLine.match(/^LOADER:/) &&
+                       !trimmedLine.match(/^DYLIB:/);
+            });
+            
+            // Send filtered complete lines
+            if (filteredLines.length > 0 && outputCallbacks.onStderr) {
+                const filteredOutput = filteredLines.join('\n') + (filteredLines.length > 0 ? '\n' : '');
+                outputCallbacks.onStderr(filteredOutput);
+            }
+        });
+        
+        // Handle process exit
+        child.on('exit', (code, signal) => {
+            if (processExited) return;
+            processExited = true;
+            
+            console.log('[GlobusAPI] executeCommandStream: Process exited with code:', code, 'signal:', signal);
+            
+            // Flush any remaining stderr buffer
+            if (stderrBuffer && outputCallbacks.onStderr) {
+                // Filter the remaining buffer content
+                const trimmedBuffer = stderrBuffer.trim();
+                if (!trimmedBuffer.match(/\[PYI-\d+:(DEBUG|INFO|WARN|ERROR)\]/) &&
+                    !trimmedBuffer.match(/^PYI-\d+:(DEBUG|INFO|WARN|ERROR)/) &&
+                    !trimmedBuffer.match(/^LOADER:/) &&
+                    !trimmedBuffer.match(/^DYLIB:/)) {
+                    outputCallbacks.onStderr(stderrBuffer);
+                }
+                stderrBuffer = '';
+            }
+            
+            if (outputCallbacks.onComplete) {
+                outputCallbacks.onComplete(code || 0, stdout, stderr);
+            }
+        });
+        
+        // Handle process errors
+        child.on('error', (error) => {
+            if (processExited) return;
+            processExited = true;
+            
+            console.log('[GlobusAPI] executeCommandStream: Process error:', error);
+            
+            if (outputCallbacks.onError) {
+                outputCallbacks.onError(error);
+            }
+        });
+        
+        return child;
     }
 
     setDisableSslVerification(disable) {

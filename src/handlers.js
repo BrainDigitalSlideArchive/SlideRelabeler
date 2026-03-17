@@ -317,6 +317,101 @@ ipcMain.handle('globus-check-collection-path', async (event, collection_path) =>
   return globus_client.validate_collection_path(collection_path);
 });
 
+// Store running command processes by commandId
+const runningCommands = new Map();
+
+ipcMain.handle('globus-execute-command', async (event, args, useJsonFormat = false) => {
+  console.log('[Handlers] globus-execute-command IPC handler called');
+  console.log('[Handlers] Args:', args);
+  console.log('[Handlers] Use JSON format:', useJsonFormat);
+  
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  
+  // Generate unique command ID
+  const commandId = `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const webContents = event.sender; // event.sender is the webContents object
+  
+  console.log('[Handlers] Starting command with ID:', commandId);
+  
+  // Set up output callbacks
+  const outputCallbacks = {
+    onStdout: (chunk) => {
+      webContents.send('globus-command-output', {
+        commandId: commandId,
+        type: 'stdout',
+        chunk: chunk
+      });
+    },
+    onStderr: (chunk) => {
+      webContents.send('globus-command-output', {
+        commandId: commandId,
+        type: 'stderr',
+        chunk: chunk
+      });
+    },
+    onComplete: (exitCode, stdout, stderr) => {
+      console.log('[Handlers] Command completed:', commandId, 'exitCode:', exitCode);
+      runningCommands.delete(commandId);
+      webContents.send('globus-command-complete', {
+        commandId: commandId,
+        exitCode: exitCode,
+        stdout: stdout,
+        stderr: stderr
+      });
+    },
+    onError: (error) => {
+      console.log('[Handlers] Command error:', commandId, error);
+      runningCommands.delete(commandId);
+      webContents.send('globus-command-error', {
+        commandId: commandId,
+        error: error.message || 'Unknown error'
+      });
+    }
+  };
+  
+  // Execute command with streaming
+  try {
+    const childProcess = globus_client.executeCommandStream(args, useJsonFormat, {}, outputCallbacks);
+    
+    if (!childProcess) {
+      return [false, { message: 'Failed to start command process' }];
+    }
+    
+    // Store process reference for potential cancellation
+    runningCommands.set(commandId, childProcess);
+    
+    console.log('[Handlers] Command started successfully:', commandId);
+    return [true, { commandId: commandId }];
+  } catch (error) {
+    console.log('[Handlers] Error starting command:', error);
+    return [false, { message: error.message || 'Failed to start command' }];
+  }
+});
+
+ipcMain.handle('globus-cancel-command', async (event, commandId) => {
+  console.log('[Handlers] globus-cancel-command IPC handler called for:', commandId);
+  
+  const childProcess = runningCommands.get(commandId);
+  if (childProcess && !childProcess.killed) {
+    try {
+      childProcess.kill();
+      runningCommands.delete(commandId);
+      console.log('[Handlers] Command cancelled:', commandId);
+      return [true, { message: 'Command cancelled' }];
+    } catch (error) {
+      console.log('[Handlers] Error cancelling command:', error);
+      return [false, { message: error.message || 'Failed to cancel command' }];
+    }
+  } else {
+    return [false, { message: 'Command not found or already completed' }];
+  }
+});
+
 async function poll_globus_transfer_status(window, task_id, file_row_idx, file_path) {
   const max_polls = 1000; // Prevent infinite polling
   let poll_count = 0;
