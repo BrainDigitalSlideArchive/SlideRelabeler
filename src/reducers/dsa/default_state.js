@@ -1,6 +1,5 @@
 const default_state = {
-    // api_url: 'https://braincomp.pathology.pitt.edu/dsa/api/v1',
-    api_url: 'https://pearcelab.pitt.edu/dsa/api/v1',
+    api_url: '',
     api_auth: null,
     username: '',
     password: '',
@@ -8,11 +7,11 @@ const default_state = {
     login_error_message: null,
     upload: false,
     delete_after: false,
-    // folder_id: '689ca9edbc6082acbe2389b4',
-    folder_id: '67225cffd5d50b15122597b2',
+    folder_id: '',
     upload_queue: [],
     dsa_folder_exists: null,
     dsa_folder_error_message: null,
+    upload_throttle_limit: 2,
 };
 
 export default default_state;

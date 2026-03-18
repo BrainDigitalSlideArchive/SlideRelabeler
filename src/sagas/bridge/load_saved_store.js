@@ -6,6 +6,8 @@ import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
 import * as modal_actions from '../../actions/modal';
 import * as config_actions from '../../actions/config';
+import * as esm_actions from '../../actions/esm';
+import * as dsa_actions from '../../actions/dsa';
 
 function* load_saved_store() {
   const store = yield get_store();
@@ -23,6 +25,12 @@ function* load_saved_store() {
     }
     if (store.config) {
       yield put({type: config_actions.UPDATE_CONFIG, payload: store.config});
+    }
+    if (store.esm) {
+      yield put({type: esm_actions.UPDATE_ESM, payload: store.esm});
+    }
+    if (store.dsa) {
+      yield put({type: dsa_actions.UPDATE_DSA, payload: store.dsa});
     }
   }
 }

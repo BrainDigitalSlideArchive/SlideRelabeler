@@ -15,7 +15,7 @@ import { generate_dropdown_for_table_columns } from "../../helpers/fe_helpers";
 
 function render_network_config_dsa_content(dispatch, modal, dsa) {
   const { network_type } = modal;
-  const { folder_id, username, password, api_url, api_auth, login_error, login_error_message, upload, delete_after, dsa_folder_exists, dsa_folder_error_message } = dsa;
+  const { folder_id, username, password, api_url, api_auth, login_error, login_error_message, upload, delete_after, upload_throttle_limit, dsa_folder_exists, dsa_folder_error_message } = dsa;
 
   let expiration_date = null;
   if (api_auth) {
@@ -32,6 +32,12 @@ function render_network_config_dsa_content(dispatch, modal, dsa) {
     }
   }
 
+  const handlePasswordKeyPress = (e) => {
+    if (e.key === 'Enter' && username !== '' && password !== '' && !api_auth) {
+      dispatch({ type: dsa_actions.LOGIN, payload: { api_url, username, password } });
+    }
+  };
+
   return (
     <div className={"__content"}>
         <div className={"__divider"} />
@@ -45,7 +51,7 @@ function render_network_config_dsa_content(dispatch, modal, dsa) {
               <div className={"__config-control-section-dsa-subgroup"}>
                 <InputText disabled={api_auth} error={login_error} label={"API URL"} value={api_url ? api_url : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_API_URL, payload: new_value })} />
                 <InputText disabled={api_auth} error={login_error} label={"Username"} value={username ? username : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_USERNAME, payload: new_value })} />
-                <InputText disabled={api_auth} error={login_error} type={"password"} label={"Password"} value={password ? password : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_PASSWORD, payload: new_value })} />
+                <InputText disabled={api_auth} error={login_error} type={"password"} label={"Password"} value={password ? password : ''} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_PASSWORD, payload: new_value })} onKeyPress={handlePasswordKeyPress} />
                 {
                   !api_auth ?
                     <Button extra_class_name={"_align-center"} disabled={!(username !== '' && password !== '' && !api_auth)} text={"Login"} onClick={() => dispatch({ type: dsa_actions.LOGIN, payload: { api_url, username, password } })} /> :
@@ -91,12 +97,29 @@ function render_network_config_dsa_content(dispatch, modal, dsa) {
             <div className={"__config-control-section-title"}>Upload</div>
             <div className={"__config-control-section-description"}>
               Configure whether to upload deidentified files and whether to delete local files after upload.
+              {upload && delete_after && (
+                <div style={{marginTop: '8px', fontSize: '0.9em', fontStyle: 'italic'}}>
+                  When both options are enabled, processing will pause if there are already {upload_throttle_limit || 2} processed files waiting for upload. This prevents filling your local disk with files waiting to be uploaded and deleted.
+                </div>
+              )}
             </div>
             <div className={"__config-control-section-dsa-group"}>
               <div className={"__config-control-section-dsa-subgroup"}>
                 <Checkbox label={"Upload"} checked={upload} onClick={() => dispatch({ type: dsa_actions.TOGGLE_UPLOAD_TO_DSA })} />
                 <Checkbox label={"Delete local after"} checked={delete_after} onClick={() => dispatch({ type: dsa_actions.TOGGLE_DELETE_AFTER_DSA_UPLOAD })} />
                 <InputText tooltip={dsa_folder_error_message? dsa_folder_error_message : null} input_style={dsa_folder_exists_style(dsa_folder_exists)} label={"DSA folder ID"} value={folder_id} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_FOLDER_ID, payload: new_value })} />
+                <InputText 
+                  type="number" 
+                  label="Max files ahead of upload" 
+                  value={upload_throttle_limit || 2} 
+                  onChange={(new_value) => {
+                    const numValue = parseInt(new_value, 10);
+                    if (!isNaN(numValue) && numValue > 0) {
+                      dispatch({ type: dsa_actions.SET_DSA_UPLOAD_THROTTLE_LIMIT, payload: numValue });
+                    }
+                  }} 
+                  tooltip="Maximum number of processed files that can be waiting for upload before processing pauses. Lower values use less disk space but may slow processing if uploads are slow. Only applies when both 'Upload' and 'Delete local after' are enabled."
+                />
               </div>
             </div>
           </div>

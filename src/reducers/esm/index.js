@@ -80,6 +80,91 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.searchErrorMessage = action.payload;
       })
     })
+
+    // ----------------------
+    // Results + selection + mapping config
+    // ----------------------
+    .addCase(esm_actions.ESM_SET_RESULTS, (state, action) => {
+      return produce(state, draft => {
+        draft.results = Array.isArray(action.payload) ? action.payload : [];
+        draft.selectedIds = [];
+      })
+    })
+    .addCase(esm_actions.ESM_CLEAR_RESULTS, (state, action) => {
+      return produce(state, draft => {
+        draft.results = [];
+        draft.selectedIds = [];
+      })
+    })
+    .addCase(esm_actions.ESM_SET_SELECTION, (state, action) => {
+      return produce(state, draft => {
+        draft.selectedIds = Array.isArray(action.payload) ? action.payload : [];
+      })
+    })
+    .addCase(esm_actions.ESM_SET_MAPPING_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        const next = action.payload && typeof action.payload === "object" ? action.payload : {};
+        draft.mappingConfig = {
+          ...draft.mappingConfig,
+          ...next,
+        };
+      })
+    })
+    // ----------------------
+    // Transform rules (site-specific normalization)
+    // ----------------------
+    .addCase(esm_actions.ESM_ADD_TRANSFORM_RULE, (state, action) => {
+      return produce(state, draft => {
+        if (!action.payload || typeof action.payload !== "object") return;
+        draft.transformRules = Array.isArray(draft.transformRules) ? draft.transformRules : [];
+        draft.transformRules.push(action.payload);
+      })
+    })
+    .addCase(esm_actions.ESM_UPDATE_TRANSFORM_RULE, (state, action) => {
+      return produce(state, draft => {
+        const rule = action.payload;
+        if (!rule || typeof rule !== "object" || !rule.id) return;
+        draft.transformRules = Array.isArray(draft.transformRules) ? draft.transformRules : [];
+        const idx = draft.transformRules.findIndex((r) => r && r.id === rule.id);
+        if (idx === -1) return;
+        draft.transformRules[idx] = {
+          ...draft.transformRules[idx],
+          ...rule,
+        };
+      })
+    })
+    .addCase(esm_actions.ESM_DELETE_TRANSFORM_RULE, (state, action) => {
+      return produce(state, draft => {
+        const id = action.payload;
+        if (!id) return;
+        draft.transformRules = Array.isArray(draft.transformRules) ? draft.transformRules : [];
+        draft.transformRules = draft.transformRules.filter((r) => r && r.id !== id);
+        draft.selectedTransformRuleIds = Array.isArray(draft.selectedTransformRuleIds) ? draft.selectedTransformRuleIds : [];
+        draft.selectedTransformRuleIds = draft.selectedTransformRuleIds.filter((x) => x !== id);
+      })
+    })
+    .addCase(esm_actions.ESM_SET_SELECTED_TRANSFORM_RULE_IDS, (state, action) => {
+      return produce(state, draft => {
+        draft.selectedTransformRuleIds = Array.isArray(action.payload) ? action.payload : [];
+      })
+    })
+    .addCase(esm_actions.UPDATE_ESM, (state, action) => {
+      const incoming = action.payload && typeof action.payload === "object" ? action.payload : {};
+      return {
+        ...default_state,
+        ...incoming,
+        // Merge nested config objects to keep defaults for newly added keys
+        mappingConfig: {
+          ...default_state.mappingConfig,
+          ...(incoming.mappingConfig && typeof incoming.mappingConfig === "object" ? incoming.mappingConfig : {}),
+        },
+        // Ensure arrays are always arrays
+        results: Array.isArray(incoming.results) ? incoming.results : default_state.results,
+        selectedIds: Array.isArray(incoming.selectedIds) ? incoming.selectedIds : default_state.selectedIds,
+        transformRules: Array.isArray(incoming.transformRules) ? incoming.transformRules : default_state.transformRules,
+        selectedTransformRuleIds: Array.isArray(incoming.selectedTransformRuleIds) ? incoming.selectedTransformRuleIds : default_state.selectedTransformRuleIds,
+      };
+    })
 })
 
 export default esm_reducer;

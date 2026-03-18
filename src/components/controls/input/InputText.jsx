@@ -25,7 +25,15 @@ function InputText(props) {
           {tooltip}
         </div>
       }
-      <input style={input_style? input_style : {}} type={type? type : "text"} disabled={disabled} className={get_input_text_class(disabled, error)} value={value} onChange={(e) => onChange(e.target.value)}/>
+      <input
+        style={input_style? input_style : {}}
+        type={type? type : "text"}
+        disabled={disabled}
+        className={get_input_text_class(disabled, error)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyPress={onKeyPress}
+      />
     </div>
   );
 }

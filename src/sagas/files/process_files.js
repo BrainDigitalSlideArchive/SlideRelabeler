@@ -5,6 +5,47 @@ import * as debug_actions from '../../actions/debug';
 
 import process_file, { save_csv } from './process_file';
 
+// Helper function to count processed files waiting for upload
+// Incorporates both file_rows state and upload_queue to accurately track pending uploads
+function countPendingUploads(file_rows, upload_queue) {
+  // Build set of row indices that are in the upload queue
+  const queuedRowIds = new Set();
+  if (Array.isArray(upload_queue)) {
+    upload_queue.forEach(q => {
+      if (q && typeof q.row_idx !== 'undefined') {
+        // Normalize to string for comparison (file_rows keys are strings)
+        queuedRowIds.add(String(q.row_idx));
+      }
+    });
+  }
+
+  let count = 0;
+  // Iterate with index to match against queue
+  for (const row_idx in file_rows) {
+    const row = file_rows[row_idx];
+    // Must be processed
+    if (row?.__reserved?.processed !== 1) continue;
+    // Must not be deleted yet
+    if (row?.__reserved?.deleted_after === true) continue;
+    
+    // Count as pending if:
+    // 1. Upload hasn't started (upload_progress is undefined)
+    // 2. Upload is in progress but not complete (upload_progress < 100)
+    // 3. File is in the upload queue (safety check - upload_progress should be 0+ but queue confirms it)
+    const uploadProgress = row?.__reserved?.upload_progress;
+    const isInQueue = queuedRowIds.has(String(row_idx));
+    
+    if (
+      uploadProgress === undefined || 
+      uploadProgress < 100 || 
+      isInQueue
+    ) {
+      count++;
+    }
+  }
+  return count;
+}
+
 function* watch_cancel_process_files(process_files_task) {
   yield take(files_actions.CANCEL_PROCESS_FILES);
   yield call(electronAPI.cancelRestartBridge);
@@ -29,6 +70,12 @@ function* process_files_worker() {
   while (run_process_files) {
     const output_dir = yield select(state => state.files.output_dir);
     const file_rows = yield select(state => state.files.file_rows);
+    
+    // Get throttling configuration
+    const upload = yield select(state => state.dsa.upload);
+    const delete_after = yield select(state => state.dsa.delete_after);
+    const upload_throttle_limit = yield select(state => state.dsa.upload_throttle_limit || 2);
+    const should_throttle = upload && delete_after;
 
     let processed_files_count = 0;
     let metadata_pending_count = 0;
@@ -38,6 +85,16 @@ function* process_files_worker() {
       try {
         let file_row = file_rows[file_row_idx];
         if (file_row.__reserved.processed !== 1 && !file_row.__reserved.error && file_row.__reserved.bytes) {
+          // Check throttling before processing - use fresh state to see current upload backlog
+          if (should_throttle) {
+            const current_file_rows = yield select(state => state.files.file_rows);
+            const upload_queue = yield select(state => state.dsa.upload_queue);
+            const pending_count = countPendingUploads(current_file_rows, upload_queue);
+            if (pending_count >= upload_throttle_limit) {
+              yield delay(1000); // Wait before checking again
+              break; // Exit for loop and restart while loop with fresh state
+            }
+          }
           let result = yield call(process_file, file_row_idx, file_row);
           processed_files_count += 1;
         } else if (file_row.__reserved.processed !== 1 && !file_row.__reserved.error && !file_row.__reserved.bytes) {

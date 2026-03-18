@@ -48,6 +48,14 @@ const dsa_reducer = createReducer(default_state, (builder) => {
         draft.folder_id = action.payload;
       })
     })
+    .addCase(dsa_actions.SET_DSA_UPLOAD_THROTTLE_LIMIT, (state, action) => {
+      return produce(state, draft => {
+        const numValue = parseInt(action.payload, 10);
+        if (!isNaN(numValue) && numValue > 0) {
+          draft.upload_throttle_limit = numValue;
+        }
+      })
+    })
     .addCase(dsa_actions.TOGGLE_UPLOAD_TO_DSA, (state, action) => {
       return produce(state, draft => {
         draft.upload = !draft.upload;
@@ -84,6 +92,9 @@ const dsa_reducer = createReducer(default_state, (builder) => {
         draft.dsa_folder_exists = false;
         draft.dsa_folder_error_message = action.payload;
       })
+    })
+    .addCase(dsa_actions.UPDATE_DSA, (state, action) => {
+      return action.payload;
     })
 })
 

@@ -36,7 +36,11 @@ export default function* setup_csv_row(headers, row) {
       directory: directory,
       path: file_path,
       parsed: {
-        ext: '.' + filename.split('.').pop(),
+        // Extract extension using lastIndexOf for robustness
+        ext: (function () {
+          const lastDotIndex = filename.lastIndexOf(".");
+          return lastDotIndex === -1 ? "" : filename.slice(lastDotIndex);
+        })(),
         dir: directory,
         base: filename,
         name: filename.split('.').shift(),
