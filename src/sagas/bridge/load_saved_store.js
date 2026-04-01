@@ -8,12 +8,13 @@ import * as modal_actions from '../../actions/modal';
 import * as config_actions from '../../actions/config';
 import * as esm_actions from '../../actions/esm';
 import * as dsa_actions from '../../actions/dsa';
+import * as globus_actions from '../../actions/globus';
 
 function* load_saved_store() {
   const store = yield get_store();
   if (store) {
     if (store.files) {
-      yield put({type: app_actions.UPDATE_FILES, payload: store.files});
+      yield put({type: files_actions.UPDATE_FILES, payload: store.files});
       // Always make interface allow changes if uploaded from disk
       yield put({type: files_actions.ENABLE_CHANGES});
     }
@@ -31,6 +32,9 @@ function* load_saved_store() {
     }
     if (store.dsa) {
       yield put({type: dsa_actions.UPDATE_DSA, payload: store.dsa});
+    }
+    if (store.globus) {
+      yield put({type: globus_actions.RESTORE_GLOBUS_PERSISTED, payload: store.globus});
     }
   }
 }

@@ -170,6 +170,18 @@ const App = (props) => {
                   </button>
                 )
               }
+              {
+                debug_config.enable_debug && (
+                  <button className={"__button-icon"}
+                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'globus_test'}})}
+                      title="Globus Test">
+                    <i
+                      className=
+                        "fi fi-rr-cloud-upload"
+                    ></i>
+                  </button>
+                )
+              }
               <button className={connected ?"__button-icon _connected" : "__button-icon"}
                       onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'network'}})}>
                 <i

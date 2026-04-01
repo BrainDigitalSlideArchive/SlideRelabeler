@@ -1,0 +1,192 @@
+// High-contrast surfaces for OAuth/login inside teal modal (inherits light text otherwise).
+
+.GlobusAuthPanel {
+  color: #1a1a1a;
+
+  .GlobusAuthPanel__sslCard {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+    padding: 0.75em;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #1a1a1a;
+
+    .Checkbox label {
+      color: #1a1a1a;
+    }
+  }
+
+  .GlobusAuthPanel__sslHint {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: 0.85em;
+    color: #444;
+    margin-top: 0.5em;
+    font-style: italic;
+  }
+
+  .GlobusAuthPanel__card {
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+    margin-bottom: 0.5em;
+    color: #1a1a1a;
+  }
+
+  .GlobusAuthPanel__card--muted {
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+  }
+
+  .GlobusAuthPanel__card--info {
+    padding: 1em;
+    background-color: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    margin-bottom: 1em;
+    color: #1a1a1a;
+
+    p {
+      font-size: 0.9em;
+      margin-top: 0.5em;
+      color: #333;
+    }
+  }
+
+  .GlobusAuthPanel__card--white {
+    background-color: #ffffff;
+    border: 1px solid #333;
+  }
+
+  .GlobusAuthPanel__stepTitle {
+    display: block;
+    color: #0f172a;
+    font-weight: 700;
+  }
+
+  .GlobusAuthPanel__urlBox {
+    margin-top: 0.25em;
+    padding: 0.5em;
+    background-color: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 4px;
+    word-break: break-all;
+    font-size: 0.9em;
+    color: #0f172a;
+    font-family: ui-monospace, monospace;
+  }
+
+  .GlobusAuthPanel__warnBox {
+    padding: 0.75em;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+    color: #664d03;
+
+    strong {
+      color: #664d03;
+    }
+  }
+
+  .GlobusAuthPanel__codeBox {
+    margin-top: 0.25em;
+    padding: 0.5em;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 1.2em;
+    text-align: center;
+    color: #422006;
+  }
+
+  .GlobusAuthPanel__hint {
+    margin-top: 0.5em;
+    font-size: 0.9em;
+    color: #334155;
+  }
+
+  .GlobusAuthPanel__hint--center {
+    text-align: center;
+    margin-top: 0.5em;
+  }
+
+  .GlobusAuthPanel__hint--login {
+    margin-top: 0.75em;
+  }
+
+  .GlobusAuthPanel__actions {
+    margin-top: 0.25em;
+  }
+
+  .GlobusAuthPanel__actions--tight {
+    margin-top: 0.75em;
+  }
+
+  .GlobusAuthPanel__errorBox {
+    margin-top: 1em;
+    padding: 0.5em;
+    background-color: #f5f5f5;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #1a1a1a;
+  }
+
+  .GlobusAuthPanel__connectionWarn {
+    margin-top: 0.5em;
+    padding: 0.5em;
+    background-color: #fff8e1;
+    border: 1px solid #ff9900;
+    border-radius: 4px;
+    color: #1a1a1a;
+  }
+
+  .GlobusAuthPanel__testCard {
+    margin-top: 1em;
+    padding: 0.75em;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #1a1a1a;
+
+    .Checkbox label {
+      color: #1a1a1a;
+    }
+  }
+
+  .GlobusAuthPanel__pre {
+    margin-top: 0.25em;
+    padding: 0.5em;
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.8em;
+    color: #1a1a1a;
+  }
+
+  // Buttons inside panel: explicit contrast (modal inherits light-on-teal globally).
+  .Button button.__button {
+    background-color: #1d4ed8;
+    color: #ffffff;
+    border: none;
+  }
+
+  .Button button.__button:hover:not(:disabled) {
+    background-color: #1e40af;
+  }
+
+  .Button button.__button._disabled {
+    background-color: #d1d5db;
+    color: #374151;
+    opacity: 1;
+    cursor: not-allowed;
+  }
+}

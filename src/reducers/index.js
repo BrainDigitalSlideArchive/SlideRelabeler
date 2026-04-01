@@ -7,6 +7,7 @@ import viewer from './viewer';
 import debug from './debug';
 import dsa from './dsa';
 import esm from './esm';
+import globus from './globus';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -16,7 +17,8 @@ export const root_reducer = combineReducers({
     viewer: viewer,
     debug: debug,
     dsa: dsa,
-    esm: esm
+    esm: esm,
+    globus: globus,
 });
 
 export default root_reducer;

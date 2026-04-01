@@ -10,6 +10,7 @@ import config from './config';
 import debug from './debug';
 import dsa from './dsa';
 import esm from './esm';
+import globus from './globus';
 
 import watch_save_store from './bridge/save_store';
 import watch_delete_store from './bridge/delete_store';
@@ -27,6 +28,7 @@ function* sagas() {
     ) {
         yield fork(dsa);
         yield fork(esm);
+        yield fork(globus);
     }
 
     yield load_saved_store()

@@ -111,5 +111,5 @@ build
 src/python/tests/dist
 src/python/tests/build
 
-# reference directory for code to incorporate into the project; should not be tracked by git.
+# Reference directory for external repositories (for code review only)
 reference/

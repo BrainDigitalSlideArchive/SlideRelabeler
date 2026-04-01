@@ -2,7 +2,6 @@ import { select, take, put, call, fork, delay } from 'redux-saga/effects';
 
 import * as dsa_actions from '../../actions/dsa';
 import * as files_actions from '../../actions/files';
-import * as app_actions from '../../actions/app';
 
 function* watch_complete_upload(row_idx) {
     while (true) {
@@ -38,13 +37,13 @@ function* upload_queue() {
     while (true) {
         const queue = yield select(state => state.dsa.upload_queue);
         if (queue.length > 0) {
-            yield put({ type: app_actions.SET_UPLOADING, payload: true })
+            yield put({ type: files_actions.SET_UPLOADING, payload: true })
             const upload_payload = queue[0];
             yield fork(upload_file, upload_payload)
             yield take(dsa_actions.UPLOAD_FILE_COMPLETE);
             yield put({ type: dsa_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, payload: upload_payload.row_idx })
         }
-        yield put({ type: app_actions.SET_UPLOADING, payload: false })
+        yield put({ type: files_actions.SET_UPLOADING, payload: false })
         yield delay(1000);
     }
 }

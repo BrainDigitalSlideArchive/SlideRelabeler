@@ -6,10 +6,30 @@ import * as config_actions from '../../actions/config';
 import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
 
+// Helper function to deep merge config with defaults
+function mergeConfigWithDefaults(loadedConfig, defaults) {
+  const merged = { ...defaults };
+  
+  for (const key in loadedConfig) {
+    if (loadedConfig.hasOwnProperty(key)) {
+      if (typeof loadedConfig[key] === 'object' && loadedConfig[key] !== null && !Array.isArray(loadedConfig[key])) {
+        // Recursively merge nested objects
+        merged[key] = mergeConfigWithDefaults(loadedConfig[key], defaults[key] || {});
+      } else {
+        // Use loaded value if it exists
+        merged[key] = loadedConfig[key];
+      }
+    }
+  }
+  
+  return merged;
+}
+
 const config_reducer  = createReducer(default_state, (builder) => {
   builder
     .addCase(config_actions.UPDATE_CONFIG, (state, action) => {
-      return action.payload;
+      // Merge loaded config with default state to ensure all required properties exist
+      return mergeConfigWithDefaults(action.payload, default_state);
     })
     .addCase(config_actions.CHANGE_PREFIX, (state, action) => {
       return produce(state, draft => {

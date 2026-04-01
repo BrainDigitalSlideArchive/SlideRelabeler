@@ -276,6 +276,10 @@
             margin-bottom: 0.5em;
             width: 50%;
 
+            &--full-width {
+              width: 100%;
+            }
+
             .__config-control-section-dsa-subgroup {
               display: flex;
               flex-direction: column;
@@ -381,6 +385,27 @@
             font-size: 1.5em;
           }
 
+          .__config-control-form-row {
+            display: flex;
+            flex-direction: row;
+            gap: 1em;
+            width: 100%;
+            flex-wrap: wrap;
+
+            > * {
+              flex: 1;
+              min-width: 22em;
+            }
+          }
+
+          .__config-control-checkbox-row {
+            display: flex;
+            flex-direction: row;
+            gap: 1em;
+            width: 100%;
+            flex-wrap: wrap;
+            align-items: center;
+          }
           .__config-control-subgroup-label {
             display: flex;
             width: 100%;
