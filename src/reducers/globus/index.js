@@ -6,6 +6,34 @@ import { produce } from "immer";
 
 const globus_reducer = createReducer(default_state, (builder) => {
   builder
+    .addCase(globus_actions.RESTORE_GLOBUS_PERSISTED, (state, action) => {
+      const persisted = action.payload || {};
+      const allowlist = [
+        'disable_ssl_verification',
+        'collection_name',
+        'target_endpoint_id',
+        'target_endpoint_label',
+        'remember_target_endpoint',
+        'saved_target_endpoint_id',
+        'saved_target_endpoint_label',
+        'collection_path',
+        'source_endpoint',
+        'upload',
+        'delete_after',
+      ];
+
+      return produce(state, draft => {
+        for (const key of allowlist) {
+          if (Object.prototype.hasOwnProperty.call(persisted, key)) {
+            draft[key] = persisted[key];
+          }
+        }
+        if (draft.remember_target_endpoint && draft.saved_target_endpoint_id && !draft.target_endpoint_id) {
+          draft.target_endpoint_id = draft.saved_target_endpoint_id;
+          draft.target_endpoint_label = draft.saved_target_endpoint_label || '';
+        }
+      });
+    })
     .addCase(globus_actions.LOGIN_SUCCESS, (state, action) => {
       console.log('[Globus Reducer] LOGIN_SUCCESS action received');
       console.log('[Globus Reducer] Current state:', {
@@ -21,11 +49,18 @@ const globus_reducer = createReducer(default_state, (builder) => {
         draft.api_auth = action.payload;
         draft.login_error = false;
         draft.login_error_message = null;
+        draft.auth_check_pending = false;
         // Clear login info when authentication succeeds
         draft.login_url = null;
         draft.access_code = null;
         draft.login_pending = false;
+        draft.globus_directory_refresh_nonce = (draft.globus_directory_refresh_nonce || 0) + 1;
       })
+    })
+    .addCase(globus_actions.BUMP_GLOBUS_DIRECTORY_REFRESH, (state) => {
+      return produce(state, draft => {
+        draft.globus_directory_refresh_nonce = (draft.globus_directory_refresh_nonce || 0) + 1;
+      });
     })
     .addCase(globus_actions.LOGIN_FAILURE, (state, action) => {
       console.log('[Globus Reducer] LOGIN_FAILURE action received');
@@ -40,6 +75,7 @@ const globus_reducer = createReducer(default_state, (builder) => {
       console.log('[Globus Reducer] Action payload (error message):', action.payload);
       return produce(state, draft => {
         draft.api_auth = null;
+        draft.auth_check_pending = false;
         draft.login_error = true;
         draft.login_error_message = action.payload;
         console.log('[Globus Reducer] New state after LOGIN_FAILURE:', {
@@ -72,9 +108,29 @@ const globus_reducer = createReducer(default_state, (builder) => {
     .addCase(globus_actions.SET_GLOBUS_COLLECTION_NAME, (state, action) => {
       return produce(state, draft => {
         draft.collection_name = action.payload;
-        // Update collection_path if it doesn't already have a collection name
-        if (draft.collection_path && !draft.collection_path.includes('#')) {
-          draft.collection_path = `${action.payload}#${draft.collection_path}`;
+      })
+    })
+    .addCase(globus_actions.SET_GLOBUS_TARGET_ENDPOINT, (state, action) => {
+      return produce(state, draft => {
+        const endpointId = action?.payload?.id ? String(action.payload.id).trim() : '';
+        const endpointLabel = action?.payload?.label ? String(action.payload.label).trim() : '';
+        draft.target_endpoint_id = endpointId;
+        draft.target_endpoint_label = endpointLabel;
+        if (draft.remember_target_endpoint) {
+          draft.saved_target_endpoint_id = endpointId;
+          draft.saved_target_endpoint_label = endpointLabel;
+        }
+      })
+    })
+    .addCase(globus_actions.TOGGLE_REMEMBER_TARGET_ENDPOINT, (state, action) => {
+      return produce(state, draft => {
+        draft.remember_target_endpoint = !draft.remember_target_endpoint;
+        if (draft.remember_target_endpoint) {
+          draft.saved_target_endpoint_id = draft.target_endpoint_id || '';
+          draft.saved_target_endpoint_label = draft.target_endpoint_label || '';
+        } else {
+          draft.saved_target_endpoint_id = '';
+          draft.saved_target_endpoint_label = '';
         }
       })
     })
@@ -159,11 +215,21 @@ const globus_reducer = createReducer(default_state, (builder) => {
         draft.login_pending = action.payload;
       })
     })
+    .addCase(globus_actions.SET_AUTH_CHECK_PENDING, (state, action) => {
+      return produce(state, draft => {
+        draft.auth_check_pending = action.payload;
+        if (action.payload) {
+          draft.login_error = false;
+          draft.login_error_message = null;
+        }
+      })
+    })
     .addCase(globus_actions.CLEAR_LOGIN_INFO, (state, action) => {
       return produce(state, draft => {
         draft.login_url = null;
         draft.access_code = null;
         draft.login_pending = false;
+        draft.auth_check_pending = false;
         draft.authorization_code_input = '';
       })
     })

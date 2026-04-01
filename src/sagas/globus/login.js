@@ -4,6 +4,8 @@ import * as globus_actions from '../../actions/globus';
 
 export function* login() {
     console.log('[Globus Login Saga] ===== LOGIN function called =====');
+    yield put({ type: globus_actions.SET_AUTH_CHECK_PENDING, payload: true });
+
     const currentState = yield select(state => state.globus);
     console.log('[Globus Login Saga] Current Redux state before auth check:', {
         api_auth: currentState.api_auth,
@@ -13,21 +15,15 @@ export function* login() {
         login_error: currentState.login_error,
         login_error_message: currentState.login_error_message
     });
-    
-    console.log('[Globus Login Saga] Calling electronAPI.globusCheckAuth()...');
-    const response = yield call(electronAPI.globusCheckAuth);
-    console.log('[Globus Login Saga] Auth check response structure:', {
-        isArray: Array.isArray(response),
-        length: response?.length,
-        response0: response?.[0],
-        response1: response?.[1],
-        fullResponse: response
-    });
-    
-    if (response && response[0]) {
-        console.log('[Globus Login Saga] Already authenticated, payload:', response[1]);
-        console.log('[Globus Login Saga] Dispatching LOGIN_SUCCESS with payload:', response[1]);
-        yield put({ type: globus_actions.LOGIN_SUCCESS, payload: response[1] });
+
+    console.log('[Globus Login Saga] Calling electronAPI.globusAuthStatus() for preflight...');
+    const authStatus = yield call(electronAPI.globusAuthStatus);
+    console.log('[Globus Login Saga] Auth status response:', authStatus);
+
+    if (authStatus && authStatus.ok && authStatus.isAuthenticated) {
+        const payload = { username: authStatus.username || 'Authenticated' };
+        console.log('[Globus Login Saga] Already authenticated, dispatching LOGIN_SUCCESS with payload:', payload);
+        yield put({ type: globus_actions.LOGIN_SUCCESS, payload });
         // Check collection path if set
         const collection_path = yield select(state => state.globus.collection_path);
         if (collection_path) {
@@ -53,43 +49,40 @@ export function* login() {
         console.log('[Globus Login Saga] Response is null/undefined:', login_response === null || login_response === undefined);
         if (login_response === null || login_response === undefined) {
             console.log('[Globus Login Saga] ERROR: login_response is null or undefined!');
+            yield put({ type: globus_actions.SET_AUTH_CHECK_PENDING, payload: false });
             yield put({ type: globus_actions.LOGIN_FAILURE, payload: 'Login command returned no response' });
             return;
         }
-        console.log('[Globus Login Saga] Login command response structure:', {
-            isArray: Array.isArray(login_response),
-            length: login_response?.length,
-            response0: login_response?.[0],
-            response1: login_response?.[1],
-            hasUrl: !!login_response?.[1]?.url,
-            url: login_response?.[1]?.url,
-            hasAccessCode: !!login_response?.[1]?.access_code,
-            accessCode: login_response?.[1]?.access_code,
-            message: login_response?.[1]?.message,
-            fullResponse: login_response
-        });
+        console.log('[Globus Login Saga] Login command response:', login_response);
         
-        if (login_response && login_response[0]) {
-            console.log('[Globus Login Saga] Login command succeeded (response[0] is true)');
-            console.log('[Globus Login Saga] URL in response:', login_response[1]?.url || 'MISSING');
-            console.log('[Globus Login Saga] Access code in response:', login_response[1]?.access_code || 'MISSING');
+        if (login_response && login_response.ok) {
+            console.log('[Globus Login Saga] Login command succeeded (ok=true)');
+            console.log('[Globus Login Saga] classification:', login_response.classification);
             
             // Store URL and access code in Redux state, set login_pending
-            if (login_response[1]?.url) {
-                console.log('[Globus Login Saga] About to dispatch SET_LOGIN_URL with:', login_response[1].url);
-                yield put({ type: globus_actions.SET_LOGIN_URL, payload: login_response[1].url });
+            yield put({ type: globus_actions.SET_AUTH_CHECK_PENDING, payload: false });
+            if (login_response.classification === 'needsBrowserAuth' && login_response.url) {
+                console.log('[Globus Login Saga] About to dispatch SET_LOGIN_URL with:', login_response.url);
+                yield put({ type: globus_actions.SET_LOGIN_URL, payload: login_response.url });
                 console.log('[Globus Login Saga] SET_LOGIN_URL dispatched');
             } else {
-                console.log('[Globus Login Saga] WARNING: login_response[0] is true but no URL in response[1]');
+                console.log('[Globus Login Saga] No URL required (already authenticated or non-browser flow).');
             }
-            if (login_response[1]?.access_code) {
-                console.log('[Globus Login Saga] About to dispatch SET_ACCESS_CODE with:', login_response[1].access_code);
-                yield put({ type: globus_actions.SET_ACCESS_CODE, payload: login_response[1].access_code });
+            if (login_response.accessCode) {
+                console.log('[Globus Login Saga] About to dispatch SET_ACCESS_CODE with:', login_response.accessCode);
+                yield put({ type: globus_actions.SET_ACCESS_CODE, payload: login_response.accessCode });
                 console.log('[Globus Login Saga] SET_ACCESS_CODE dispatched');
             }
-            console.log('[Globus Login Saga] About to dispatch SET_LOGIN_PENDING with: true');
-            yield put({ type: globus_actions.SET_LOGIN_PENDING, payload: true });
-            console.log('[Globus Login Saga] SET_LOGIN_PENDING dispatched');
+            if (login_response.classification === 'needsBrowserAuth') {
+                console.log('[Globus Login Saga] About to dispatch SET_LOGIN_PENDING with: true');
+                yield put({ type: globus_actions.SET_LOGIN_PENDING, payload: true });
+                console.log('[Globus Login Saga] SET_LOGIN_PENDING dispatched');
+            } else {
+                // If already authenticated, set LOGIN_SUCCESS immediately
+                if (login_response.classification === 'alreadyAuthenticated') {
+                    yield put({ type: globus_actions.LOGIN_SUCCESS, payload: { username: login_response.username } });
+                }
+            }
             
             const stateAfterUpdate = yield select(state => state.globus);
             console.log('[Globus Login Saga] Redux state after updates:', {
@@ -101,10 +94,11 @@ export function* login() {
             // Don't immediately check auth - wait for user to complete browser flow and click "Check Auth Status"
             console.log('[Globus Login Saga] Login URL and code stored. Waiting for user to complete authentication...');
         } else {
-            console.log('[Globus Login Saga] Login command failed (response[0] is false or missing)');
-            console.log('[Globus Login Saga] Error message:', login_response?.[1]?.message || 'Unknown error');
-            console.log('[Globus Login Saga] Dispatching LOGIN_FAILURE with:', login_response?.[1]?.message || 'Login failed');
-            yield put({ type: globus_actions.LOGIN_FAILURE, payload: login_response?.[1]?.message || 'Login failed' });
+            console.log('[Globus Login Saga] Login command failed (ok=false or missing)');
+            console.log('[Globus Login Saga] Error message:', login_response?.message || 'Unknown error');
+            console.log('[Globus Login Saga] Dispatching LOGIN_FAILURE with:', login_response?.message || 'Login failed');
+            yield put({ type: globus_actions.SET_AUTH_CHECK_PENDING, payload: false });
+            yield put({ type: globus_actions.LOGIN_FAILURE, payload: login_response?.message || 'Login failed' });
             
             const stateAfterFailure = yield select(state => state.globus);
             console.log('[Globus Login Saga] Redux state after LOGIN_FAILURE:', {
@@ -126,22 +120,16 @@ function* check_auth() {
         login_url: currentState.login_url
     });
     
-    console.log('[Globus Login Saga] Calling electronAPI.globusCheckAuth()...');
-    const auth_check = yield call(electronAPI.globusCheckAuth);
-    console.log('[Globus Login Saga] Auth check response structure:', {
-        isArray: Array.isArray(auth_check),
-        response0: auth_check?.[0],
-        response1: auth_check?.[1],
-        fullResponse: auth_check
-    });
-    
-    if (auth_check && auth_check[0]) {
-        console.log('[Globus Login Saga] Authentication successful, payload:', auth_check[1]);
-        console.log('[Globus Login Saga] Dispatching LOGIN_SUCCESS');
-        yield put({ type: globus_actions.LOGIN_SUCCESS, payload: auth_check[1] });
+    console.log('[Globus Login Saga] Calling electronAPI.globusAuthStatus()...');
+    const authStatus = yield call(electronAPI.globusAuthStatus);
+    console.log('[Globus Login Saga] Auth status response:', authStatus);
+
+    if (authStatus && authStatus.ok && authStatus.isAuthenticated) {
+        const payload = { username: authStatus.username || 'Authenticated' };
+        console.log('[Globus Login Saga] Authentication successful, payload:', payload);
+        yield put({ type: globus_actions.LOGIN_SUCCESS, payload });
     } else {
         console.log('[Globus Login Saga] Authentication failed or not completed');
-        console.log('[Globus Login Saga] Dispatching LOGIN_FAILURE');
         yield put({ type: globus_actions.LOGIN_FAILURE, payload: 'Authentication not completed. Please complete the login process in your browser and try again.' });
     }
     console.log('[Globus Login Saga] ===== CHECK_AUTH function complete =====');
@@ -170,13 +158,13 @@ function* submit_authorization_code() {
         // Wait a moment for authentication to complete
         yield new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check auth status
-        const auth_check = yield call(electronAPI.globusCheckAuth);
-        console.log('[Globus Login Saga] Auth check after code submission:', auth_check);
-        
-        if (auth_check && auth_check[0]) {
+        // Check auth status via authoritative endpoint
+        const authStatus = yield call(electronAPI.globusAuthStatus);
+        console.log('[Globus Login Saga] Auth status after code submission:', authStatus);
+
+        if (authStatus && authStatus.ok && authStatus.isAuthenticated) {
             console.log('[Globus Login Saga] Authentication successful after code submission');
-            yield put({ type: globus_actions.LOGIN_SUCCESS, payload: auth_check[1] });
+            yield put({ type: globus_actions.LOGIN_SUCCESS, payload: { username: authStatus.username || 'Authenticated' } });
         } else {
             console.log('[Globus Login Saga] Authentication not yet complete, user may need to check status');
             yield put({ type: globus_actions.LOGIN_FAILURE, payload: 'Code submitted but authentication not yet complete. Please click "Check Auth Status" to verify.' });

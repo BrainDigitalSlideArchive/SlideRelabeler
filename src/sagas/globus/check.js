@@ -3,12 +3,13 @@ import * as globus_actions from '../../actions/globus';
 
 function* check_auth() {
     console.log('[Globus Check Saga] CHECK_AUTH action received');
-    const auth_check = yield call(electronAPI.globusCheckAuth);
-    console.log('[Globus Check Saga] Auth check response:', auth_check);
-    
-    if (auth_check && auth_check[0]) {
-        console.log('[Globus Check Saga] Authentication successful:', auth_check[1]);
-        yield put({ type: globus_actions.LOGIN_SUCCESS, payload: auth_check[1] });
+    const authStatus = yield call(electronAPI.globusAuthStatus);
+    console.log('[Globus Check Saga] Auth status response:', authStatus);
+
+    if (authStatus && authStatus.ok && authStatus.isAuthenticated) {
+        const payload = { username: authStatus.username || 'Authenticated' };
+        console.log('[Globus Check Saga] Authentication successful:', payload);
+        yield put({ type: globus_actions.LOGIN_SUCCESS, payload });
     } else {
         console.log('[Globus Check Saga] Authentication failed or not completed');
         yield put({ type: globus_actions.LOGIN_FAILURE, payload: 'Authentication not completed. Please complete the login process in your browser and try again.' });

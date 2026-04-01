@@ -176,7 +176,29 @@ ipcMain.handle('globus-check-auth', async (event) => {
   return globus_client.check_auth();
 });
 
-ipcMain.handle('globus-login', async (event) => {
+// New: authoritative auth status endpoint (typed object, no legacy tuple)
+ipcMain.handle('globus-auth-status', async (event) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return { ok: false, isAuthenticated: false, classification: 'cliNotAvailable', message: 'Globus CLI not available' };
+  }
+
+  // Prefer whoami preflight for authoritative status
+  try {
+    const whoami = await globus_client.executeCommand(['whoami'], false);
+    if (whoami && whoami[0]) {
+      const username = (whoami[1]?.message || '').trim();
+      return { ok: true, isAuthenticated: true, classification: 'success', username };
+    }
+    return { ok: true, isAuthenticated: false, classification: 'notAuthenticated' };
+  } catch (error) {
+    return { ok: false, isAuthenticated: false, classification: 'unknownError', message: error.message || 'Unknown error' };
+  }
+});
+
+ipcMain.handle('globus-login', async (event, options = {}) => {
   console.log('[Handlers] ===== globus-login IPC handler called =====');
   
   if (!globus_client) {
@@ -191,71 +213,30 @@ ipcMain.handle('globus-login', async (event) => {
     return [false, { message: 'Globus CLI not available' }];
   }
   
-  console.log('[Handlers] Calling globus_client.login()...');
-  const response = await globus_client.login();
-  console.log('[Handlers] globus_client.login() response structure:', {
-    isArray: Array.isArray(response),
-    length: response?.length,
-    response0: response?.[0],
-    response1: response?.[1],
-    hasUrl: !!response?.[1]?.url,
-    url: response?.[1]?.url,
-    hasAccessCode: !!response?.[1]?.access_code,
-    accessCode: response?.[1]?.access_code,
-    message: response?.[1]?.message,
-    fullResponse: response
+  console.log('[Handlers] Calling globus_client.login()...', options);
+  const response = await globus_client.login(options);
+  console.log('[Handlers] globus_client.login() response:', {
+    ok: response?.ok,
+    isAuthenticated: response?.isAuthenticated,
+    classification: response?.classification,
+    username: response?.username,
+    hasUrl: !!response?.url,
+    hasAccessCode: !!response?.accessCode,
+    message: response?.message
   });
-  
-  // If login returned a URL, open it in the user's browser
-  const hasUrl = response && response[0] && response[1]?.url;
-  console.log('[Handlers] Checking if URL should be opened:', {
-    responseExists: !!response,
-    response0IsTrue: response?.[0] === true,
-    response1Exists: !!response?.[1],
-    urlExists: !!response?.[1]?.url,
-    hasUrl: hasUrl
-  });
-  
-  if (hasUrl) {
-    const url = response[1].url;
-    const accessCode = response[1].access_code;
-    console.log('[Handlers] Login returned URL:', url);
-    console.log('[Handlers] Login returned access_code:', accessCode || 'none');
-    
+
+  // If login returned a URL, open it in the user's browser (best-effort)
+  if (response && response.ok && response.classification === 'needsBrowserAuth' && response.url) {
     try {
-      console.log('[Handlers] Attempting to open URL in browser:', url);
-      await shell.openExternal(url);
-      console.log('[Handlers] Browser opened successfully');
-      const returnValue = [true, { 
-        message: 'Please complete authentication in your browser. After authenticating, click "Check Auth Status" to verify.',
-        url: url,
-        access_code: accessCode,
-        hasConnectionWarning: response[1].hasConnectionWarning
-      }];
-      console.log('[Handlers] Returning success with URL (browser opened):', returnValue);
-      return returnValue;
+      console.log('[Handlers] Attempting to open URL in browser:', response.url);
+      await shell.openExternal(response.url);
+      return { ...response, browserOpened: true };
     } catch (error) {
-      console.log('[Handlers] Error opening browser:', error);
-      console.log('[Handlers] Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      // If we can't open browser, still return success with URL for user to copy
-      const returnValue = [true, { 
-        message: `Please visit this URL to authenticate: ${url}`,
-        url: url,
-        access_code: accessCode,
-        hasConnectionWarning: response[1].hasConnectionWarning
-      }];
-      console.log('[Handlers] Returning success with URL (browser open failed):', returnValue);
-      return returnValue;
+      console.log('[Handlers] Error opening browser:', error?.message || error);
+      return { ...response, browserOpened: false, browserOpenError: error?.message || String(error) };
     }
   }
-  
-  console.log('[Handlers] No URL found in response, returning original response');
-  console.log('[Handlers] Response[0]:', response?.[0]);
-  console.log('[Handlers] Response[1]:', response?.[1]);
+
   console.log('[Handlers] ===== globus-login handler complete =====');
   return response;
 });
@@ -315,6 +296,44 @@ ipcMain.handle('globus-check-collection-path', async (event, collection_path) =>
     return [false, { message: 'Globus CLI not available' }];
   }
   return globus_client.validate_collection_path(collection_path);
+});
+
+ipcMain.handle('globus-list-directory', async (event, collection_path) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  try {
+    return await globus_client.listDirectory(collection_path);
+  } catch (err) {
+    return [false, { message: err?.message || 'List directory failed' }];
+  }
+});
+
+ipcMain.handle('globus-get-local-endpoint-id', async () => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  return globus_client.getLocalEndpointId();
+});
+
+ipcMain.handle('globus-search-endpoints', async (event, query) => {
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+  try {
+    return await globus_client.searchEndpoints(query);
+  } catch (err) {
+    return [false, { message: err?.message || 'Endpoint search failed' }];
+  }
 });
 
 // Store running command processes by commandId
@@ -412,15 +431,45 @@ ipcMain.handle('globus-cancel-command', async (event, commandId) => {
   }
 });
 
-async function poll_globus_transfer_status(window, task_id, file_row_idx, file_path) {
+function emitGlobusUploadDebugLog(window, file_row_idx, stream, message, meta = {}) {
+  if (!window || !window.webContents) return;
+  window.webContents.send('globus-upload-debug-log', {
+    row_idx: file_row_idx,
+    stream,
+    message: message != null ? String(message) : '',
+    time: new Date().getTime(),
+    ...meta,
+  });
+}
+
+function emitGlobusUploadDebugStatus(window, file_row_idx, task, task_id) {
+  if (!window || !window.webContents) return;
+  window.webContents.send('globus-upload-debug-status', {
+    row_idx: file_row_idx,
+    task_id,
+    status: task?.status || task?.state || null,
+    nice_status: task?.nice_status ?? null,
+    nice_status_short_description: task?.nice_status_short_description ?? null,
+    bytes_transferred: task?.bytes_transferred ?? null,
+    files_transferred: task?.files_transferred ?? null,
+    files: task?.files ?? null,
+    time: new Date().getTime(),
+  });
+}
+
+async function poll_globus_transfer_status(window, task_id, file_row_idx, file_path, file_size_bytes = null) {
   const max_polls = 1000; // Prevent infinite polling
   let poll_count = 0;
+  let last_status = null;
   
   while (poll_count < max_polls) {
     await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
     
     const status_response = await globus_client.get_transfer_status(task_id);
     if (!status_response[0]) {
+      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', status_response?.[1]?.message || 'Task status check failed', {
+        task_id,
+      });
       window.webContents.send('globus-upload-file-error', { 
         file_path: file_path, 
         error: status_response[1].message, 
@@ -431,13 +480,22 @@ async function poll_globus_transfer_status(window, task_id, file_row_idx, file_p
     
     const task = status_response[1];
     const status = task.status || task.state;
+    emitGlobusUploadDebugStatus(window, file_row_idx, task, task_id);
+    if (status && status !== last_status) {
+      emitGlobusUploadDebugLog(window, file_row_idx, 'status', `Task status: ${status}${task?.nice_status ? ` (${task.nice_status})` : ''}`, {
+        task_id,
+      });
+      last_status = status;
+    }
     
     // Calculate progress if available
     let progress = 0;
-    if (task.bytes_transferred && task.bytes_expected) {
-      progress = (task.bytes_transferred / task.bytes_expected) * 100;
-    } else if (task.files_transferred && task.files_expected) {
-      progress = (task.files_transferred / task.files_expected) * 100;
+    const transferredBytes = typeof task?.bytes_transferred === 'number' ? task.bytes_transferred : null;
+    const fileSize = typeof file_size_bytes === 'number' && file_size_bytes > 0 ? file_size_bytes : null;
+    if (transferredBytes != null && fileSize != null) {
+      progress = Math.max(0, Math.min(100, (transferredBytes / fileSize) * 100));
+    } else if (typeof task?.files_transferred === 'number' && typeof task?.files === 'number' && task.files > 0) {
+      progress = Math.max(0, Math.min(100, (task.files_transferred / task.files) * 100));
     }
     
     // Send progress update
@@ -452,7 +510,8 @@ async function poll_globus_transfer_status(window, task_id, file_row_idx, file_p
     if (status === 'SUCCEEDED') {
       window.webContents.send('globus-upload-file-complete', file_row_idx);
       return;
-    } else if (status === 'FAILED' || status === 'INACTIVE') {
+    } else if (status === 'FAILED') {
+      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', task?.message || 'Transfer failed', { task_id });
       window.webContents.send('globus-upload-file-error', { 
         file_path: file_path, 
         error: task.message || `Transfer ${status}`, 
@@ -465,6 +524,7 @@ async function poll_globus_transfer_status(window, task_id, file_row_idx, file_p
   }
   
   // Timeout after max polls
+  emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', 'Transfer polling timeout', { task_id });
   window.webContents.send('globus-upload-file-error', { 
     file_path: file_path, 
     error: 'Transfer polling timeout', 
@@ -472,7 +532,7 @@ async function poll_globus_transfer_status(window, task_id, file_row_idx, file_p
   });
 }
 
-ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0) => {
+ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) => {
   if (!globus_client) {
     globus_client = new GlobusAPI();
   }
@@ -481,8 +541,22 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
   }
   
   // Initiate transfer
+  const window = get_browser_window_by_title('SlideRelabeler');
+  if (window) {
+    emitGlobusUploadDebugLog(window, file_row_idx, 'stdout', `Submitting transfer: ${source_path} -> ${dest_collection_path}`, {
+      file_path,
+    });
+  }
   const transfer_response = await globus_client.submit_transfer(source_path, dest_collection_path);
   if (!transfer_response[0]) {
+    if (window) {
+      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', transfer_response?.[1]?.message || 'Transfer submission failed', {
+        file_path,
+      });
+      if (transfer_response?.[1]?.stderr) {
+        emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', transfer_response[1].stderr, { file_path });
+      }
+    }
     return transfer_response;
   }
   
@@ -495,10 +569,11 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
   }
   
   // Start polling for progress in background
-  const window = get_browser_window_by_title('SlideRelabeler');
   if (window) {
-    poll_globus_transfer_status(window, task_id, file_row_idx, file_path).catch(err => {
+    emitGlobusUploadDebugLog(window, file_row_idx, 'stdout', `Transfer task_id: ${task_id}`, { file_path, task_id });
+    poll_globus_transfer_status(window, task_id, file_row_idx, file_path, file_size_bytes).catch(err => {
       console.error('Error polling globus transfer:', err);
+      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', err?.message || 'Error polling globus transfer', { file_path, task_id });
     });
   }
   
@@ -917,7 +992,11 @@ ipcMain.handle('get-progress', async (event, info, output_path) => {
 
 
   } catch (e) {
-    console.log("Error getting progress", e);
+    if (e?.code !== 'ENOENT') {
+      console.log("Error getting progress", e);
+    } else if (process?.env?.VERBOSE_PROCESS_PROGRESS === '1') {
+      console.log("Error getting progress", e);
+    }
     return null;
   }
 });

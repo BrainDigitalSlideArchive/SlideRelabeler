@@ -6,6 +6,7 @@ import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
 import * as modal_actions from '../../actions/modal';
 import * as config_actions from '../../actions/config';
+import * as globus_actions from '../../actions/globus';
 
 function* load_saved_store() {
   const store = yield get_store();
@@ -23,6 +24,9 @@ function* load_saved_store() {
     }
     if (store.config) {
       yield put({type: config_actions.UPDATE_CONFIG, payload: store.config});
+    }
+    if (store.globus) {
+      yield put({type: globus_actions.RESTORE_GLOBUS_PERSISTED, payload: store.globus});
     }
   }
 }

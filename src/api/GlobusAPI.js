@@ -3,6 +3,8 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 
+import { GLOBUS_ENDPOINT_UUID_RE } from '../helpers/globus_helpers';
+
 const execAsync = promisify(exec);
 
 class GlobusAPI {
@@ -144,6 +146,55 @@ class GlobusAPI {
         console.log('[GlobusAPI] Final status:', this._status);
     }
 
+    sanitizeCliOutput(text) {
+        if (!text) return text;
+        // Remove PyInstaller bootloader chatter and other noisy loader lines from UI-facing output.
+        return text
+            .split(/\r?\n/)
+            .filter((line) => {
+                const trimmed = (line || '').trim();
+                if (!trimmed) return true;
+                if (/\[PYI-\d+:(DEBUG|INFO|WARN|ERROR)\]/.test(trimmed)) return false;
+                if (/^(LOADER:|DYLIB:)/.test(trimmed)) return false;
+                if (/^PYI-\d+:(DEBUG|INFO|WARN|ERROR)/.test(trimmed)) return false;
+                return true;
+            })
+            .join('\n');
+    }
+
+    buildEnv(additionalEnv = {}) {
+        const env = { ...process.env, ...(additionalEnv.env || {}) };
+
+        // Add conda Python to PATH if using conda environment
+        if (this._usingCondaEnv && this._condaPrefix) {
+            const currentPath = env.PATH || '';
+            const condaPath = process.platform === 'win32'
+                ? path.join(this._condaPrefix, 'Scripts') + path.delimiter +
+                  path.join(this._condaPrefix, 'Library', 'bin') + path.delimiter +
+                  currentPath
+                : path.join(this._condaPrefix, 'bin') + path.delimiter + currentPath;
+            env.PATH = condaPath;
+            env.CONDA_PREFIX = this._condaPrefix;
+        }
+
+        // SSL verification setting
+        if (this._disableSslVerification) {
+            env.GLOBUS_SDK_VERIFY_SSL = 'false';
+        }
+
+        // Suppress PyInstaller debug output by default (unless explicitly enabled)
+        // Set GLOBUS_ENABLE_PYI_DEBUG=1 to enable PyInstaller debug output
+        if (!env.GLOBUS_ENABLE_PYI_DEBUG || env.GLOBUS_ENABLE_PYI_DEBUG === '0') {
+            Object.keys(env).forEach((k) => {
+                if (k === 'PYI_DEBUG' || k === 'PYINSTALLER_DEBUG' || (k.startsWith('PYI_') && k.includes('DEBUG'))) {
+                    delete env[k];
+                }
+            });
+        }
+
+        return env;
+    }
+
     async executeCommand(args, useJsonFormat = true, additionalEnv = {}) {
         if (!this._pathToGlobus) {
             return [false, { 
@@ -160,56 +211,11 @@ class GlobusAPI {
         console.log('[GlobusAPI] executeCommand: Starting command execution');
         console.log('[GlobusAPI] executeCommand: Command:', command);
         console.log('[GlobusAPI] executeCommand: Additional env vars:', additionalEnv.env ? Object.keys(additionalEnv.env) : []);
-        
-        // Prepare environment - start with process.env
-        const baseEnv = { ...process.env };
-        
-        // Suppress PyInstaller debug output by default (unless explicitly enabled)
-        // Set GLOBUS_ENABLE_PYI_DEBUG=1 to enable PyInstaller debug output
-        if (!baseEnv.GLOBUS_ENABLE_PYI_DEBUG || baseEnv.GLOBUS_ENABLE_PYI_DEBUG === '0') {
-            // Remove PyInstaller debug environment variables
-            const removedVars = [];
-            if (baseEnv.PYI_DEBUG !== undefined) {
-                removedVars.push('PYI_DEBUG');
-                delete baseEnv.PYI_DEBUG;
-            }
-            if (baseEnv.PYINSTALLER_DEBUG !== undefined) {
-                removedVars.push('PYINSTALLER_DEBUG');
-                delete baseEnv.PYINSTALLER_DEBUG;
-            }
-            // Also check for any PYI_* variables that might enable debug
-            Object.keys(baseEnv).forEach(key => {
-                if (key.startsWith('PYI_') && key.includes('DEBUG')) {
-                    removedVars.push(key);
-                    delete baseEnv[key];
-                }
-            });
-            if (removedVars.length > 0) {
-                console.log('[GlobusAPI] executeCommandStream: Removed PyInstaller debug env vars:', removedVars);
-            }
-        }
-        
-        // Add conda Python to PATH if using conda environment
-        if (this._usingCondaEnv && this._condaPrefix) {
-            const currentPath = baseEnv.PATH || '';
-            const condaPath = process.platform === 'win32'
-                ? path.join(this._condaPrefix, 'Scripts') + path.delimiter + 
-                  path.join(this._condaPrefix, 'Library', 'bin') + path.delimiter +
-                  currentPath
-                : path.join(this._condaPrefix, 'bin') + path.delimiter + currentPath;
-            
-            baseEnv.PATH = condaPath;
-            baseEnv.CONDA_PREFIX = this._condaPrefix;
-        }
-        
-        // Set SSL verification setting if disabled
+
+        const finalEnv = this.buildEnv(additionalEnv);
         if (this._disableSslVerification) {
-            baseEnv.GLOBUS_SDK_VERIFY_SSL = 'false';
             console.log('[GlobusAPI] executeCommand: SSL verification disabled (GLOBUS_SDK_VERIFY_SSL=false)');
         }
-        
-        // Merge additional environment variables (these override base env)
-        const finalEnv = additionalEnv.env ? { ...baseEnv, ...additionalEnv.env } : baseEnv;
         
         // Log relevant environment variables
         const relevantEnvVars = Object.keys(finalEnv).filter(k => k.startsWith('GLOBUS') || k === 'PATH' || k === 'CONDA_PREFIX');
@@ -288,12 +294,20 @@ class GlobusAPI {
             // The login command may output URL to stdout/stderr even when it fails or times out
             const combinedOutput = (error.stdout || '') + (error.stderr || '');
             
+            const exitCode =
+                typeof error.status === 'number'
+                    ? error.status
+                    : typeof error.code === 'number'
+                      ? error.code
+                      : undefined;
+
             return [false, { 
                 message: error.message || 'Unknown error', 
                 stderr: error.stderr,
                 stdout: error.stdout,
                 combinedOutput: combinedOutput, // For easier URL extraction
                 isTimeout: isTimeout, // Flag for timeout errors
+                exitCode,
                 // Check if it's a connection error
                 connectionError: error.message?.includes('Connection') || 
                                  error.stderr?.includes('ConnectionError') ||
@@ -306,35 +320,83 @@ class GlobusAPI {
         return this.executeCommand(['whoami']);
     }
 
-    async loginWithSpawn() {
+    async getLocalEndpointId() {
+        if (!this._pathToGlobus) {
+            return [false, { message: 'Globus CLI not available.' }];
+        }
+        const result = await this.executeCommand(['endpoint', 'local-id', '--quiet'], false);
+        if (!result || !result[0]) {
+            const err = result?.[1] || {};
+            const stderr = (err.stderr || '').trim();
+            const message = (err.message || '').trim();
+            const combined = `${stderr}\n${message}`.toLowerCase();
+            let userMessage =
+                'Globus Connect Personal does not appear configured for this Windows user on this machine, or the local endpoint could not be read.';
+            if (
+                err.exitCode === 4 ||
+                /consent|login required|authentication|auth.*required|not logged in|consentrequired/.test(
+                    combined
+                )
+            ) {
+                userMessage =
+                    'Log in to Globus in this app (Authentication) or run globus login, and ensure Globus Connect Personal is installed for this user.';
+            } else if (stderr) {
+                const lines = stderr.split(/\r?\n/).filter((line) => !/\[PYI-|^\s*LOADER:/i.test(line));
+                const cleaned = lines.join(' ').trim();
+                if (cleaned) userMessage = cleaned;
+            }
+            return [false, { message: userMessage, stderr: err.stderr, exitCode: err.exitCode }];
+        }
+        const text = (result[1]?.message || '').trim();
+        const firstLine = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l);
+        if (!firstLine || !GLOBUS_ENDPOINT_UUID_RE.test(firstLine)) {
+            return [
+                false,
+                {
+                    message:
+                        'Globus CLI did not return a valid endpoint UUID. Ensure Globus Connect Personal is installed and running for this user.',
+                },
+            ];
+        }
+        return [true, { id: firstLine }];
+    }
+
+    async getAuthStatus() {
+        // Authoritative auth status via whoami (preferred over parsing login output)
+        if (!this._pathToGlobus) {
+            return { ok: false, isAuthenticated: false, classification: 'cliNotAvailable', message: 'Globus CLI not available' };
+        }
+
+        const whoami = await this.executeCommand(['whoami'], false);
+        if (whoami && whoami[0]) {
+            const username = (whoami?.[1]?.message || '').trim();
+            return { ok: true, isAuthenticated: true, classification: 'success', username };
+        }
+
+        // If whoami fails, treat as not authenticated (do not assume network failure from generic stderr text)
+        return { ok: true, isAuthenticated: false, classification: 'notAuthenticated' };
+    }
+
+    async loginWithSpawn(options = {}) {
         // Use spawn instead of exec for better control over stdin/stdout/stderr
         // This prevents the process from waiting for stdin input
         console.log('[GlobusAPI] loginWithSpawn() called');
         console.log('[GlobusAPI] Using globus-cli path:', this._pathToGlobus);
         
         return new Promise((resolve) => {
-            // Prepare environment
-            const baseEnv = { ...process.env };
-            
-            // Add conda Python to PATH if using conda environment
-            if (this._usingCondaEnv && this._condaPrefix) {
-                const currentPath = baseEnv.PATH || '';
-                const condaPath = process.platform === 'win32'
-                    ? path.join(this._condaPrefix, 'Scripts') + path.delimiter + 
-                      path.join(this._condaPrefix, 'Library', 'bin') + path.delimiter +
-                      currentPath
-                    : path.join(this._condaPrefix, 'bin') + path.delimiter + currentPath;
-                
-                baseEnv.PATH = condaPath;
-                baseEnv.CONDA_PREFIX = this._condaPrefix;
-            }
+            // Prepare environment (includes conda PATH, SSL settings, and PyInstaller debug suppression)
+            // Allow per-login overrides for developer toggles
+            const baseEnv = this.buildEnv({
+                env: options?.enablePyiDebug ? { GLOBUS_ENABLE_PYI_DEBUG: '1' } : {}
+            });
             
             // Don't set GLOBUS_CLI_INTERACTIVE=0 - we need interactive mode to submit code
             // baseEnv.GLOBUS_CLI_INTERACTIVE = '0'; // Removed - we need stdin to submit code
             console.log('[GlobusAPI] loginWithSpawn: Using interactive mode to allow code submission');
             
             // Spawn the process with stdin piped so we can write to it
-            const args = ['login', '-v', '--no-local-server'];
+            // Verbose output is a dev toggle (default off)
+            const args = options?.verbose ? ['login', '-v', '--no-local-server'] : ['login', '--no-local-server'];
             console.log('[GlobusAPI] loginWithSpawn: Spawning process with args:', args);
             
             const child = spawn(this._pathToGlobus, args, {
@@ -793,58 +855,195 @@ class GlobusAPI {
         });
     }
 
-    async login() {
-        // Use spawn-based method for better control over stdin/stdout
-        // This prevents the process from hanging while waiting for stdin input
-        console.log('[GlobusAPI] ===== login() called =====');
-        console.log('[GlobusAPI] Using spawn-based login method');
+    async login(options = {}) {
+        // Robust login flow:
+        // 1) Preflight whoami: if authenticated, return alreadyAuthenticated.
+        // 2) Otherwise, run interactive login spawn (keeps process alive for code submission).\n+        // 3) Postflight whoami: if authenticated after a \"failure\", treat as authenticated and return success.\n+        console.log('[GlobusAPI] ===== login() called =====');
+        console.log('[GlobusAPI] login(): options:', options);
         console.log('[GlobusAPI] Current _loginProcess state:', this._loginProcess ? 'exists' : 'null');
-        
+
         try {
-            // Use spawn method instead of exec for better stdin control
-            console.log('[GlobusAPI] Calling loginWithSpawn()...');
-            const result = await this.loginWithSpawn();
-            console.log('[GlobusAPI] loginWithSpawn returned');
-            console.log('[GlobusAPI] Result structure:', {
-                isArray: Array.isArray(result),
-                length: result?.length,
+            const pre = await this.getAuthStatus();
+            if (pre.ok && pre.isAuthenticated) {
+                return {
+                    ok: true,
+                    isAuthenticated: true,
+                    classification: 'alreadyAuthenticated',
+                    username: pre.username,
+                    message: 'Already authenticated'
+                };
+            }
+
+            console.log('[GlobusAPI] login(): Not authenticated, calling loginWithSpawn()...');
+            const result = await this.loginWithSpawn(options);
+            console.log('[GlobusAPI] login(): loginWithSpawn returned (legacy tuple):', {
                 result0: result?.[0],
-                result1: result?.[1],
                 hasUrl: !!result?.[1]?.url,
-                url: result?.[1]?.url,
                 hasAccessCode: !!result?.[1]?.access_code,
-                accessCode: result?.[1]?.access_code,
-                message: result?.[1]?.message,
-                fullResult: result
+                message: result?.[1]?.message
             });
-            
-            // loginWithSpawn already handles all URL and access code extraction
-            // Just return the result
-            console.log('[GlobusAPI] ===== login() returning =====');
-            return result;
+
+            // If loginWithSpawn returned URL, we need browser auth
+            if (result && result[0] && result[1]?.url) {
+                return {
+                    ok: true,
+                    isAuthenticated: false,
+                    classification: 'needsBrowserAuth',
+                    url: result[1].url,
+                    accessCode: result[1].access_code || null,
+                    message: result[1].message || 'Complete authentication in your browser'
+                };
+            }
+
+            // If output indicates already logged in, treat as authenticated
+            const combined = `${result?.[1]?.stdout || ''}\n${result?.[1]?.stderr || ''}\n${result?.[1]?.combinedOutput || ''}`;
+            if (/already logged in/i.test(combined)) {
+                const post = await this.getAuthStatus();
+                return {
+                    ok: true,
+                    isAuthenticated: !!post.isAuthenticated,
+                    classification: 'alreadyAuthenticated',
+                    username: post.username,
+                    message: 'Already authenticated'
+                };
+            }
+
+            // Postflight: if whoami works despite login failure, prefer that truth
+            const post = await this.getAuthStatus();
+            if (post.ok && post.isAuthenticated) {
+                return {
+                    ok: true,
+                    isAuthenticated: true,
+                    classification: 'alreadyAuthenticated',
+                    username: post.username,
+                    message: 'Authenticated (session already active)'
+                };
+            }
+
+            // Otherwise return failure classification\n+            const msg = result?.[1]?.message || 'Login failed';
+            const isNetwork = /GlobusConnectionError|ConnectionError on request/i.test(combined);
+            return {
+                ok: false,
+                isAuthenticated: false,
+                classification: isNetwork ? 'networkError' : 'unknownError',
+                message: msg,
+                raw: {
+                    stdout: result?.[1]?.stdout || '',
+                    stderr: result?.[1]?.stderr || ''
+                },
+                sanitized: {
+                    stdout: this.sanitizeCliOutput(result?.[1]?.stdout || ''),
+                    stderr: this.sanitizeCliOutput(result?.[1]?.stderr || '')
+                }
+            };
         } catch (error) {
-            console.log('[GlobusAPI] Exception caught in login():', error);
-            console.log('[GlobusAPI] Error message:', error.message);
-            
-            return [false, { 
-                message: error.message || 'Login failed unexpectedly',
-                error: error
-            }];
+            return { ok: false, isAuthenticated: false, classification: 'unknownError', message: error.message || 'Login failed unexpectedly' };
+        } finally {
+            console.log('[GlobusAPI] ===== login() complete =====');
         }
     }
 
     async logout() {
-        // globus logout doesn't support --format json
-        return this.executeCommand(['logout'], false);
+        // Non-interactive: exec() has no stdin; without --yes the CLI waits on
+        // "Are you sure you want to logout? [y/N]:" and times out.
+        return this.executeCommand(['logout', '--yes'], false);
     }
 
     async get_collection_info(collection_name) {
         return this.executeCommand(['collection', 'show', collection_name]);
     }
 
+    async searchEndpoints(query) {
+        const q = (query || '').trim();
+        if (!q) {
+            return [false, { message: 'Endpoint search query is required' }];
+        }
+
+        const response = await this.executeCommand(['endpoint', 'search', q], true);
+        if (!response[0]) {
+            const msg = this.sanitizeCliOutput(
+                response?.[1]?.message ||
+                response?.[1]?.stderr ||
+                response?.[1]?.stdout ||
+                'Endpoint search failed'
+            );
+            return [false, { message: msg || 'Endpoint search failed' }];
+        }
+
+        const raw = response[1];
+        const rows = Array.isArray(raw?.DATA) ? raw.DATA : [];
+        const data = rows
+            .map((row) => ({
+                id: row?.id ? String(row.id) : '',
+                display_name: row?.display_name ? String(row.display_name) : '',
+                owner: row?.owner_string ? String(row.owner_string) : (row?.owner ? String(row.owner) : ''),
+            }))
+            .filter((row) => row.id);
+
+        return [true, { data }];
+    }
+
     async validate_collection_path(collection_path) {
         // Try to list the path to see if it exists and is accessible
         return this.executeCommand(['ls', collection_path]);
+    }
+
+    /**
+     * List directory contents on a collection/endpoint for tree browsing.
+     * @param {string} collectionPath - Full path e.g. "collection-id#/" or "collection-id#/folder/subdir/"
+     * @returns {Promise<[boolean, { path?: string, endpoint?: string, data?: Array<{ name: string, type: string }> } | { message: string }]>}
+     */
+    async listDirectory(collectionPath) {
+        if (!this._pathToGlobus) {
+            return [false, { message: 'Globus CLI not available' }];
+        }
+        const pathToUse = collectionPath && collectionPath.trim() ? collectionPath.trim() : '';
+        if (!pathToUse) {
+            return [false, { message: 'Collection path is required' }];
+        }
+        // Globus CLI expects ENDPOINT_ID[:PATH]
+        // Normalize to endpointUuid:/path/ style for directory browsing.
+        let normalizedPath = pathToUse;
+        if (!normalizedPath.includes(':')) {
+            return [false, {
+                message: 'Target endpoint path must be in format endpointUUID:/path. Use endpoint search and select a UUID first.'
+            }];
+        }
+        if (/^[^:]+:$/.test(normalizedPath)) {
+            normalizedPath += '/';
+        }
+        const [endpointId, endpointPath = '/'] = normalizedPath.split(':');
+        const cleanEndpointId = (endpointId || '').trim();
+        let cleanPath = (endpointPath || '/').trim();
+        if (!cleanPath.startsWith('/')) {
+            cleanPath = `/${cleanPath}`;
+        }
+        if (!cleanPath.endsWith('/')) {
+            cleanPath += '/';
+        }
+        normalizedPath = `${cleanEndpointId}:${cleanPath}`;
+
+        const result = await this.executeCommand(['ls', normalizedPath], true);
+        if (!result[0]) {
+            const rawMessage = result?.[1]?.message || result?.[1]?.stderr || result?.[1]?.stdout || 'List directory failed';
+            const sanitized = this.sanitizeCliOutput(rawMessage);
+            const invalidUuid = /not a valid uuid/i.test(rawMessage || '');
+            return [false, {
+                message: invalidUuid
+                    ? 'The selected endpoint identifier is not a valid UUID. Use \"Find endpoints\" and select one of the UUID results.'
+                    : (sanitized || 'List directory failed')
+            }];
+        }
+        const raw = result[1];
+        const data = Array.isArray(raw?.DATA) ? raw.DATA.map((item) => ({
+            name: item.name != null ? String(item.name) : '',
+            type: item.type === 'dir' || item.type === 'directory' ? 'directory' : 'file'
+        })) : [];
+        return [true, {
+            path: raw?.path ?? normalizedPath,
+            endpoint: raw?.endpoint,
+            data
+        }];
     }
 
     async submit_transfer(source_path, destination_collection_path) {
@@ -897,54 +1096,10 @@ class GlobusAPI {
         }
         
         // Prepare environment - start with process.env
-        const baseEnv = { ...process.env };
-        
-        // Suppress PyInstaller debug output by default (unless explicitly enabled)
-        // Set GLOBUS_ENABLE_PYI_DEBUG=1 to enable PyInstaller debug output
-        if (!baseEnv.GLOBUS_ENABLE_PYI_DEBUG || baseEnv.GLOBUS_ENABLE_PYI_DEBUG === '0') {
-            // Remove PyInstaller debug environment variables
-            const removedVars = [];
-            if (baseEnv.PYI_DEBUG !== undefined) {
-                removedVars.push('PYI_DEBUG');
-                delete baseEnv.PYI_DEBUG;
-            }
-            if (baseEnv.PYINSTALLER_DEBUG !== undefined) {
-                removedVars.push('PYINSTALLER_DEBUG');
-                delete baseEnv.PYINSTALLER_DEBUG;
-            }
-            // Also check for any PYI_* variables that might enable debug
-            Object.keys(baseEnv).forEach(key => {
-                if (key.startsWith('PYI_') && key.includes('DEBUG')) {
-                    removedVars.push(key);
-                    delete baseEnv[key];
-                }
-            });
-            if (removedVars.length > 0) {
-                console.log('[GlobusAPI] executeCommandStream: Removed PyInstaller debug env vars:', removedVars);
-            }
-        }
-        
-        // Add conda Python to PATH if using conda environment
-        if (this._usingCondaEnv && this._condaPrefix) {
-            const currentPath = baseEnv.PATH || '';
-            const condaPath = process.platform === 'win32'
-                ? path.join(this._condaPrefix, 'Scripts') + path.delimiter + 
-                  path.join(this._condaPrefix, 'Library', 'bin') + path.delimiter +
-                  currentPath
-                : path.join(this._condaPrefix, 'bin') + path.delimiter + currentPath;
-            
-            baseEnv.PATH = condaPath;
-            baseEnv.CONDA_PREFIX = this._condaPrefix;
-        }
-        
-        // Set SSL verification setting if disabled
+        const finalEnv = this.buildEnv(additionalEnv);
         if (this._disableSslVerification) {
-            baseEnv.GLOBUS_SDK_VERIFY_SSL = 'false';
             console.log('[GlobusAPI] executeCommandStream: SSL verification disabled');
         }
-        
-        // Merge additional environment variables
-        const finalEnv = additionalEnv.env ? { ...baseEnv, ...additionalEnv.env } : baseEnv;
         
         let stdout = '';
         let stderr = '';
@@ -990,10 +1145,7 @@ class GlobusAPI {
                 // Match pattern anywhere in the line (not just at start) to catch chunked lines
                 // Also match partial patterns that might occur due to chunking
                 const trimmedLine = line.trim();
-                return !trimmedLine.match(/\[PYI-\d+:(DEBUG|INFO|WARN|ERROR)\]/) &&
-                       !trimmedLine.match(/^PYI-\d+:(DEBUG|INFO|WARN|ERROR)/) &&
-                       !trimmedLine.match(/^LOADER:/) &&
-                       !trimmedLine.match(/^DYLIB:/);
+                return this.sanitizeCliOutput(trimmedLine) === trimmedLine;
             });
             
             // Send filtered complete lines

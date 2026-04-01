@@ -62,19 +62,13 @@ const API = {
   dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
   globusCheckCliAvailable: () => ipcRenderer.invoke('globus-check-cli-available'),
   globusCheckAuth: () => ipcRenderer.invoke('globus-check-auth'),
-  globusLogin: () => {
+  globusAuthStatus: () => ipcRenderer.invoke('globus-auth-status'),
+  globusLogin: (options = {}) => {
     console.log('[electronAPI] globusLogin() called, invoking IPC...');
-    const result = ipcRenderer.invoke('globus-login');
+    const result = ipcRenderer.invoke('globus-login', options);
     console.log('[electronAPI] globusLogin() IPC invoke returned (promise):', result);
     result.then((response) => {
-      console.log('[electronAPI] globusLogin() IPC response received:', {
-        isArray: Array.isArray(response),
-        length: response?.length,
-        response0: response?.[0],
-        response1: response?.[1],
-        hasUrl: !!response?.[1]?.url,
-        url: response?.[1]?.url
-      });
+      console.log('[electronAPI] globusLogin() IPC response received:', response);
     }).catch((error) => {
       console.log('[electronAPI] globusLogin() IPC error:', error);
     });
@@ -85,7 +79,12 @@ const API = {
   globusLogout: () => ipcRenderer.invoke('globus-logout'),
   globusUploadFile: (source_path, dest_collection_path, file_path, file_row_idx = 0) => 
     ipcRenderer.invoke('globus-upload-file', source_path, dest_collection_path, file_path, file_row_idx),
+  globusUploadFileWithSize: (source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) =>
+    ipcRenderer.invoke('globus-upload-file', source_path, dest_collection_path, file_path, file_row_idx, file_size_bytes),
   globusCheckCollectionPath: (collection_path) => ipcRenderer.invoke('globus-check-collection-path', collection_path),
+  globusListDirectory: (collection_path) => ipcRenderer.invoke('globus-list-directory', collection_path),
+  globusGetLocalEndpointId: () => ipcRenderer.invoke('globus-get-local-endpoint-id'),
+  globusSearchEndpoints: (query) => ipcRenderer.invoke('globus-search-endpoints', query),
   globusSetupUploadFileProgress: (dispatch) => ipcRenderer.on('globus-upload-file-progress', (event, progress) => {
     dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
   }),
@@ -98,6 +97,18 @@ const API = {
   globusStopUploadFileProgress: () => ipcRenderer.removeAllListeners('globus-upload-file-progress'),
   globusStopUploadComplete: () => ipcRenderer.removeAllListeners('globus-upload-file-complete'),
   globusStopUploadFileError: () => ipcRenderer.removeAllListeners('globus-upload-file-error'),
+  globusSetupUploadDebugLog: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('globus-upload-debug-log', handler);
+    return () => ipcRenderer.removeListener('globus-upload-debug-log', handler);
+  },
+  globusStopUploadDebugLog: () => ipcRenderer.removeAllListeners('globus-upload-debug-log'),
+  globusSetupUploadDebugStatus: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('globus-upload-debug-status', handler);
+    return () => ipcRenderer.removeListener('globus-upload-debug-status', handler);
+  },
+  globusStopUploadDebugStatus: () => ipcRenderer.removeAllListeners('globus-upload-debug-status'),
   globusExecuteCommand: (args, useJsonFormat = false) => ipcRenderer.invoke('globus-execute-command', args, useJsonFormat),
   globusCancelCommand: (commandId) => ipcRenderer.invoke('globus-cancel-command', commandId),
   globusSetupCommandOutput: (callback) => {
