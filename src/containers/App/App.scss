@@ -70,6 +70,13 @@
   flex-direction: column;
   justify-content: end;
   position: relative;
+    .__process-files-upload-hint {
+      font-size: 0.85em;
+      color: #e6a800;
+      max-width: 22em;
+      margin-top: 0.35em;
+      line-height: 1.3;
+    }
     .__process-files-message {
       opacity: 0;
       visibility: hidden;
@@ -100,6 +107,12 @@
   margin-left: 0.25em;
   &._connected {
     background-color: $green;
+  }
+  &._network-ready {
+    background-color: $green;
+  }
+  &._network-warning {
+    background-color: #e6a800;
   }
 }
 

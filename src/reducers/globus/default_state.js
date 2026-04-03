@@ -20,8 +20,12 @@ const default_state = {
     collection_path: '', // Full path for destination in endpointUUID:/path format
     source_endpoint: '', // Local endpoint ID only (Globus Connect Personal UUID); path is file's output_path
     upload_queue: [],
+    /** Active Globus transfer jobs (dequeued, may include polling on main process). */
+    upload_in_flight: 0,
     globus_collection_exists: null,
     globus_collection_error_message: null,
+    globus_collection_error_detail: null,
+    globus_collection_error_technical: null,
     cli_available: null, // Whether 'globus' command is available on system
     disable_ssl_verification: false, // Whether to disable SSL verification (for testing only, default: false = SSL verification enabled)
     globus_directory_refresh_nonce: 0, // Incremented on LOGIN_SUCCESS / manual retry to refetch target tree

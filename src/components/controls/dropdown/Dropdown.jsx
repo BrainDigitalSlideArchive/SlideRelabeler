@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
 
 import './Dropdown.scss';
 
@@ -13,9 +12,10 @@ const Dropdown = ({
                     selectedItems = [],
                     placeholder = 'Select options',
                     multiSelect = false,
-                    show_selected_descriptions = false
+                    show_selected_descriptions = false,
+                    omitLabel = false,
+                    ariaLabel = null,
                   }) => {
-  const dispatch = useDispatch();
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef(null);
@@ -85,15 +85,22 @@ const Dropdown = ({
 
   const selectedLabels = selectedItems.map(item => item && item.label).join(', ');
 
+  const rootClass = `Dropdown${omitLabel ? ' Dropdown--controlOnly' : ''}${disabled ? ' _disabled' : ''}`;
+
   return (
-    <div className={disabled? "Dropdown _disabled" : "Dropdown"} ref={dropdownRef} style={width ? { width: width } : {}}>
-      <div className={"__label"} style={label_width ? { width: label_width } : {}}>{label? label : placeholder}</div>
+    <div className={rootClass} ref={dropdownRef} style={width ? { width: width } : {}}>
+      {!omitLabel && (
+        <div className={"__label"} style={label_width ? { width: label_width } : {}}>
+          {label ? label : placeholder}
+        </div>
+      )}
       <div
         className={disabled? "__trigger _disabled" : "__trigger"}
         tabIndex={0}
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={omitLabel && ariaLabel ? ariaLabel : undefined}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
       >

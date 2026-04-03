@@ -12,7 +12,6 @@ import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
 import ModalNetwork from './ModalNetwork';
 import ModalESlideManager from './ModalESlideManager';
-import ModalGlobusTest from './ModalGlobusTest';
 
 function render_modal(type, props) {
   switch(type) {
@@ -29,13 +28,11 @@ function render_modal(type, props) {
     case 'warning':
       return <ModalWarning/>;
     case 'network':
-      return <ModalNetwork network_type={props.network_type}/>;
+      return <ModalNetwork />;
     case 'metadata':
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
     case 'esm':
       return <ModalESlideManager/>;
-    case 'globus_test':
-      return <ModalGlobusTest/>;
     default:
       return <ModalHelp/>;
   }

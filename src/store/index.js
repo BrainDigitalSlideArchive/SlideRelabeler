@@ -3,21 +3,17 @@ import createSagaMiddleware from 'redux-saga';
 
 import reducer from '../reducers';
 import saga from '../sagas';
+import { createReduxActionDebugMiddleware } from './reduxActionDebugMiddleware';
 
-
-// Create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
-const middleware = [sagaMiddleware];
-// const enhancer = composeWithStateSync(middleware);
-// Mount it on the Store
+const reduxActionDebugMiddleware = createReduxActionDebugMiddleware();
+const middleware = [reduxActionDebugMiddleware, sagaMiddleware];
+
 const store = configureStore({
     reducer,
     middleware: (getDefaultMiddleware) => getDefaultMiddleware({ thunk: false    }).concat(middleware),
 });
 
-// const store = createStore(reducer, enhancer);
-
-// Then run the saga
 sagaMiddleware.run(saga);
 
 window.redux_store = store;

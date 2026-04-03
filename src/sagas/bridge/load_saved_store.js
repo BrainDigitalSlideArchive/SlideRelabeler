@@ -9,10 +9,22 @@ import * as config_actions from '../../actions/config';
 import * as esm_actions from '../../actions/esm';
 import * as dsa_actions from '../../actions/dsa';
 import * as globus_actions from '../../actions/globus';
+import * as upload_routing_actions from '../../actions/uploadRouting';
+import { migrateUploadRoutingFromLegacy } from '../../helpers/uploadRouting_migration';
+
+let lastPersistedSnapshotJson = null;
 
 function* load_saved_store() {
   const store = yield get_store();
   if (store) {
+    // Avoid Redux churn: if the persisted snapshot hasn't changed, don't dispatch.
+    // This prevents unnecessary rerenders (e.g. thumbnail refetch) when a sync signal fires redundantly.
+    const nextSnapshot = JSON.stringify(store);
+    if (lastPersistedSnapshotJson === nextSnapshot) {
+      return;
+    }
+    lastPersistedSnapshotJson = nextSnapshot;
+
     if (store.files) {
       yield put({type: files_actions.UPDATE_FILES, payload: store.files});
       // Always make interface allow changes if uploaded from disk
@@ -36,6 +48,12 @@ function* load_saved_store() {
     if (store.globus) {
       yield put({type: globus_actions.RESTORE_GLOBUS_PERSISTED, payload: store.globus});
     }
+    const uploadRouting = migrateUploadRoutingFromLegacy(
+      store.dsa,
+      store.globus,
+      store.uploadRouting
+    );
+    yield put({ type: upload_routing_actions.RESTORE_UPLOAD_ROUTING, payload: uploadRouting });
   }
 }
 

@@ -1,0 +1,99 @@
+.GlobusUploadPathEditPopover {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.GlobusUploadPathEditPopover__editBtn {
+  margin: 0;
+  height: 1.85rem;
+  padding: 0 0.6em;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  border: 1px solid rgba(15, 23, 42, 0.25);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.65);
+  color: #0f172a;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.GlobusUploadPathEditPopover__editBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.GlobusUploadPathEditPopover__editBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.GlobusUploadPathEditPopover__editBtn:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+.GlobusUploadPathEditPopover__panel {
+  position: fixed;
+  z-index: 13000;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: #f8fafc;
+  color: #0f172a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+}
+
+.GlobusUploadPathEditPopover__help {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #334155;
+
+  code {
+    font-size: 0.78em;
+    word-break: break-all;
+  }
+}
+
+.GlobusUploadPathEditPopover__input {
+  display: block;
+  width: 100%;
+  min-height: 4.5rem;
+  margin: 0 0 0.5rem;
+  padding: 0.45em 0.5em;
+  font-size: 0.82rem;
+  font-family: ui-monospace, monospace;
+  line-height: 1.35;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.GlobusUploadPathEditPopover__input:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 1px;
+}
+
+.GlobusUploadPathEditPopover__error {
+  margin: 0 0 0.5rem;
+  padding: 0.4em 0.5em;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #842029;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.GlobusUploadPathEditPopover__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}

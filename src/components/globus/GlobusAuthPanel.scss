@@ -3,30 +3,47 @@
 .GlobusAuthPanel {
   color: #1a1a1a;
 
-  .GlobusAuthPanel__sslCard {
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 0.5em;
-    margin-bottom: 1em;
-    padding: 0.75em;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    color: #1a1a1a;
+  .GlobusAuthPanel__sslRow {
+    margin-top: 0.35em;
+    margin-bottom: 0.75em;
 
-    .Checkbox label {
+    .Checkbox label,
+    .Checkbox .Checkbox__labelCluster label {
       color: #1a1a1a;
+    }
+
+    .Checkbox.Checkbox--hasHelp .Checkbox__labelCluster {
+      max-width: none;
+      flex-shrink: 0;
+    }
+
+    .Checkbox.Checkbox--hasHelp .Checkbox__labelCluster label {
+      white-space: nowrap;
     }
   }
 
-  .GlobusAuthPanel__sslHint {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    font-size: 0.85em;
-    color: #444;
-    margin-top: 0.5em;
-    font-style: italic;
+  .GlobusAuthPanel__sslRow--authAside {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .GlobusAuthPanel__authWithSsl {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem 1.5rem;
+    margin-bottom: 0.5em;
+  }
+
+  .GlobusAuthPanel__authLeft {
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
+  .GlobusAuthPanel__authRight {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding-top: 0.15em;
   }
 
   .GlobusAuthPanel__card {

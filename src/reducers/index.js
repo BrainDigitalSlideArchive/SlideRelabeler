@@ -8,6 +8,7 @@ import debug from './debug';
 import dsa from './dsa';
 import esm from './esm';
 import globus from './globus';
+import uploadRouting from './uploadRouting';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -19,6 +20,7 @@ export const root_reducer = combineReducers({
     dsa: dsa,
     esm: esm,
     globus: globus,
+    uploadRouting: uploadRouting,
 });
 
 export default root_reducer;

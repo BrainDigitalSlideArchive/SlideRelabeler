@@ -1,23 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+import {
+  normalizeGlobusCollectionPath as normalizeEndpointPath,
+} from '../../helpers/globus_helpers';
 
 import './GlobusTargetTree.scss';
 
 function joinPath(base, name) {
   const b = (base || '').replace(/\/+$/, '');
   return b ? b + '/' + name : name;
-}
-
-function normalizeEndpointPath(pathValue) {
-  const raw = (pathValue || '').trim();
-  if (!raw) return '';
-  if (!raw.includes(':')) return '';
-
-  const [endpointId, ...rest] = raw.split(':');
-  const cleanEndpointId = (endpointId || '').trim();
-  let endpointPath = rest.join(':').trim() || '/';
-  if (!endpointPath.startsWith('/')) endpointPath = '/' + endpointPath;
-  if (!endpointPath.endsWith('/')) endpointPath += '/';
-  return `${cleanEndpointId}:${endpointPath}`;
 }
 
 /** Stable key for compare (preserves root as uuid:/) */
@@ -67,14 +58,6 @@ function pathsMatch(a, b) {
   return globusPathKey(a) === globusPathKey(b);
 }
 
-function syncHighlightFromSelected(selectedPath, rootNormalized) {
-  if (!selectedPath || !rootNormalized) return null;
-  const selEp = selectedPath.split(':')[0]?.trim();
-  const rootEp = rootNormalized.split(':')[0]?.trim();
-  if (!selEp || selEp !== rootEp) return null;
-  return globusPathKey(selectedPath);
-}
-
 function highlightAllowedForUse(highlighted, rootNormalized) {
   if (!highlighted || !rootNormalized) return false;
   const hKey = globusPathKey(highlighted);
@@ -103,12 +86,12 @@ function FolderIcon() {
   );
 }
 
-function SavedIcon() {
+function RefreshIcon() {
   return (
-    <svg className="GlobusTargetTree__savedIcon" width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+    <svg className="GlobusTargetTree__refreshIcon" width="16" height="16" viewBox="0 0 24 24" aria-hidden>
       <path
         fill="currentColor"
-        d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 11.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
+        d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08a6 6 0 1 1-1.86-6.22L13 11h7V4l-2.35 2.35z"
       />
     </svg>
   );
@@ -118,21 +101,26 @@ function GlobusTargetTree(props) {
   const {
     rootPath,
     selectedPath,
-    onSelect,
+    onSetUploadTarget,
     disabled,
-    errorMessage,
+    disabledReason,
     listDirectoryApi,
     refreshNonce = 0,
-    onRetryListing
+    onRetryListing,
+    suppressRootListError = false,
+    showRootFailureRetryHint = false,
+    onRootLoadResult,
   } = props;
 
   const [loadingPath, setLoadingPath] = useState(null);
   const [loadError, setLoadError] = useState(null);
-  const [showExternalErrorDetails, setShowExternalErrorDetails] = useState(false);
   const [showLoadErrorDetails, setShowLoadErrorDetails] = useState(false);
+  const suppressRootRef = useRef(suppressRootListError);
+  const rootPathRef = useRef(rootPath);
+  suppressRootRef.current = !!suppressRootListError;
+  rootPathRef.current = rootPath || '';
   const [expanded, setExpanded] = useState(() => new Set());
   const [childrenByPath, setChildrenByPath] = useState({});
-  const [highlightedPath, setHighlightedPath] = useState(null);
   const api = listDirectoryApi || (typeof window !== 'undefined' && window.electronAPI?.globusListDirectory);
 
   const fetchList = useCallback(async (path) => {
@@ -150,7 +138,13 @@ function GlobusTargetTree(props) {
         return result[1].data;
       }
       const msg = result && result[1]?.message ? result[1].message : 'List failed';
-      setLoadError(msg);
+      const normRoot = normalizeEndpointPath(rootPathRef.current);
+      const isRootFetch = !!normRoot && pathWithSlash === normRoot;
+      if (!isRootFetch || !suppressRootRef.current) {
+        setLoadError(msg);
+      } else {
+        setLoadError(null);
+      }
       setShowLoadErrorDetails(false);
       return null;
     } finally {
@@ -169,21 +163,11 @@ function GlobusTargetTree(props) {
     if (!root) return;
     fetchList(root).then((data) => {
       if (data != null) setChildrenByPath((p) => ({ ...p, [root]: data }));
+      if (typeof onRootLoadResult === 'function') {
+        onRootLoadResult(data != null);
+      }
     });
-  }, [rootPath, disabled, api, fetchList, refreshNonce]);
-
-  useEffect(() => {
-    if (!rootPath || disabled || !api) {
-      setHighlightedPath(null);
-      return;
-    }
-    const root = normalizeEndpointPath(rootPath);
-    if (!root) {
-      setHighlightedPath(null);
-      return;
-    }
-    setHighlightedPath(syncHighlightFromSelected(selectedPath, root));
-  }, [rootPath, disabled, api, selectedPath, refreshNonce]);
+  }, [rootPath, disabled, api, fetchList, refreshNonce, onRootLoadResult]);
 
   const loadChildren = useCallback(async (path) => {
     const pathWithSlash = normalizeEndpointPath(path);
@@ -203,136 +187,94 @@ function GlobusTargetTree(props) {
     loadChildren(pathWithSlash);
   }, [loadChildren]);
 
-  const onHighlightPath = useCallback((pathNoTrailing) => {
-    setHighlightedPath(pathNoTrailing ? globusPathKey(pathNoTrailing) : null);
-  }, []);
-
-  const commitHighlight = useCallback(() => {
-    if (!highlightedPath || !onSelect) return;
-    if (!highlightAllowedForUse(highlightedPath, rootKey)) return;
-    onSelect(highlightedPath);
-  }, [highlightedPath, onSelect, rootKey]);
-
   const rootChildren = rootKey ? childrenByPath[rootKey] : null;
   const isLoadingRoot = loadingPath === rootKey;
-  const formattedExternalError = buildFormattedError(errorMessage);
   const formattedLoadError = buildFormattedError(loadError);
   const canRetry = !!(rootKey && api && !disabled && onRetryListing);
-  const canUseFolder =
-    !!highlightedPath &&
-    !disabled &&
-    highlightAllowedForUse(highlightedPath, rootKey);
-  const footerPathId = 'GlobusTargetTree-footer-path';
 
   return (
     <div className="GlobusTargetTree">
-      {canRetry && (
-        <div className="GlobusTargetTree__toolbar">
-          <button
-            type="button"
-            className="GlobusTargetTree__retryBtn"
-            onClick={onRetryListing}
-          >
-            Retry listing
-          </button>
-          {formattedLoadError && (
-            <p className="GlobusTargetTree__retryHint">
-              If you just finished logging in, click Retry listing.
-            </p>
-          )}
-        </div>
-      )}
-      {formattedExternalError && (
-        <div className="GlobusTargetTree__alert GlobusTargetTree__alert--danger">
-          <div className="GlobusTargetTree__alertSummary">{formattedExternalError.summary}</div>
-          <button
-            type="button"
-            className="GlobusTargetTree__alertToggle GlobusTargetTree__alertToggle--danger"
-            onClick={() => setShowExternalErrorDetails((v) => !v)}
-          >
-            {showExternalErrorDetails ? 'Hide details' : 'Show details'}
-          </button>
-          {showExternalErrorDetails && (
-            <div className="GlobusTargetTree__alertDetails">
-              {formattedExternalError.details}
-            </div>
-          )}
-        </div>
-      )}
-      {formattedLoadError && (
-        <div className="GlobusTargetTree__alert GlobusTargetTree__alert--warn">
-          <div className="GlobusTargetTree__alertSummary">{formattedLoadError.summary}</div>
-          <button
-            type="button"
-            className="GlobusTargetTree__alertToggle GlobusTargetTree__alertToggle--warn"
-            onClick={() => setShowLoadErrorDetails((v) => !v)}
-          >
-            {showLoadErrorDetails ? 'Hide details' : 'Show details'}
-          </button>
-          {showLoadErrorDetails && (
-            <div className="GlobusTargetTree__alertDetails">
-              {formattedLoadError.details}
-            </div>
-          )}
-        </div>
-      )}
       {!rootKey && !loadingPath && (
-        <div className="GlobusTargetTree__muted">Enter a target collection above to browse.</div>
+        <div className="GlobusTargetTree__muted">
+          {disabled && disabledReason === 'auth'
+            ? 'Log in to Globus in the Authentication section above before you can browse folders.'
+            : 'Select a destination endpoint above (Search or paste a UUID), then browse folders here.'}
+        </div>
       )}
-      {isLoadingRoot && (
-        <div className="GlobusTargetTree__muted">Loading…</div>
-      )}
-      {rootKey && rootChildren && rootChildren.length === 0 && !isLoadingRoot && (
-        <div className="GlobusTargetTree__muted">No items</div>
-      )}
-      {rootChildren && rootChildren.length > 0 && (
+      {rootKey && (
         <div className="GlobusTargetTree__panel">
-          <div className="GlobusTargetTree__panelHeader" aria-hidden>
-            Name
+          <div className="GlobusTargetTree__panelHeader">
+            <div className="GlobusTargetTree__panelHeaderTitle" aria-hidden>
+              Browse files
+            </div>
+            {canRetry && (
+              <button
+                type="button"
+                className="GlobusTargetTree__refreshBtn"
+                onClick={onRetryListing}
+                title="Refresh"
+                aria-label="Refresh directory listing"
+              >
+                <RefreshIcon />
+                <span className="GlobusTargetTree__refreshBtnLabel">Refresh</span>
+              </button>
+            )}
           </div>
           <div className="GlobusTargetTree__panelScroll">
-            <ul className="GlobusTargetTree__list" role="tree">
-              {rootChildren.map((item) => (
-                <TreeNode
-                  key={item.name}
-                  depth={0}
-                  item={item}
-                  parentPath={rootKey}
-                  selectedPath={selectedPath}
-                  highlightedPath={highlightedPath}
-                  expanded={expanded}
-                  childrenByPath={childrenByPath}
-                  loadingPath={loadingPath}
-                  onToggleExpand={toggleExpand}
-                  onHighlightPath={onHighlightPath}
-                  disabled={disabled}
-                />
-              ))}
-            </ul>
+            {(formattedLoadError || showRootFailureRetryHint) && (
+              <div className="GlobusTargetTree__panelTop">
+                {formattedLoadError && (
+                  <div className="GlobusTargetTree__alert GlobusTargetTree__alert--warn">
+                    <div className="GlobusTargetTree__alertSummary">{formattedLoadError.summary}</div>
+                    <button
+                      type="button"
+                      className="GlobusTargetTree__alertToggle GlobusTargetTree__alertToggle--warn"
+                      onClick={() => setShowLoadErrorDetails((v) => !v)}
+                    >
+                      {showLoadErrorDetails ? 'Hide details' : 'Show details'}
+                    </button>
+                    {showLoadErrorDetails && (
+                      <div className="GlobusTargetTree__alertDetails">
+                        {formattedLoadError.details}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(formattedLoadError || showRootFailureRetryHint) && (
+                  <p className="GlobusTargetTree__retryHint">
+                    If you just finished logging in or approved access in Globus, click Refresh.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isLoadingRoot && <div className="GlobusTargetTree__muted">Loading…</div>}
+
+            {!isLoadingRoot && rootChildren && rootChildren.length === 0 && (
+              <div className="GlobusTargetTree__muted">No items</div>
+            )}
+
+            {!isLoadingRoot && rootChildren && rootChildren.length > 0 && (
+              <ul className="GlobusTargetTree__list" role="tree">
+                {rootChildren.map((item) => (
+                  <TreeNode
+                    key={item.name}
+                    depth={0}
+                    item={item}
+                    parentPath={rootKey}
+                    selectedPath={selectedPath}
+                    expanded={expanded}
+                    childrenByPath={childrenByPath}
+                    loadingPath={loadingPath}
+                    onToggleExpand={toggleExpand}
+                    disabled={disabled}
+                    rootNormalized={rootKey}
+                    onSetUploadTarget={onSetUploadTarget}
+                  />
+                ))}
+              </ul>
+            )}
           </div>
-        </div>
-      )}
-      {rootKey && rootChildren && rootChildren.length > 0 && (
-        <div className="GlobusTargetTree__footer">
-          <div className="GlobusTargetTree__footerPathRow">
-            <span className="GlobusTargetTree__footerLabel">Folder:</span>
-            <span
-              id={footerPathId}
-              className="GlobusTargetTree__footerPath"
-              title={highlightedPath || ''}
-            >
-              {highlightedPath || '— click a folder in the list above —'}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="GlobusTargetTree__useBtn"
-            disabled={!canUseFolder}
-            onClick={commitHighlight}
-            aria-describedby={footerPathId}
-          >
-            Use selected folder
-          </button>
         </div>
       )}
     </div>
@@ -344,19 +286,18 @@ function TreeNode({
   item,
   parentPath,
   selectedPath,
-  highlightedPath,
   expanded,
   childrenByPath,
   loadingPath,
   onToggleExpand,
-  onHighlightPath,
-  disabled
+  disabled,
+  rootNormalized,
+  onSetUploadTarget,
 }) {
   const isDir = item.type === 'directory';
   const fullPathWithSlash = joinPath(parentPath, item.name) + (isDir ? '/' : '');
   const fullPathNoSlash = fullPathWithSlash.replace(/\/$/, '');
   const isExpanded = expanded.has(fullPathWithSlash);
-  const isHighlighted = isDir && pathsMatch(highlightedPath, fullPathNoSlash);
   const isCommitted = isDir && pathsMatch(selectedPath, fullPathNoSlash);
   const children = childrenByPath[fullPathWithSlash];
   const isLoading = loadingPath === fullPathWithSlash;
@@ -367,26 +308,36 @@ function TreeNode({
     onToggleExpand(fullPathWithSlash);
   };
 
-  const handleLabelClick = (e) => {
-    e.stopPropagation();
-    if (!isDir || disabled) return;
-    onHighlightPath(fullPathNoSlash);
-  };
+  const handleLabelClick = handleExpand;
 
   const handleLabelKeyDown = (e) => {
     if (!isDir || disabled) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onHighlightPath(fullPathNoSlash);
+      handleExpand(e);
     }
+  };
+
+  const handleSetUploadTarget = (e) => {
+    e.stopPropagation();
+    if (!isDir || disabled || !onSetUploadTarget) return;
+    if (!highlightAllowedForUse(fullPathNoSlash, rootNormalized)) return;
+    const canonical = normalizeEndpointPath(fullPathWithSlash);
+    if (canonical) onSetUploadTarget(canonical);
+  };
+
+  const handleClearUploadTarget = (e) => {
+    e.stopPropagation();
+    if (disabled || !onSetUploadTarget) return;
+    const canonicalRoot = normalizeEndpointPath(rootNormalized);
+    if (canonicalRoot) onSetUploadTarget(canonicalRoot);
   };
 
   const rowClass = [
     'GlobusTargetTree__row',
     isDir && 'GlobusTargetTree__row--dir',
-    isHighlighted && 'GlobusTargetTree__row--highlighted',
     isCommitted && 'GlobusTargetTree__row--committed',
-    disabled && 'GlobusTargetTree__row--disabled'
+    disabled && 'GlobusTargetTree__row--disabled',
   ].filter(Boolean).join(' ');
 
   return (
@@ -418,7 +369,6 @@ function TreeNode({
               className="GlobusTargetTree__rowLabel"
               tabIndex={disabled ? undefined : 0}
               role="treeitem"
-              aria-selected={isHighlighted}
               onClick={handleLabelClick}
               onKeyDown={handleLabelKeyDown}
             >
@@ -426,9 +376,28 @@ function TreeNode({
               <span className="GlobusTargetTree__name GlobusTargetTree__name--dir">
                 {item.name}/
               </span>
+              {!isCommitted && onSetUploadTarget && !disabled && (
+                <button
+                  type="button"
+                  className="GlobusTargetTree__uploadHereBtn"
+                  onClick={handleSetUploadTarget}
+                >
+                  Upload here
+                </button>
+              )}
               {isCommitted && (
-                <span className="GlobusTargetTree__savedBadge" title="Saved as target path">
-                  <SavedIcon />
+                <span className="GlobusTargetTree__currentTargetPill">
+                  <span className="GlobusTargetTree__currentTargetText">Current upload target</span>
+                  <span className="GlobusTargetTree__currentTargetDivider" aria-hidden>|</span>
+                  <button
+                    type="button"
+                    className="GlobusTargetTree__currentTargetClear"
+                    aria-label="Clear current upload target (reset to root)"
+                    title="Clear current upload target"
+                    onClick={handleClearUploadTarget}
+                  >
+                    ×
+                  </button>
                 </span>
               )}
             </div>
@@ -447,13 +416,13 @@ function TreeNode({
               item={child}
               parentPath={fullPathWithSlash}
               selectedPath={selectedPath}
-              highlightedPath={highlightedPath}
               expanded={expanded}
               childrenByPath={childrenByPath}
               loadingPath={loadingPath}
               onToggleExpand={onToggleExpand}
-              onHighlightPath={onHighlightPath}
               disabled={disabled}
+              rootNormalized={rootNormalized}
+              onSetUploadTarget={onSetUploadTarget}
             />
           ))}
         </ul>

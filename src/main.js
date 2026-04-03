@@ -88,7 +88,9 @@ function imageReplyToResponse(reply) {
   return new Response(body, {
     headers: {
       "content-type": mime,
-      "cache-control": "no-store",
+      // Allow caching of immutable-ish image bytes to prevent flicker/refetch on rerenders.
+      // (Custom schemes can be cached; no-store forces repeated loads.)
+      "cache-control": "private, max-age=3600",
     },
   });
 }

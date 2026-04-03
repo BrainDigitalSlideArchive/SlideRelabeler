@@ -141,8 +141,23 @@ export function setupDestinationDirectoryColumn(file_cols, targetDirectory) {
   )
 }
 
+function formatGlobusCompleteDuration(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return 'Complete';
+  const s = Math.round(Number(sec));
+  if (s < 60) return `Complete (${s}s)`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r > 0 ? `Complete (${m}m ${r}s)` : `Complete (${m}m)`;
+}
+
 function render_progress_text(data) {
   try {
+    if (data && data.__reserved && data.__reserved.globus_upload_duration_sec != null) {
+      return formatGlobusCompleteDuration(data.__reserved.globus_upload_duration_sec);
+    }
+    if (data && data.__reserved && data.__reserved.upload_progress_indeterminate) {
+      return 'Uploading…';
+    }
     if (data && data.__reserved && typeof data.__reserved.upload_progress === 'number') {
       return `Uploading: ${Math.trunc(data.__reserved.upload_progress)}%`;
     }
@@ -163,10 +178,16 @@ export function setupProgressColumn(file_cols) {
     file_cols,
     '__reserved.progress',
     ({ data }) => {
+      const globusDone = data && data.__reserved && data.__reserved.globus_upload_duration_sec != null;
       return (
         <div className={'__progress-indicator'}>
           {
-            (data && data.__reserved && typeof data.__reserved.upload_progress === 'number') && (
+            (data && data.__reserved && data.__reserved.upload_progress_indeterminate && !globusDone) && (
+              <div className={'__progress-indicator-upload-fill __progress-indicator-upload-fill--indeterminate'} />
+            )
+          }
+          {
+            (data && data.__reserved && typeof data.__reserved.upload_progress === 'number' && !data.__reserved.upload_progress_indeterminate && !globusDone) && (
               <div className={'__progress-indicator-upload-fill'} style={data.__reserved.upload_progress && data.__reserved.upload_progress !== 0 ? { width: `${Math.trunc(data.__reserved.upload_progress)}%` } : { width: '0%' }}>
               </div>
             )

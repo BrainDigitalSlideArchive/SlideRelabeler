@@ -116,6 +116,10 @@ const globus_reducer = createReducer(default_state, (builder) => {
         const endpointLabel = action?.payload?.label ? String(action.payload.label).trim() : '';
         draft.target_endpoint_id = endpointId;
         draft.target_endpoint_label = endpointLabel;
+        draft.globus_collection_exists = null;
+        draft.globus_collection_error_message = null;
+        draft.globus_collection_error_detail = null;
+        draft.globus_collection_error_technical = null;
         if (draft.remember_target_endpoint) {
           draft.saved_target_endpoint_id = endpointId;
           draft.saved_target_endpoint_label = endpointLabel;
@@ -154,6 +158,13 @@ const globus_reducer = createReducer(default_state, (builder) => {
         draft.delete_after = !draft.delete_after;
       })
     })
+    .addCase(globus_actions.SYNC_UPLOAD_PREFS_FROM_ROUTING, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        draft.upload = !!p.upload;
+        draft.delete_after = !!p.delete_after;
+      })
+    })
     .addCase(globus_actions.ADD_UPLOAD_FILE_TO_QUEUE, (state, action) => {
       return produce(state, draft => {
         draft.upload_queue.push(action.payload);
@@ -169,16 +180,52 @@ const globus_reducer = createReducer(default_state, (builder) => {
         }
       })
     })
+    .addCase(globus_actions.GLOBUS_ACQUIRE_UPLOAD_SLOT, (state) => {
+      return produce(state, draft => {
+        draft.upload_in_flight += 1;
+      })
+    })
+    .addCase(globus_actions.GLOBUS_RELEASE_UPLOAD_SLOT, (state) => {
+      return produce(state, draft => {
+        draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
+      })
+    })
+    .addCase(globus_actions.UPLOAD_FILE_COMPLETE, (state) => {
+      return produce(state, draft => {
+        draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
+      })
+    })
+    .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state) => {
+      return produce(state, draft => {
+        draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
+      })
+    })
+    .addCase(globus_actions.GLOBUS_UPLOAD_COORDINATOR_TICK, (state) => state)
     .addCase(globus_actions.GLOBUS_COLLECTION_EXISTS, (state, action) => {
       return produce(state, draft => {
         draft.globus_collection_exists = true;
         draft.globus_collection_error_message = null;
+        draft.globus_collection_error_detail = null;
+        draft.globus_collection_error_technical = null;
       })
     })
     .addCase(globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST, (state, action) => {
       return produce(state, draft => {
         draft.globus_collection_exists = false;
-        draft.globus_collection_error_message = action.payload;
+        const p = action.payload;
+        if (p && typeof p === 'object' && !Array.isArray(p)) {
+          draft.globus_collection_error_message =
+            p.userMessage != null ? String(p.userMessage) : String(p.message || 'Path could not be accessed.');
+          draft.globus_collection_error_detail =
+            p.userDetail != null && String(p.userDetail).trim() ? String(p.userDetail) : null;
+          draft.globus_collection_error_technical =
+            p.technical != null && String(p.technical).trim() ? String(p.technical) : null;
+        } else {
+          draft.globus_collection_error_message =
+            typeof p === 'string' ? p : 'Path could not be accessed.';
+          draft.globus_collection_error_detail = null;
+          draft.globus_collection_error_technical = null;
+        }
       })
     })
     .addCase(globus_actions.CHECK_CLI_AVAILABLE, (state, action) => {

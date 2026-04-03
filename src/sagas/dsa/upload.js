@@ -13,7 +13,7 @@ function* watch_complete_upload(row_idx) {
 
         break;
     }
-    let action_finalize = yield put({ type: dsa_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
+    yield put({ type: files_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
 
     let delete_after = yield select(state => state.dsa.delete_after);
     if (delete_after) {
@@ -37,13 +37,19 @@ function* upload_queue() {
     while (true) {
         const queue = yield select(state => state.dsa.upload_queue);
         if (queue.length > 0) {
-            yield put({ type: files_actions.SET_UPLOADING, payload: true })
+            const currentlyUploading = yield select(state => state.files.uploading);
+            if (!currentlyUploading) {
+                yield put({ type: files_actions.SET_UPLOADING, payload: true })
+            }
             const upload_payload = queue[0];
             yield fork(upload_file, upload_payload)
             yield take(dsa_actions.UPLOAD_FILE_COMPLETE);
             yield put({ type: dsa_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, payload: upload_payload.row_idx })
         }
-        yield put({ type: files_actions.SET_UPLOADING, payload: false })
+        const currentlyUploading = yield select(state => state.files.uploading);
+        if (currentlyUploading) {
+            yield put({ type: files_actions.SET_UPLOADING, payload: false })
+        }
         yield delay(1000);
     }
 }

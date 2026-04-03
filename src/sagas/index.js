@@ -14,8 +14,10 @@ import globus from './globus';
 
 import watch_save_store from './bridge/save_store';
 import watch_delete_store from './bridge/delete_store';
+import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
 
 function* sagas() {
+    yield fork(watchSyncLegacyUpload);
     yield fork(app);
     yield fork(files);
     yield fork(config);

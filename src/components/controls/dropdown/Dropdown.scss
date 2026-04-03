@@ -17,6 +17,18 @@
     cursor: not-allowed !important;
   }
 
+  &.Dropdown--controlOnly {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+
+    .__trigger {
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+    }
+  }
+
   .__description {
     width: $dropdown_description_width;
     display: flex;
@@ -59,8 +71,14 @@
 
     &:focus {
       outline: none;
-      border-color:$beige;
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      border-color: $blue;
+      box-shadow: 0 0 0 2px rgba($light-blue, 0.45);
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: $blue;
+      box-shadow: 0 0 0 2px rgba($light-blue, 0.5);
     }
 
     .__selected-items {

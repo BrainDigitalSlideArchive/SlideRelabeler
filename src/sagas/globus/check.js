@@ -30,14 +30,28 @@ function* watch_check_collection_path() {
         if (api_auth && action.payload) {
             const collection_path = action.payload;
             try {
-                const response = yield call(electronAPI.globusCheckCollectionPath, collection_path);
+                const response = yield call(electronAPI.globusListDirectory, collection_path);
                 if (response && response[0]) {
                     yield put({ type: globus_actions.GLOBUS_COLLECTION_EXISTS});
                 } else {
-                    yield put({ type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST, payload: response[1]?.message || 'Collection path validation failed'});
+                    const err = response?.[1] || {};
+                    yield put({
+                        type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST,
+                        payload: {
+                            userMessage: err.message || 'Collection path validation failed',
+                            userDetail: err.userDetail || null,
+                            technical: err.technical || null,
+                        },
+                    });
                 }
             } catch (error) {
-                yield put({ type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST, payload: "Unknown error checking collection path"});
+                yield put({
+                    type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST,
+                    payload: {
+                        userMessage: 'Unknown error checking collection path',
+                        technical: error?.message || String(error),
+                    },
+                });
             }
         }
     }

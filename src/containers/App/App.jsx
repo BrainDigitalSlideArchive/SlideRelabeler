@@ -5,7 +5,8 @@ import {useSelector, useDispatch} from "react-redux";
 import {Provider} from "react-redux";
 import store from '../../store/index';
 
-import * as modal_actions from '../../actions/modal'
+import * as modal_actions from '../../actions/modal';
+import { selectUploadReadiness } from '../../selectors/uploadRouting';
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
@@ -71,7 +72,7 @@ function render_output_dir_message(csv, output_dir) {
     )
 }
 
-function render_process_files_button(csv, dsa, output_dir, disable_changes, count, processing, dispatch) {
+function render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch) {
   let output_configured = false;
   let message = "";
 
@@ -91,13 +92,21 @@ function render_process_files_button(csv, dsa, output_dir, disable_changes, coun
     message = "You need to select an output directory for your output files"
   }
 
+  const autoUp = !!uploadRouting?.auto_upload;
+  const processLabel = autoUp ? 'Process and Upload' : 'Process Files';
+
   return (
     <div className="__process-files">
       <button className={count === 0 || processing || !output_configured || disable_changes ? "__action-button _disabled" : "__action-button"}
               disabled={count === 0 || processing || !output_configured || disable_changes}
               onClick={() => dispatch({type: file_actions.PROCESS_FILES})}>
-                {dsa.upload? "Process and Upload" : "Process Files"}
+                {processLabel}
       </button>
+      {autoUp && !uploadReadiness?.ready && (
+        <div className="__process-files-upload-hint" title={uploadReadiness?.blockers?.join(' ')}>
+          Open Network to finish connection — auto-upload is not ready yet.
+        </div>
+      )}
       {message.length > 0 && <div className="__process-files-message">{message}</div>}
     </div>
   )
@@ -113,8 +122,14 @@ const App = (props) => {
   let debug_config = useSelector(state => state.config.debug);
   let csv = useSelector(state => state.files.csv);
 
-  let dsa = useSelector(state => state.dsa);
-  let connected = dsa.connected;
+  let uploadRouting = useSelector((state) => state.uploadRouting);
+  let uploadReadiness = useSelector(selectUploadReadiness);
+  const networkGlobeClass =
+    !uploadRouting.auto_upload
+      ? '__button-icon'
+      : uploadReadiness.ready
+        ? '__button-icon _network-ready'
+        : '__button-icon _network-warning';
 
   const dispatch = useDispatch();
   
@@ -170,19 +185,8 @@ const App = (props) => {
                   </button>
                 )
               }
-              {
-                debug_config.enable_debug && (
-                  <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'globus_test'}})}
-                      title="Globus Test">
-                    <i
-                      className=
-                        "fi fi-rr-cloud-upload"
-                    ></i>
-                  </button>
-                )
-              }
-              <button className={connected ?"__button-icon _connected" : "__button-icon"}
+              <button className={networkGlobeClass}
+                      title={uploadRouting.auto_upload && !uploadReadiness.ready ? 'Network: auto-upload not ready' : 'Network'}
                       onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'network'}})}>
                 <i
                   className=
@@ -218,7 +222,7 @@ const App = (props) => {
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
-          {render_process_files_button(csv, dsa, output_dir, disable_changes, count, processing, dispatch)}
+          {render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch)}
         </div>
         <div className={"__disclaimer"}>
           Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.

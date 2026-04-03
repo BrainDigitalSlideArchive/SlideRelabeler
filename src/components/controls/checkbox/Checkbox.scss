@@ -16,6 +16,25 @@
     display: flex;
     width: $modal_config_input_label_width;
   }
+
+  &.Checkbox--hasHelp {
+    align-items: center;
+
+    .Checkbox__labelCluster {
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+      width: auto;
+      max-width: min(20rem, 100%);
+      flex-shrink: 0;
+    }
+
+    .Checkbox__labelCluster label {
+      width: auto;
+      flex: 1;
+      min-width: 0;
+    }
+  }
   .__checkbox {
     font-weight: bolder;
     display: flex;

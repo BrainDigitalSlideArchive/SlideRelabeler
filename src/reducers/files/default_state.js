@@ -1,8 +1,19 @@
 import {Map, List} from "immutable";
 import React from "react";
 
+/** Ephemeral session counters (not persisted to disk). Reset on CLEAR_FILES. */
+export const initialSessionMetrics = {
+    copy_bytes: 0,
+    copy_ms_closed: 0,
+    copy_wall_start_ms: null,
+    upload_bytes: 0,
+    upload_ms_closed: 0,
+    upload_wall_start_ms: null,
+};
+
 export const default_state = {
     file_rows: [],
+    session_metrics: { ...initialSessionMetrics },
     totalBytes: 0,
     remainingBytes: 0,
     count: 0,

@@ -136,6 +136,19 @@ function get_browser_window_by_title(title) {
   return null;
 }
 
+/** Append-only Redux debug log (renderer → main). File: %APPDATA%/SlideRelabeler/logs/redux-debug.log on Windows. */
+ipcMain.handle('debug-append-log-line', async (event, line) => {
+  try {
+    const logDir = join(app.getPath('userData'), 'logs');
+    await fs.mkdir(logDir, { recursive: true });
+    const logPath = join(logDir, 'redux-debug.log');
+    const text = typeof line === 'string' ? line : JSON.stringify(line);
+    await fs.appendFile(logPath, `${text}\n`, 'utf8');
+  } catch (err) {
+    console.error('debug-append-log-line failed:', err?.message || err);
+  }
+});
+
 function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size) {
   return new Promise(async (resolve, reject) => {
     read(fd, file_buffer, 0, chunk_size, -1, async (err, bytesRead, buffer) => {
@@ -492,20 +505,60 @@ ipcMain.handle('globus-cancel-command', async (event, commandId) => {
   }
 });
 
-function emitGlobusUploadDebugLog(window, file_row_idx, stream, message, meta = {}) {
-  if (!window || !window.webContents) return;
-  window.webContents.send('globus-upload-debug-log', {
-    row_idx: file_row_idx,
-    stream,
-    message: message != null ? String(message) : '',
-    time: new Date().getTime(),
-    ...meta,
-  });
+function emitGlobusUploadDebugLog(webContents, file_row_idx, stream, message, meta = {}) {
+  if (!webContents || webContents.isDestroyed()) return;
+  try {
+    webContents.send('globus-upload-debug-log', {
+      row_idx: file_row_idx,
+      stream,
+      message: message != null ? String(message) : '',
+      time: new Date().getTime(),
+      ...meta,
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
-function emitGlobusUploadDebugStatus(window, file_row_idx, task, task_id) {
-  if (!window || !window.webContents) return;
-  window.webContents.send('globus-upload-debug-status', {
+/** Main-process probe: log immediately before globus upload IPC push to renderer. */
+function logGlobusMainSend(webContents, channel, meta = {}) {
+  const destroyed = !webContents || webContents.isDestroyed();
+  console.log(
+    '[GlobusMain]',
+    JSON.stringify({
+      t: new Date().toISOString(),
+      channel,
+      webContentsDestroyed: destroyed,
+      ...meta,
+    })
+  );
+}
+
+/** Paired with each real globus-upload-file-* send; preload logs `[GlobusUploadIpcPipeDebug]`. */
+function sendGlobusUploadIpcPipeDebug(webContents, mirrorChannel, meta = {}) {
+  if (!webContents || webContents.isDestroyed()) return;
+  try {
+    let wcId = null;
+    try {
+      wcId = typeof webContents.id === 'number' ? webContents.id : null;
+    } catch {
+      /* ignore */
+    }
+    webContents.send('globus-upload-ipc-pipe-debug', {
+      t: new Date().toISOString(),
+      mirrorChannel,
+      webContentsId: wcId,
+      ...meta,
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+function emitGlobusUploadDebugStatus(webContents, file_row_idx, task, task_id) {
+  if (!webContents || webContents.isDestroyed()) return;
+  try {
+    webContents.send('globus-upload-debug-status', {
     row_idx: file_row_idx,
     task_id,
     status: task?.status || task?.state || null,
@@ -516,107 +569,272 @@ function emitGlobusUploadDebugStatus(window, file_row_idx, task, task_id) {
     files: task?.files ?? null,
     time: new Date().getTime(),
   });
+  } catch {
+    /* ignore */
+  }
 }
 
-async function poll_globus_transfer_status(window, task_id, file_row_idx, file_path, file_size_bytes = null) {
+function globusTaskNumericField(task, key) {
+  const v = task?.[key];
+  if (typeof v === 'number' && !Number.isNaN(v)) return v;
+  if (typeof v === 'string' && v !== '' && !Number.isNaN(Number(v))) return Number(v);
+  return null;
+}
+
+function globusTransferProgressFromTask(task, file_size_bytes, last_progress) {
+  const status = task?.status || task?.state || '';
+  if (status === 'SUCCEEDED') {
+    return { progress: 100, indeterminate: false };
+  }
+
+  const fileSize = typeof file_size_bytes === 'number' && file_size_bytes > 0 ? file_size_bytes : null;
+  const transferredBytes = globusTaskNumericField(task, 'bytes_transferred');
+  const filesTransferred = globusTaskNumericField(task, 'files_transferred');
+  const files = globusTaskNumericField(task, 'files');
+
+  if (fileSize != null && transferredBytes != null && transferredBytes > 0) {
+    const p = Math.max(0, Math.min(100, (transferredBytes / fileSize) * 100));
+    return { progress: p, indeterminate: false };
+  }
+
+  if (filesTransferred != null && files != null && files > 0 && filesTransferred > 0) {
+    const p = Math.max(0, Math.min(100, (filesTransferred / files) * 100));
+    return { progress: p, indeterminate: false };
+  }
+
+  const activeLike = /^(ACTIVE|IN_PROGRESS|STARTED|RUNNING)$/i.test(String(status));
+  const noByteOrFileProgress =
+    (transferredBytes == null || transferredBytes === 0) &&
+    (filesTransferred == null || filesTransferred === 0);
+  if (activeLike && noByteOrFileProgress) {
+    return { progress: typeof last_progress === 'number' ? last_progress : 0, indeterminate: true };
+  }
+
+  const bps = globusTaskNumericField(task, 'effective_bytes_per_second');
+  const requestTime = task?.request_time;
+  if (fileSize != null && bps != null && bps > 0 && requestTime) {
+    const reqMs = Date.parse(requestTime);
+    if (!Number.isNaN(reqMs)) {
+      const elapsedSec = Math.max(0, (Date.now() - reqMs) / 1000);
+      const estimatedBytes = bps * elapsedSec;
+      let p = Math.max(0, Math.min(99, (estimatedBytes / fileSize) * 100));
+      p = Math.max(typeof last_progress === 'number' ? last_progress : 0, p);
+      return { progress: p, indeterminate: false };
+    }
+  }
+
+  if (activeLike) {
+    return { progress: typeof last_progress === 'number' ? last_progress : 0, indeterminate: true };
+  }
+
+  return { progress: typeof last_progress === 'number' ? last_progress : 0, indeterminate: false };
+}
+
+async function poll_globus_transfer_status(webContents, task_id, file_row_idx, file_path, file_size_bytes = null) {
   const max_polls = 1000; // Prevent infinite polling
+  const pollStartMs = Date.now();
   let poll_count = 0;
   let last_status = null;
-  
+  let last_reported_progress = 0;
+
   while (poll_count < max_polls) {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
-    
     const status_response = await globus_client.get_transfer_status(task_id);
     if (!status_response[0]) {
-      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', status_response?.[1]?.message || 'Task status check failed', {
+      emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', status_response?.[1]?.message || 'Task status check failed', {
         task_id,
       });
-      window.webContents.send('globus-upload-file-error', { 
-        file_path: file_path, 
-        error: status_response[1].message, 
-        row_idx: file_row_idx 
+      logGlobusMainSend(webContents, 'globus-upload-file-error', {
+        task_id,
+        row_idx: file_row_idx,
+        phase: 'task_status_rpc_failed',
       });
+      if (webContents && !webContents.isDestroyed()) {
+        try {
+          webContents.send('globus-upload-file-error', { 
+            file_path: file_path, 
+            error: status_response[1].message, 
+            row_idx: file_row_idx 
+          });
+          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
+            task_id,
+            row_idx: file_row_idx,
+            phase: 'task_status_rpc_failed',
+          });
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
     
     const task = status_response[1];
     const status = task.status || task.state;
-    emitGlobusUploadDebugStatus(window, file_row_idx, task, task_id);
+    emitGlobusUploadDebugLog(webContents, file_row_idx, 'stdout', `task_show_json | row ${file_row_idx} | task ${task_id}`, {
+      task_id,
+      task_show_json: JSON.stringify(task),
+    });
+    emitGlobusUploadDebugStatus(webContents, file_row_idx, task, task_id);
     if (status && status !== last_status) {
-      emitGlobusUploadDebugLog(window, file_row_idx, 'status', `Task status: ${status}${task?.nice_status ? ` (${task.nice_status})` : ''}`, {
+      emitGlobusUploadDebugLog(webContents, file_row_idx, 'status', `Task status: ${status}${task?.nice_status ? ` (${task.nice_status})` : ''}`, {
         task_id,
       });
       last_status = status;
     }
     
-    // Calculate progress if available
-    let progress = 0;
-    const transferredBytes = typeof task?.bytes_transferred === 'number' ? task.bytes_transferred : null;
-    const fileSize = typeof file_size_bytes === 'number' && file_size_bytes > 0 ? file_size_bytes : null;
-    if (transferredBytes != null && fileSize != null) {
-      progress = Math.max(0, Math.min(100, (transferredBytes / fileSize) * 100));
-    } else if (typeof task?.files_transferred === 'number' && typeof task?.files === 'number' && task.files > 0) {
-      progress = Math.max(0, Math.min(100, (task.files_transferred / task.files) * 100));
+    const { progress: rawProgress, indeterminate } = globusTransferProgressFromTask(
+      task,
+      file_size_bytes,
+      last_reported_progress
+    );
+    let progress = rawProgress;
+    if (status !== 'SUCCEEDED') {
+      progress = Math.max(last_reported_progress, progress);
     }
-    
+    last_reported_progress = progress;
+
     // Send progress update
-    window.webContents.send('globus-upload-file-progress', { 
-      file_path: file_path, 
-      progress: progress, 
-      status: status,
-      row_idx: file_row_idx 
+    logGlobusMainSend(webContents, 'globus-upload-file-progress', {
+      task_id,
+      row_idx: file_row_idx,
+      progress,
+      status,
+      indeterminate,
+      phase: 'poll',
     });
+    if (webContents && !webContents.isDestroyed()) {
+      try {
+        webContents.send('globus-upload-file-progress', { 
+          file_path: file_path, 
+          progress: progress, 
+          indeterminate,
+          status: status,
+          row_idx: file_row_idx,
+          globus: true,
+        });
+        sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-progress', {
+          task_id,
+          row_idx: file_row_idx,
+          progress,
+          status,
+          indeterminate,
+          phase: 'poll',
+        });
+      } catch {
+        /* ignore */
+      }
+    }
     
     // Check if transfer is complete
     if (status === 'SUCCEEDED') {
-      window.webContents.send('globus-upload-file-complete', file_row_idx);
+      const durationSec = Math.max(1, Math.round((Date.now() - pollStartMs) / 1000));
+      const effectiveBps = globusTaskNumericField(task, 'effective_bytes_per_second');
+      try {
+        logGlobusMainSend(webContents, 'globus-upload-file-complete', {
+          task_id,
+          row_idx: file_row_idx,
+          durationSec,
+          phase: 'SUCCEEDED',
+        });
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.send('globus-upload-file-complete', {
+            row_idx: file_row_idx,
+            duration_sec: durationSec,
+            effective_bytes_per_second: effectiveBps != null ? effectiveBps : 0,
+          });
+          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-complete', {
+            task_id,
+            row_idx: file_row_idx,
+            durationSec,
+            phase: 'SUCCEEDED',
+          });
+        }
+      } catch (e) {
+        console.error('poll_globus_transfer_status: send globus-upload-file-complete failed', e?.message || e, {
+          task_id,
+          file_row_idx,
+        });
+      }
       return;
     } else if (status === 'FAILED') {
-      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', task?.message || 'Transfer failed', { task_id });
-      window.webContents.send('globus-upload-file-error', { 
-        file_path: file_path, 
-        error: task.message || `Transfer ${status}`, 
-        row_idx: file_row_idx 
+      emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', task?.message || 'Transfer failed', { task_id });
+      logGlobusMainSend(webContents, 'globus-upload-file-error', {
+        task_id,
+        row_idx: file_row_idx,
+        phase: 'FAILED',
       });
+      if (webContents && !webContents.isDestroyed()) {
+        try {
+          webContents.send('globus-upload-file-error', { 
+            file_path: file_path, 
+            error: task.message || `Transfer ${status}`, 
+            row_idx: file_row_idx 
+          });
+          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
+            task_id,
+            row_idx: file_row_idx,
+            phase: 'FAILED',
+          });
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
     
     poll_count++;
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before next poll
   }
   
   // Timeout after max polls
-  emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', 'Transfer polling timeout', { task_id });
-  window.webContents.send('globus-upload-file-error', { 
-    file_path: file_path, 
-    error: 'Transfer polling timeout', 
-    row_idx: file_row_idx 
+  emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', 'Transfer polling timeout', { task_id });
+  logGlobusMainSend(webContents, 'globus-upload-file-error', {
+    task_id,
+    row_idx: file_row_idx,
+    phase: 'polling_timeout',
   });
+  if (webContents && !webContents.isDestroyed()) {
+    try {
+      webContents.send('globus-upload-file-error', { 
+        file_path: file_path, 
+        error: 'Transfer polling timeout', 
+        row_idx: file_row_idx 
+      });
+      sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
+        task_id,
+        row_idx: file_row_idx,
+        phase: 'polling_timeout',
+      });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
+// Progress/poll callbacks must use this handler's event.sender (never title/focus/window lookup) so concurrent transfers reach the invoking renderer.
 ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) => {
+  const rowIdxNum = Number(file_row_idx);
+  const ipcRowIdx = Number.isFinite(rowIdxNum) ? rowIdxNum : file_row_idx;
+  const sender = event.sender;
+  if (sender.isDestroyed()) {
+    return [false, { message: 'Renderer webContents is destroyed' }];
+  }
   if (!globus_client) {
     globus_client = new GlobusAPI();
   }
   if (!globus_client.isAvailable()) {
     return [false, { message: 'Globus CLI not available' }];
   }
-  
-  // Initiate transfer
-  const window = get_browser_window_by_title('SlideRelabeler');
-  if (window) {
-    emitGlobusUploadDebugLog(window, file_row_idx, 'stdout', `Submitting transfer: ${source_path} -> ${dest_collection_path}`, {
-      file_path,
-    });
-  }
+
+  emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stdout', `Submitting transfer: ${source_path} -> ${dest_collection_path}`, {
+    file_path,
+  });
   const transfer_response = await globus_client.submit_transfer(source_path, dest_collection_path);
   if (!transfer_response[0]) {
-    if (window) {
-      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', transfer_response?.[1]?.message || 'Transfer submission failed', {
-        file_path,
-      });
-      if (transfer_response?.[1]?.stderr) {
-        emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', transfer_response[1].stderr, { file_path });
-      }
+    emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stderr', transfer_response?.[1]?.message || 'Transfer submission failed', {
+      file_path,
+    });
+    if (transfer_response?.[1]?.stderr) {
+      emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stderr', transfer_response[1].stderr, { file_path });
     }
     return transfer_response;
   }
@@ -629,12 +847,36 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
     return [false, { message: 'Could not extract task_id from transfer response', response: transfer_response[1] }];
   }
   
-  // Start polling for progress in background
-  if (window) {
-    emitGlobusUploadDebugLog(window, file_row_idx, 'stdout', `Transfer task_id: ${task_id}`, { file_path, task_id });
-    poll_globus_transfer_status(window, task_id, file_row_idx, file_path, file_size_bytes).catch(err => {
+  // Push progress/complete to the same WebContents that invoked this handler (matches globus-execute-command).
+  if (!sender.isDestroyed()) {
+    emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stdout', `Transfer task_id: ${task_id}`, { file_path, task_id });
+    logGlobusMainSend(sender, 'globus-upload-file-progress', {
+      task_id,
+      row_idx: ipcRowIdx,
+      status: 'INITIATED',
+      phase: 'after_submit',
+    });
+    try {
+      sender.send('globus-upload-file-progress', {
+        file_path,
+        progress: 0,
+        indeterminate: true,
+        status: 'INITIATED',
+        row_idx: ipcRowIdx,
+        globus: true,
+      });
+      sendGlobusUploadIpcPipeDebug(sender, 'globus-upload-file-progress', {
+        task_id,
+        row_idx: ipcRowIdx,
+        status: 'INITIATED',
+        phase: 'after_submit',
+      });
+    } catch (e) {
+      console.error('[Handlers] globus-upload-file: send initial progress failed', e?.message || e);
+    }
+    poll_globus_transfer_status(sender, task_id, ipcRowIdx, file_path, file_size_bytes).catch(err => {
       console.error('Error polling globus transfer:', err);
-      emitGlobusUploadDebugLog(window, file_row_idx, 'stderr', err?.message || 'Error polling globus transfer', { file_path, task_id });
+      emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stderr', err?.message || 'Error polling globus transfer', { file_path, task_id });
     });
   }
   
@@ -769,6 +1011,13 @@ ipcMain.handle('set-store', async (event, data) => {
   let app_data_path = join(user_data_path, 'deid.tmp')
   let encrypted_data = safeStorage.encryptString(JSON.stringify(data));
   writeFileSync(app_data_path, encrypted_data, { encoding: 'utf8' })
+  try {
+    BrowserWindow.getAllWindows().forEach((w) => {
+      try {
+        w.webContents.send('store-updated');
+      } catch {}
+    });
+  } catch {}
 });
 
 ipcMain.handle('delete-store', async () => {

@@ -22,6 +22,27 @@ export function displayUploadRate(upload_transfer_rate_bytes_per_ms, places = 2)
   return output.toFixed(places) + ' ' + units[numDivisions]
 }
 
+export function formatDuration(ms) {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return '0s';
+  const sec = Math.floor(ms / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  let out = '';
+  if (h > 0) out += `${h}h `;
+  if (m > 0 || h > 0) out += `${m}m `;
+  out += `${s}s`;
+  return out.trim();
+}
+
+function sessionLiveMs(closedMs, wallStartMs, nowMs) {
+  let t = typeof closedMs === 'number' ? closedMs : 0;
+  if (wallStartMs != null && typeof nowMs === 'number') {
+    t += Math.max(0, nowMs - wallStartMs);
+  }
+  return t;
+}
+
 export function formatLeftEllipsis(text = '') {
   if (text == '') {
     return '';
@@ -30,7 +51,121 @@ export function formatLeftEllipsis(text = '') {
   return m[3].split('').reverse() + m[2] + m[1].split('').reverse();
 }
 
-export function headerInfo(file_rows, count, totalBytes, processing, metadata_updating, remainingBytes, transfer_rate, uploading, upload_remaining_bytes, upload_transfer_rate_bytes_per_ms) {
+/** Same rules as countPendingUploads in process_files.js — processed rows not fully uploaded or still queued. */
+export function countPendingUploadFiles(file_rows, dsa_upload_queue, globus_upload_queue) {
+  const queuedRowIds = new Set();
+  const mergeQueues = [dsa_upload_queue, globus_upload_queue].filter(Array.isArray);
+  mergeQueues.forEach((upload_queue) => {
+    upload_queue.forEach((q) => {
+      if (q && typeof q.row_idx !== 'undefined') {
+        queuedRowIds.add(String(q.row_idx));
+      }
+    });
+  });
+
+  let n = 0;
+  for (const row_idx in file_rows) {
+    const row = file_rows[row_idx];
+    if (row?.__reserved?.processed !== 1) continue;
+    if (row.__reserved.deleted_after === true) continue;
+
+    const uploadProgress = row?.__reserved?.upload_progress;
+    const isInQueue = queuedRowIds.has(String(row_idx));
+
+    if (uploadProgress === undefined || uploadProgress < 100 || isInQueue) {
+      n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * Bytes left to upload; stable between per-file uploads (does not depend on transient progress IPC).
+ * When includeUnprocessedFutureUploads is true, adds each not-yet-processed row’s __reserved.bytes
+ * (approximate output size) so ETA matches the full list under max_local_pending throttling, not only
+ * rows already processed and in the upload queue.
+ */
+export function computeUploadBacklogBytes(
+  file_rows,
+  dsa_upload_queue,
+  globus_upload_queue,
+  includeUnprocessedFutureUploads = false
+) {
+  const queuedRowIds = new Set();
+  const mergeQueues = [dsa_upload_queue, globus_upload_queue].filter(Array.isArray);
+  mergeQueues.forEach((upload_queue) => {
+    upload_queue.forEach((q) => {
+      if (q && typeof q.row_idx !== 'undefined') {
+        queuedRowIds.add(String(q.row_idx));
+      }
+    });
+  });
+
+  let bytes = 0;
+  for (let row_idx = 0; row_idx < file_rows.length; row_idx++) {
+    const row = file_rows[row_idx];
+    if (!row?.__reserved || row.__reserved.processed !== 1 || row.__reserved.deleted_after) continue;
+
+    const uploadProgress = row.__reserved.upload_progress;
+    const isInQueue = queuedRowIds.has(String(row_idx));
+    const sz = row.__reserved.bytes || 0;
+
+    if (uploadProgress === undefined || uploadProgress < 100 || isInQueue) {
+      if (typeof uploadProgress === 'number' && uploadProgress >= 0 && uploadProgress < 100) {
+        bytes += sz * ((100 - uploadProgress) / 100);
+      } else {
+        bytes += sz;
+      }
+    }
+  }
+
+  if (includeUnprocessedFutureUploads) {
+    for (let row_idx = 0; row_idx < file_rows.length; row_idx++) {
+      const row = file_rows[row_idx];
+      if (!row?.__reserved || row.__reserved.deleted_after) continue;
+      if (row.__reserved.error) continue;
+      if (row.__reserved.processed === 1) continue;
+      const sz = row.__reserved.bytes || 0;
+      if (sz > 0) bytes += sz;
+    }
+  }
+
+  return bytes;
+}
+
+export function headerInfo(
+  file_rows,
+  count,
+  totalBytes,
+  processing,
+  metadata_updating,
+  remainingBytes,
+  transfer_rate,
+  upload_transfer_rate_bytes_per_ms,
+  upload_destination,
+  auto_upload,
+  dsa_upload_queue,
+  globus_upload_queue,
+  session_metrics,
+  nowMs,
+  uploading
+) {
+  const isGlobusDestination = upload_destination === 'globus';
+  const isDsaDestination = upload_destination === 'dsa';
+  const pendingUploadFiles = countPendingUploadFiles(file_rows, dsa_upload_queue, globus_upload_queue);
+  const estimateFullListUpload =
+    auto_upload && (isGlobusDestination || isDsaDestination);
+  const uploadBacklogBytes = computeUploadBacklogBytes(
+    file_rows,
+    dsa_upload_queue,
+    globus_upload_queue,
+    estimateFullListUpload
+  );
+  const showUploadStatsRow =
+    auto_upload &&
+    (isGlobusDestination || isDsaDestination) &&
+    (processing || pendingUploadFiles > 0);
+
   let bytes_being_copied = 0;
 
   for (let row_idx = 0; row_idx < file_rows.length; row_idx++) {
@@ -61,8 +196,8 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
     timeDisplay += `${estimated_remaining_seconds_remaining}s`;
   }
 
-  if (upload_remaining_bytes) {
-    let upload_estimated_remaining_ms = upload_remaining_bytes / upload_transfer_rate_bytes_per_ms;
+  if (upload_transfer_rate_bytes_per_ms && uploadBacklogBytes > 0) {
+    let upload_estimated_remaining_ms = uploadBacklogBytes / upload_transfer_rate_bytes_per_ms;
     let upload_estimated_remaining_seconds = upload_estimated_remaining_ms / 1000;
 
     let upload_estimated_remaining_hours = Math.floor(upload_estimated_remaining_seconds / 3600);
@@ -76,6 +211,51 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
       upload_timeDisplay += `${upload_estimated_remaining_minutes}m `;
     }
     upload_timeDisplay += `${upload_estimated_remaining_seconds_remaining}s`;
+  }
+
+  const sm = session_metrics && typeof session_metrics === 'object' ? session_metrics : {};
+  const copy_bytes = sm.copy_bytes ?? 0;
+  const copy_ms_closed = sm.copy_ms_closed ?? 0;
+  const copy_wall_start_ms = sm.copy_wall_start_ms ?? null;
+  const upload_bytes = sm.upload_bytes ?? 0;
+  const upload_ms_closed = sm.upload_ms_closed ?? 0;
+  const upload_wall_start_ms = sm.upload_wall_start_ms ?? null;
+  const copyDisplayMs = sessionLiveMs(copy_ms_closed, copy_wall_start_ms, nowMs);
+  const uploadDisplayMs = sessionLiveMs(upload_ms_closed, upload_wall_start_ms, nowMs);
+  const hasCopySession =
+    copy_bytes > 0 || copy_ms_closed > 0 || copy_wall_start_ms != null;
+  const hasUploadSession =
+    upload_bytes > 0 || upload_ms_closed > 0 || upload_wall_start_ms != null;
+  const uploadModeActive = !!uploading || pendingUploadFiles > 0;
+
+  let sessionLine = null;
+  if (file_rows.length > 0 && count >= file_rows.length) {
+    if (uploadModeActive) {
+      sessionLine = (
+        <p>
+          Upload session: {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
+        </p>
+      );
+    } else if (!processing && hasCopySession && hasUploadSession) {
+      sessionLine = (
+        <p>
+          Session totals: copied {displayBytes(copy_bytes)} in {formatDuration(copyDisplayMs)}; uploaded{' '}
+          {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
+        </p>
+      );
+    } else if (processing || hasCopySession) {
+      sessionLine = (
+        <p>
+          Copy session: {displayBytes(copy_bytes)} in {formatDuration(copyDisplayMs)}
+        </p>
+      );
+    } else if (hasUploadSession) {
+      sessionLine = (
+        <p>
+          Upload session: {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
+        </p>
+      );
+    }
   }
 
   if (file_rows.length === 0) {
@@ -94,12 +274,19 @@ export function headerInfo(file_rows, count, totalBytes, processing, metadata_up
       {timeDisplay.length > 0 && processing && `Estimated time remaining: ${timeDisplay}`}
     </p>
     {
-      uploading && upload_transfer_rate_bytes_per_ms && upload_remaining_bytes && 
+      showUploadStatsRow && (
       <p>
-        Upload rate: {displayUploadRate(upload_transfer_rate_bytes_per_ms)} &nbsp;
-        Estimated upload time remaining: {upload_timeDisplay}
+        Upload rate:{' '}
+        {upload_transfer_rate_bytes_per_ms != null && upload_transfer_rate_bytes_per_ms > 0
+          ? displayUploadRate(upload_transfer_rate_bytes_per_ms)
+          : '—'}{' '}
+        &nbsp;
+        Estimated upload time remaining:{' '}
+        {upload_timeDisplay.length > 0 ? upload_timeDisplay : '—'}
       </p>
+      )
     }
+    {sessionLine}
     </>
   }
 }

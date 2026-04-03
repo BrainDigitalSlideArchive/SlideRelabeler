@@ -1,23 +1,12 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
-import './InputText.scss';
+import './HelpIconPopover.scss';
 
-function get_input_text_class(disabled, error) {
-  let class_name = "__input-text";
-  if (disabled) {
-    class_name += " _disabled";
-  }
-  if (error) {
-    class_name += " _error";
-  }
-  return class_name;
-}
-
-function InputText(props) {
-  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId } = props;
-  let rootClass = variant === 'onLight' ? 'InputText InputText--onLight' : 'InputText';
-  if (compact) rootClass += ' InputText--compact';
-  if (omitLabel) rootClass += ' InputText--controlOnly';
+/**
+ * “i” icon that opens a fixed-position popover (same behavior as InputText tooltips).
+ */
+function HelpIconPopover(props) {
+  const { children, helpLabel, disabled, variant = 'default' } = props;
 
   const popoverId = useId();
   const rootRef = useRef(null);
@@ -26,15 +15,7 @@ function InputText(props) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState(null);
 
-  const helpLabel = useMemo(() => {
-    const base =
-      typeof label === 'string' && label
-        ? label
-        : typeof ariaLabel === 'string' && ariaLabel
-          ? ariaLabel
-          : 'this field';
-    return `Help for ${base}`;
-  }, [label, ariaLabel]);
+  const ariaLabel = useMemo(() => helpLabel || 'Help', [helpLabel]);
 
   function findBoundsElement() {
     const root = rootRef.current;
@@ -57,7 +38,6 @@ function InputText(props) {
     const boundsRect = boundsEl ? boundsEl.getBoundingClientRect() : document.documentElement.getBoundingClientRect();
     const iconRect = icon.getBoundingClientRect();
 
-    // Temporarily ensure we can measure it.
     const popoverRect = popover.getBoundingClientRect();
     const margin = 8;
     const gap = 8;
@@ -72,7 +52,6 @@ function InputText(props) {
     let left = iconRect.right + gap;
     let top = iconRect.top;
 
-    // Prefer right; else left; else below.
     if (spaceRight < 200 && spaceLeft >= 200) {
       left = iconRect.left - gap - width;
       top = iconRect.top;
@@ -81,7 +60,6 @@ function InputText(props) {
       top = iconRect.bottom + gap;
     }
 
-    // Clamp within bounds.
     left = Math.min(Math.max(left, boundsRect.left + margin), boundsRect.right - width - margin);
     top = Math.min(Math.max(top, boundsRect.top + margin), boundsRect.bottom - height - margin);
 
@@ -109,7 +87,6 @@ function InputText(props) {
       }
     }
 
-    // Position on open; also update on any scroll/resize events.
     const raf = requestAnimationFrame(() => computeAndSetPopoverPosition());
     const onViewportChange = () => computeAndSetPopoverPosition();
 
@@ -132,13 +109,18 @@ function InputText(props) {
     }
   }, [helpOpen]);
 
-  const helpButton = tooltip && (
-    <span className="__help-wrap">
+  const rootClass =
+    variant === 'onLight'
+      ? 'HelpIconPopover HelpIconPopover--onLight'
+      : 'HelpIconPopover';
+
+  return (
+    <span ref={rootRef} className={rootClass}>
       <button
         type="button"
         ref={iconRef}
-        className="__help-icon"
-        aria-label={helpLabel}
+        className="HelpIconPopover__icon"
+        aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={helpOpen}
         aria-controls={popoverId}
@@ -150,54 +132,15 @@ function InputText(props) {
       <div
         id={popoverId}
         ref={popoverRef}
-        className={helpOpen ? '__help-popover _visible' : '__help-popover'}
+        className={helpOpen ? 'HelpIconPopover__popover HelpIconPopover__popover--visible' : 'HelpIconPopover__popover'}
         role="dialog"
-        aria-label={helpLabel}
+        aria-label={ariaLabel}
         style={popoverStyle || undefined}
       >
-        {tooltip}
+        {children}
       </div>
     </span>
   );
-
-  return (
-    <div ref={rootRef} className={rootClass}>
-      {!omitLabel && (
-        <div className="__label-wrap">
-          <label className="__label-text">{label}</label>
-          {helpButton}
-        </div>
-      )}
-      {omitLabel && (
-        <div className="InputText__control-row">
-          {helpButton}
-          <input
-            id={inputId || undefined}
-            style={input_style ? input_style : {}}
-            type={type ? type : 'text'}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={get_input_text_class(disabled, error)}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            aria-label={ariaLabel || undefined}
-          />
-        </div>
-      )}
-      {!omitLabel && (
-        <input
-          id={inputId || undefined}
-          style={input_style ? input_style : {}}
-          type={type ? type : 'text'}
-          placeholder={placeholder}
-          disabled={disabled}
-          className={get_input_text_class(disabled, error)}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
-    </div>
-  );
 }
 
-export default InputText;
+export default HelpIconPopover;

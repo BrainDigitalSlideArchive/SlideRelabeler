@@ -85,6 +85,14 @@ const dsa_reducer = createReducer(default_state, (builder) => {
         draft.dsa_folder_error_message = action.payload;
       })
     })
+    .addCase(dsa_actions.UPDATE_DSA, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        for (const k of Object.keys(p)) {
+          if (p[k] !== undefined) draft[k] = p[k];
+        }
+      })
+    })
 })
 
 export default dsa_reducer;

@@ -6,18 +6,17 @@ import * as debug_actions from '../../actions/debug';
 import process_file, { save_csv } from './process_file';
 
 // Helper function to count processed files waiting for upload
-// Incorporates both file_rows state and upload_queue to accurately track pending uploads
-function countPendingUploads(file_rows, upload_queue) {
-  // Build set of row indices that are in the upload queue
+// Incorporates file_rows state and DSA + Globus upload queues
+function countPendingUploads(file_rows, dsa_upload_queue, globus_upload_queue) {
   const queuedRowIds = new Set();
-  if (Array.isArray(upload_queue)) {
-    upload_queue.forEach(q => {
+  const mergeQueues = [dsa_upload_queue, globus_upload_queue].filter(Array.isArray);
+  mergeQueues.forEach((upload_queue) => {
+    upload_queue.forEach((q) => {
       if (q && typeof q.row_idx !== 'undefined') {
-        // Normalize to string for comparison (file_rows keys are strings)
         queuedRowIds.add(String(q.row_idx));
       }
     });
-  }
+  });
 
   let count = 0;
   // Iterate with index to match against queue
@@ -71,11 +70,9 @@ function* process_files_worker() {
     const output_dir = yield select(state => state.files.output_dir);
     const file_rows = yield select(state => state.files.file_rows);
     
-    // Get throttling configuration
-    const upload = yield select(state => state.dsa.upload);
-    const delete_after = yield select(state => state.dsa.delete_after);
-    const upload_throttle_limit = yield select(state => state.dsa.upload_throttle_limit || 2);
-    const should_throttle = upload && delete_after;
+    const ur = yield select((state) => state.uploadRouting);
+    const upload_throttle_limit = ur.max_local_pending || 2;
+    const should_throttle = ur.auto_upload && ur.delete_local_after;
 
     let processed_files_count = 0;
     let metadata_pending_count = 0;
@@ -87,9 +84,10 @@ function* process_files_worker() {
         if (file_row.__reserved.processed !== 1 && !file_row.__reserved.error && file_row.__reserved.bytes) {
           // Check throttling before processing - use fresh state to see current upload backlog
           if (should_throttle) {
-            const current_file_rows = yield select(state => state.files.file_rows);
-            const upload_queue = yield select(state => state.dsa.upload_queue);
-            const pending_count = countPendingUploads(current_file_rows, upload_queue);
+            const current_file_rows = yield select((state) => state.files.file_rows);
+            const dsa_upload_queue = yield select((state) => state.dsa.upload_queue);
+            const globus_upload_queue = yield select((state) => state.globus.upload_queue);
+            const pending_count = countPendingUploads(current_file_rows, dsa_upload_queue, globus_upload_queue);
             if (pending_count >= upload_throttle_limit) {
               yield delay(1000); // Wait before checking again
               break; // Exit for loop and restart while loop with fresh state

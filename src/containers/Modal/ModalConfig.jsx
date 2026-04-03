@@ -3,8 +3,6 @@ import { useSelector, useDispatch } from "react-redux";
 
 import * as config_actions from "../../actions/config";
 import * as app_actions from "../../actions/app";
-import * as dsa_actions from "../../actions/dsa";
-
 import ModalHeader from './ModalHeader';
 import Checkbox from '../../components/controls/checkbox/Checkbox';
 import InputText from '../../components/controls/input/InputText';
@@ -27,7 +25,7 @@ function ModalConfig(props) {
   const disable_changes = useSelector(state => state.files.disable_changes);
   const dsa = useSelector(state => state.dsa);
 
-  const { folder_id, username, password, api_url, api_auth, login_error, login_error_message, upload, delete_after } = dsa;
+  const { api_auth } = dsa;
 
   const dispatch = useDispatch();
 

@@ -28,14 +28,19 @@ export function* login() {
         const collection_path = yield select(state => state.globus.collection_path);
         if (collection_path) {
             console.log('[Globus Login Saga] Checking collection path:', collection_path);
-            const check_path_response = yield call(electronAPI.globusCheckCollectionPath, collection_path);
+            const check_path_response = yield call(electronAPI.globusListDirectory, collection_path);
             console.log('[Globus Login Saga] Collection path check response:', check_path_response);
             if (check_path_response && check_path_response[0]) {
                 yield put({ type: globus_actions.GLOBUS_COLLECTION_EXISTS });
             } else {
-                yield put({ 
-                    type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST, 
-                    payload: check_path_response[1]?.message || 'Collection path validation failed' 
+                const err = check_path_response?.[1] || {};
+                yield put({
+                    type: globus_actions.GLOBUS_COLLECTION_DOES_NOT_EXIST,
+                    payload: {
+                        userMessage: err.message || 'Collection path validation failed',
+                        userDetail: err.userDetail || null,
+                        technical: err.technical || null,
+                    },
                 });
             }
         }

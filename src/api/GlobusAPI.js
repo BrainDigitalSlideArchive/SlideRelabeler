@@ -4,8 +4,36 @@ import fs from 'fs';
 import path from 'path';
 
 import { GLOBUS_ENDPOINT_UUID_RE } from '../helpers/globus_helpers';
+import { interpretGlobusLsFailure } from '../helpers/globus_error_interpretation';
 
 const execAsync = promisify(exec);
+
+/**
+ * Run at most one short-lived `globus` subprocess at a time (avoids token/config lock stalls when
+ * parallel uploads spawn concurrent `transfer` / `task show`).
+ *
+ * Unwind without removing code: set env `SLIDERELABELER_GLOBUS_CLI_SERIALIZE=0` (or `false` / `no` / `off`),
+ * or change the default below to `false`.
+ */
+const SERIALIZE_GLOBUS_CLI_SUBPROCESSES = !['0', 'false', 'no', 'off'].includes(
+    (process.env.SLIDERELABELER_GLOBUS_CLI_SERIALIZE || '').trim().toLowerCase()
+);
+
+let globusCliExclusiveTail = Promise.resolve();
+
+async function runGlobusCliExclusive(fn) {
+    const prev = globusCliExclusiveTail;
+    let release;
+    globusCliExclusiveTail = new Promise((r) => {
+        release = r;
+    });
+    await prev;
+    try {
+        return await fn();
+    } finally {
+        release();
+    }
+}
 
 class GlobusAPI {
     constructor() {
@@ -201,23 +229,32 @@ class GlobusAPI {
                 message: 'Globus CLI not available. For development: ensure globus-cli is installed in your conda environment (add to environment.yml and run conda env update). For production: use a packaged build.' 
             }];
         }
-        
-        // Build command with optional JSON format
-        let command = `${this._pathToGlobus} ${args.join(' ')}`;
-        if (useJsonFormat) {
-            command += ' --format json';
+
+        if (SERIALIZE_GLOBUS_CLI_SUBPROCESSES) {
+            return runGlobusCliExclusive(() => this._executeCommandImpl(args, useJsonFormat, additionalEnv));
         }
-        
+        return this._executeCommandImpl(args, useJsonFormat, additionalEnv);
+    }
+
+    /** Spawn + parse JSON/text; used by {@link executeCommand}. */
+    async _executeCommandImpl(args, useJsonFormat = true, additionalEnv = {}) {
+        // IMPORTANT: Do not run through a shell (Windows '&' splits commands).
+        // Always spawn with an argv array so filenames are passed literally.
+        const commandArgs = Array.isArray(args) ? args.slice() : [];
+        if (useJsonFormat) {
+            commandArgs.push('--format', 'json');
+        }
+
         console.log('[GlobusAPI] executeCommand: Starting command execution');
-        console.log('[GlobusAPI] executeCommand: Command:', command);
+        console.log('[GlobusAPI] executeCommand: Executable:', this._pathToGlobus);
+        console.log('[GlobusAPI] executeCommand: Args:', commandArgs);
         console.log('[GlobusAPI] executeCommand: Additional env vars:', additionalEnv.env ? Object.keys(additionalEnv.env) : []);
 
         const finalEnv = this.buildEnv(additionalEnv);
         if (this._disableSslVerification) {
             console.log('[GlobusAPI] executeCommand: SSL verification disabled (GLOBUS_SDK_VERIFY_SSL=false)');
         }
-        
-        // Log relevant environment variables
+
         const relevantEnvVars = Object.keys(finalEnv).filter(k => k.startsWith('GLOBUS') || k === 'PATH' || k === 'CONDA_PREFIX');
         console.log('[GlobusAPI] executeCommand: Final env vars:', relevantEnvVars);
         if (finalEnv.GLOBUS_CLI_INTERACTIVE !== undefined) {
@@ -225,95 +262,116 @@ class GlobusAPI {
         } else {
             console.log('[GlobusAPI] executeCommand: GLOBUS_CLI_INTERACTIVE NOT SET');
         }
-        
-        // Prepare exec options
-        const execOptions = {
-            timeout: 30000, // 30 second timeout for all commands
-            env: finalEnv
+
+        const spawnOptions = {
+            env: finalEnv,
+            windowsHide: true,
+            shell: false,
         };
-        
-        try {
-            const startTime = Date.now();
-            const { stdout, stderr } = await execAsync(command, execOptions);
-            const duration = Date.now() - startTime;
-            console.log('[GlobusAPI] executeCommand: Command completed in', duration, 'ms');
-            console.log('[GlobusAPI] executeCommand: stdout length:', stdout?.length || 0);
-            console.log('[GlobusAPI] executeCommand: stderr length:', stderr?.length || 0);
-            
-            if (useJsonFormat) {
-                // Existing JSON parsing logic
-                if (stderr && !stdout) {
-                    // Some commands output to stderr even on success
+
+        const timeoutMs = 30000;
+        const startTime = Date.now();
+
+        return await new Promise((resolve) => {
+            let stdout = '';
+            let stderr = '';
+            let settled = false;
+
+            const child = spawn(this._pathToGlobus, commandArgs, spawnOptions);
+
+            const timer = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                try {
+                    child.kill();
+                } catch (e) {
+                    // ignore
+                }
+                const combinedOutput = stdout + stderr;
+                resolve([false, {
+                    message: `Command timed out after ${timeoutMs}ms`,
+                    stdout,
+                    stderr,
+                    combinedOutput,
+                    isTimeout: true,
+                }]);
+            }, timeoutMs);
+
+            child.stdout?.setEncoding?.('utf8');
+            child.stderr?.setEncoding?.('utf8');
+            child.stdout?.on('data', (chunk) => { stdout += chunk; });
+            child.stderr?.on('data', (chunk) => { stderr += chunk; });
+
+            child.on('error', (error) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                const combinedOutput = stdout + stderr;
+                resolve([false, {
+                    message: error?.message || 'Unknown error',
+                    stdout,
+                    stderr,
+                    combinedOutput,
+                    exitCode: undefined,
+                    connectionError: error?.message?.includes('Connection'),
+                }]);
+            });
+
+            child.on('close', (code, signal) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                const duration = Date.now() - startTime;
+                console.log('[GlobusAPI] executeCommand: Command completed in', duration, 'ms');
+                console.log('[GlobusAPI] executeCommand: exit code:', code, 'signal:', signal);
+                console.log('[GlobusAPI] executeCommand: stdout length:', stdout?.length || 0);
+                console.log('[GlobusAPI] executeCommand: stderr length:', stderr?.length || 0);
+
+                const combinedOutput = (stdout || '') + (stderr || '');
+
+                if (code === 0) {
+                    if (useJsonFormat) {
+                        const candidate = (stdout && stdout.trim()) ? stdout : stderr;
+                        try {
+                            const result = JSON.parse(candidate);
+                            resolve([true, result]);
+                        } catch (e) {
+                            resolve([false, { message: candidate || 'Invalid JSON output', stdout, stderr, combinedOutput }]);
+                        }
+                        return;
+                    }
+
+                    const msg = (stdout && stdout.trim()) ? stdout.trim()
+                        : (stderr && stderr.trim()) ? stderr.trim()
+                          : 'Command completed successfully';
+                    resolve([true, { message: msg }]);
+                    return;
+                }
+
+                // Non-zero exit
+                // If JSON format was requested and stdout looks like JSON, try to return structured error.
+                if (useJsonFormat) {
+                    const candidate = (stdout && stdout.trim()) ? stdout : stderr;
                     try {
-                        const result = JSON.parse(stderr);
-                        return [true, result];
+                        const errorResult = JSON.parse(candidate);
+                        resolve([false, errorResult]);
+                        return;
                     } catch (e) {
-                        // If stderr is not JSON, treat as error
-                        return [false, { message: stderr }];
+                        // fall through
                     }
                 }
-                const result = JSON.parse(stdout);
-                return [true, result];
-            } else {
-                // For non-JSON commands, return success with text output
-                // Exit code 0 means success
-                if (stdout) {
-                    return [true, { message: stdout.trim() }];
-                } else if (stderr) {
-                    // Some commands output to stderr even on success
-                    return [true, { message: stderr.trim() }];
-                } else {
-                    return [true, { message: 'Command completed successfully' }];
-                }
-            }
-        } catch (error) {
-            const duration = Date.now() - (Date.now() - (error.killed ? 30000 : 0));
-            console.log('[GlobusAPI] executeCommand: Command failed or timed out');
-            console.log('[GlobusAPI] executeCommand: Error message:', error.message);
-            console.log('[GlobusAPI] executeCommand: Killed (timeout):', error.killed || false);
-            console.log('[GlobusAPI] executeCommand: stdout:', error.stdout?.substring(0, 500) || '');
-            console.log('[GlobusAPI] executeCommand: stderr:', error.stderr?.substring(0, 500) || '');
-            
-            // Handle timeout errors - extract output even if process was killed
-            const isTimeout = error.killed || error.message?.includes('timeout');
-            if (isTimeout) {
-                console.log('[GlobusAPI] executeCommand: Timeout detected, extracting partial output');
-            }
-            
-            // Handle errors for both JSON and non-JSON commands
-            if (useJsonFormat && error.stdout) {
-                try {
-                    const errorResult = JSON.parse(error.stdout);
-                    return [false, errorResult];
-                } catch (e) {
-                    // Not JSON, fall through to text error handling
-                }
-            }
-            
-            // For non-JSON commands (like login), preserve both stdout and stderr
-            // The login command may output URL to stdout/stderr even when it fails or times out
-            const combinedOutput = (error.stdout || '') + (error.stderr || '');
-            
-            const exitCode =
-                typeof error.status === 'number'
-                    ? error.status
-                    : typeof error.code === 'number'
-                      ? error.code
-                      : undefined;
 
-            return [false, { 
-                message: error.message || 'Unknown error', 
-                stderr: error.stderr,
-                stdout: error.stdout,
-                combinedOutput: combinedOutput, // For easier URL extraction
-                isTimeout: isTimeout, // Flag for timeout errors
-                exitCode,
-                // Check if it's a connection error
-                connectionError: error.message?.includes('Connection') || 
-                                 error.stderr?.includes('ConnectionError') ||
-                                 error.stderr?.includes('Connection')
-            }];
-        }
+                resolve([false, {
+                    message: (stderr && stderr.trim()) ? stderr.trim() : (stdout && stdout.trim()) ? stdout.trim() : 'Command failed',
+                    stdout,
+                    stderr,
+                    combinedOutput,
+                    exitCode: code,
+                    isTimeout: false,
+                    connectionError: (stderr || '').includes('ConnectionError') || (stderr || '').includes('Connection') || (stdout || '').includes('Connection'),
+                }]);
+            });
+        });
     }
 
     async check_auth() {
@@ -984,8 +1042,7 @@ class GlobusAPI {
     }
 
     async validate_collection_path(collection_path) {
-        // Try to list the path to see if it exists and is accessible
-        return this.executeCommand(['ls', collection_path]);
+        return this.listDirectory(collection_path);
     }
 
     /**
@@ -1025,13 +1082,14 @@ class GlobusAPI {
 
         const result = await this.executeCommand(['ls', normalizedPath], true);
         if (!result[0]) {
-            const rawMessage = result?.[1]?.message || result?.[1]?.stderr || result?.[1]?.stdout || 'List directory failed';
-            const sanitized = this.sanitizeCliOutput(rawMessage);
-            const invalidUuid = /not a valid uuid/i.test(rawMessage || '');
+            const rawMessage =
+                result?.[1]?.message || result?.[1]?.stderr || result?.[1]?.stdout || 'List directory failed';
+            const interp = interpretGlobusLsFailure(this.sanitizeCliOutput(rawMessage) || rawMessage);
             return [false, {
-                message: invalidUuid
-                    ? 'The selected endpoint identifier is not a valid UUID. Use \"Find endpoints\" and select one of the UUID results.'
-                    : (sanitized || 'List directory failed')
+                message: interp.userSummary,
+                userDetail: interp.userDetail || '',
+                technical: interp.technical,
+                kind: interp.kind,
             }];
         }
         const raw = result[1];

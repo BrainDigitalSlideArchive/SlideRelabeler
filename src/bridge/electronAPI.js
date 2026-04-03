@@ -2,9 +2,108 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer, BrowserWindow } from 'electron';
 
+import * as dsa_actions from '../actions/dsa';
 import * as files_actions from '../actions/files';
 import * as globus_actions from '../actions/globus';
 
+/** Paired with main `globus-upload-file-*` sends; registered at preload load (no Redux/saga required). */
+ipcRenderer.on('globus-upload-ipc-pipe-debug', (_event, payload) => {
+  try {
+    console.log(
+      '[GlobusUploadIpcPipeDebug]',
+      typeof payload === 'object' && payload !== null ? JSON.stringify(payload) : String(payload)
+    );
+  } catch {
+    console.log('[GlobusUploadIpcPipeDebug]', payload);
+  }
+});
+
+function coerceGlobusRowIdx(v) {
+  if (v == null) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : v;
+}
+
+let globusUploadIpcSubscribed = false;
+
+function globusIpcProbeLog(payload) {
+  const line = `[GlobusIPC] ${new Date().toISOString()} ${JSON.stringify(payload)}`;
+  console.log(line);
+  setTimeout(() => {
+    ipcRenderer.invoke('debug-append-log-line', line).catch(() => {});
+  }, 0);
+}
+
+function ensureGlobusUploadIpcSubscribed(dispatch) {
+  if (globusUploadIpcSubscribed) return;
+  globusUploadIpcSubscribed = true;
+  ipcRenderer.on('globus-upload-file-progress', (event, progress) => {
+    const ri =
+      progress && typeof progress === 'object' ? coerceGlobusRowIdx(progress.row_idx) : null;
+    globusIpcProbeLog({
+      channel: 'globus-upload-file-progress',
+      row_idx: ri,
+      progress: progress && typeof progress === 'object' ? progress.progress : null,
+      status: progress && typeof progress === 'object' ? progress.status : null,
+      indeterminate: progress && typeof progress === 'object' ? progress.indeterminate : null,
+    });
+    const p =
+      progress && typeof progress === 'object'
+        ? { ...progress, row_idx: coerceGlobusRowIdx(progress.row_idx) }
+        : progress;
+    dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: p });
+  });
+  ipcRenderer.on('globus-upload-file-complete', (event, payload) => {
+    const rawRow =
+      payload != null && typeof payload === 'object' ? payload.row_idx : payload;
+    const rowIdx = coerceGlobusRowIdx(rawRow);
+    globusIpcProbeLog({
+      channel: 'globus-upload-file-complete',
+      row_idx: rowIdx,
+      has_duration_sec:
+        payload != null && typeof payload === 'object' && payload.duration_sec != null,
+    });
+    if (payload != null && typeof payload === 'object' && payload.duration_sec != null) {
+      dispatch({
+        type: files_actions.GLOBUS_UPLOAD_FILE_METRICS,
+        payload: {
+          row_idx: rowIdx,
+          duration_sec: payload.duration_sec,
+          effective_bytes_per_second: payload.effective_bytes_per_second ?? 0,
+        },
+      });
+    }
+    dispatch({ type: globus_actions.UPLOAD_FILE_COMPLETE, payload: rowIdx });
+  });
+  ipcRenderer.on('globus-upload-file-error', (event, error) => {
+    const ri = error && typeof error === 'object' ? coerceGlobusRowIdx(error.row_idx) : null;
+    const errMsg =
+      error && typeof error === 'object'
+        ? error.error != null
+          ? String(error.error)
+          : error.message != null
+            ? String(error.message)
+            : null
+        : null;
+    globusIpcProbeLog({ channel: 'globus-upload-file-error', row_idx: ri, error: errMsg });
+    const err =
+      error && typeof error === 'object'
+        ? { ...error, row_idx: coerceGlobusRowIdx(error.row_idx) }
+        : error;
+    dispatch({ type: files_actions.UPLOAD_FILE_ERROR, payload: err });
+    if (ri != null) {
+      dispatch({
+        type: globus_actions.UPLOAD_FILE_FAILURE,
+        payload: {
+          row_idx: ri,
+          message: errMsg != null ? errMsg : 'Globus upload failed',
+        },
+      });
+    } else {
+      dispatch({ type: globus_actions.GLOBUS_RELEASE_UPLOAD_SLOT });
+    }
+  });
+}
 
 const API = {
   // sendButtonClick: (text) => ipcRenderer.send('button-click', text),
@@ -36,6 +135,11 @@ const API = {
   getPlatform: (file_path) => ipcRenderer.invoke('get-platform'),
   getStore: () => ipcRenderer.invoke('get-store'),
   setStore: (store) => ipcRenderer.invoke('set-store', store),
+  onStoreUpdated: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('store-updated', handler);
+    return () => ipcRenderer.removeListener('store-updated', handler);
+  },
   getErrors: () => ipcRenderer.invoke('get-errors'),
   clearErrors: () => ipcRenderer.invoke('clear-errors'),
   getDebugs: () => ipcRenderer.invoke('get-debugs'),
@@ -48,7 +152,7 @@ const API = {
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
   dsaUploadFile: (folder_id, file_row_idx, file_path) => ipcRenderer.invoke('dsa-upload-file', folder_id, file_row_idx, file_path),
   dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, file_row_idx) => {
-    dispatch({ type: files_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
+    dispatch({ type: dsa_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
   }),
   dsaSetupUploadFileProgress: (dispatch) => ipcRenderer.on('dsa-upload-file-progress', (event, progress) => {
     dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
@@ -89,15 +193,16 @@ const API = {
   globusListDirectory: (collection_path) => ipcRenderer.invoke('globus-list-directory', collection_path),
   globusGetLocalEndpointId: () => ipcRenderer.invoke('globus-get-local-endpoint-id'),
   globusSearchEndpoints: (query) => ipcRenderer.invoke('globus-search-endpoints', query),
-  globusSetupUploadFileProgress: (dispatch) => ipcRenderer.on('globus-upload-file-progress', (event, progress) => {
-    dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
-  }),
-  globusSetupUploadComplete: (dispatch) => ipcRenderer.on('globus-upload-file-complete', (event, file_row_idx) => {
-    dispatch({ type: globus_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
-  }),
-  globusSetupUploadFileError: (dispatch) => ipcRenderer.on('globus-upload-file-error', (event, error) => {
-    dispatch({ type: files_actions.UPLOAD_FILE_ERROR, payload: error });
-  }),
+  ensureGlobusUploadIpcSubscribed: (dispatch) => ensureGlobusUploadIpcSubscribed(dispatch),
+  globusSetupUploadFileProgress: (dispatch) => {
+    ensureGlobusUploadIpcSubscribed(dispatch);
+  },
+  globusSetupUploadComplete: (dispatch) => {
+    ensureGlobusUploadIpcSubscribed(dispatch);
+  },
+  globusSetupUploadFileError: (dispatch) => {
+    ensureGlobusUploadIpcSubscribed(dispatch);
+  },
   globusStopUploadFileProgress: () => ipcRenderer.removeAllListeners('globus-upload-file-progress'),
   globusStopUploadComplete: () => ipcRenderer.removeAllListeners('globus-upload-file-complete'),
   globusStopUploadFileError: () => ipcRenderer.removeAllListeners('globus-upload-file-error'),
@@ -133,6 +238,7 @@ const API = {
   globusStopCommandOutput: () => ipcRenderer.removeAllListeners('globus-command-output'),
   globusStopCommandComplete: () => ipcRenderer.removeAllListeners('globus-command-complete'),
   globusStopCommandError: () => ipcRenderer.removeAllListeners('globus-command-error'),
+  appendDebugLogLine: (line) => ipcRenderer.invoke('debug-append-log-line', line),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);

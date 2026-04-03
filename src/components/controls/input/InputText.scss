@@ -114,4 +114,66 @@
       cursor: not-allowed;
     }
   }
+
+  &.InputText--compact {
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: flex-start;
+    max-width: 100%;
+
+    .__label-wrap {
+      width: 100%;
+      margin-bottom: 0.2em;
+    }
+
+    .__input-text {
+      flex: none;
+      width: 5em;
+      max-width: 6em;
+      margin-left: 0;
+      min-height: 2.25em;
+      height: 2.25em;
+      box-sizing: border-box;
+      border: 1px solid rgba(244, 237, 211, 0.35);
+      border-radius: 4px;
+    }
+  }
+
+  &.InputText--controlOnly {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 0;
+    align-self: stretch;
+    width: 100%;
+    max-width: 100%;
+
+    .InputText__control-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.4em;
+      min-width: 0;
+    }
+
+    .__input-text {
+      margin-left: 0;
+    }
+
+    &.InputText--compact {
+      flex-direction: row;
+      align-items: center;
+      align-self: stretch;
+
+      .InputText__control-row .__input-text {
+        flex: none;
+        width: 5em;
+        max-width: 6em;
+        min-height: 2.25em;
+        height: 2.25em;
+        box-sizing: border-box;
+        border: 1px solid rgba(244, 237, 211, 0.35);
+        border-radius: 4px;
+      }
+    }
+  }
 }

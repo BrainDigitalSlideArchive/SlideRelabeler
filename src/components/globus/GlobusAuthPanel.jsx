@@ -40,6 +40,25 @@ function GlobusAuthPanel(props) {
   const isTest = mode === 'test';
   const isBusy = !!busy;
 
+  const sslCheckbox = (
+    <Checkbox
+      label="Disable SSL Verification"
+      helpVariant="onLight"
+      checked={disableSslVerification || false}
+      onClick={() => onToggleSsl(!disableSslVerification)}
+      tooltip={
+        <>
+          <strong>When to use:</strong> Some corporate firewalls perform SSL/TLS inspection (they decrypt and
+          re-encrypt traffic), which replaces the server&apos;s certificate with one signed by your organization.
+          If your machine does not trust that certificate, verification fails and login may not work. Disabling
+          verification is a workaround that reduces security. The better long-term approach is to work with your
+          corporate IT to install the organization&apos;s root or intermediate CA certificate on your machine
+          so that verification can remain enabled.
+        </>
+      }
+    />
+  );
+
   return (
     <div className="GlobusAuthPanel">
       <div className={"__config-control-section-title"}>Authentication</div>
@@ -47,29 +66,25 @@ function GlobusAuthPanel(props) {
         Login to Globus to authenticate for file transfers.
       </div>
 
-      <div className="GlobusAuthPanel__sslCard">
-        <Checkbox
-          label="Disable SSL Verification"
-          checked={disableSslVerification || false}
-          onClick={() => onToggleSsl(!disableSslVerification)}
-        />
-        <div className="GlobusAuthPanel__sslHint">
-          <strong>When to use:</strong> Some corporate firewalls perform SSL/TLS inspection (they decrypt and re-encrypt traffic), which replaces the server&apos;s certificate with one signed by your organization. If your machine does not trust that certificate, verification fails and login may not work. Disabling verification is a workaround that reduces security. The better long-term approach is to work with your corporate IT to install the organization&apos;s root or intermediate CA certificate on your machine so that verification can remain enabled.
-        </div>
-      </div>
+      {!authStatus && <div className="GlobusAuthPanel__sslRow">{sslCheckbox}</div>}
 
       {authStatus ? (
-        <div>
-          <div className="GlobusAuthPanel__card GlobusAuthPanel__card--white">
-            <strong>Authenticated as:</strong> {currentUser}
-          </div>
+        <div className="GlobusAuthPanel__authWithSsl">
+          <div className="GlobusAuthPanel__authLeft">
+            <div className="GlobusAuthPanel__card GlobusAuthPanel__card--white">
+              <strong>Authenticated as:</strong> {currentUser}
+            </div>
 
-          <Button
-            text="Logout"
-            onClick={onLogout}
-            disabled={isBusy}
-            extra_class_name="_align-center"
-          />
+            <Button
+              text="Logout"
+              onClick={onLogout}
+              disabled={isBusy}
+              extra_class_name="_align-center"
+            />
+          </div>
+          <div className="GlobusAuthPanel__authRight">
+            <div className="GlobusAuthPanel__sslRow GlobusAuthPanel__sslRow--authAside">{sslCheckbox}</div>
+          </div>
         </div>
       ) : (
         <div>

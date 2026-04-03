@@ -65,28 +65,27 @@ export default function* process_file(file_row_idx, file_row) {
     yield put({ type: files_actions.PROCESSED_FILE, payload: { row_idx: file_row_idx, processedFile: processed_file_json } });
     yield cancel(monitor_progress);
     yield put({ type: files_actions.REMOVE_PROCESSING_FILE, payload: file_row_idx });
-    const folder_id = yield select(state => state.dsa.folder_id);
-    const upload_to_dsa = yield select(state => state.dsa.upload);
-    const api_auth = yield select(state => state.dsa.api_auth);
-    if (upload_to_dsa && api_auth && api_auth.authToken) {
+    const ur = yield select((state) => state.uploadRouting);
+    const folder_id = yield select((state) => state.dsa.folder_id);
+    const api_auth = yield select((state) => state.dsa.api_auth);
+    if (ur.auto_upload && ur.destination === 'dsa' && api_auth && api_auth.authToken) {
       yield put({ type: dsa_actions.UPLOAD_FILE, payload: { row_idx: file_row_idx, folder_id: folder_id, file_path: output_path, file: processed_file } });
     }
 
-    // Check for Globus upload
-    const collection_path = yield select(state => state.globus.collection_path);
-    const upload_to_globus = yield select(state => state.globus.upload);
-    const globus_api_auth = yield select(state => state.globus.api_auth);
-    const source_endpoint = yield select(state => state.globus.source_endpoint);
-    if (upload_to_globus && globus_api_auth) {
-      yield put({ 
-        type: globus_actions.UPLOAD_FILE, 
-        payload: { 
-          row_idx: file_row_idx, 
-          collection_path: collection_path, 
-          file_path: output_path, 
+    const collection_path = yield select((state) => state.globus.collection_path);
+    const globus_api_auth = yield select((state) => state.globus.api_auth);
+    const source_endpoint = yield select((state) => state.globus.source_endpoint);
+    if (ur.auto_upload && ur.destination === 'globus' && globus_api_auth) {
+      const rowN = Number(file_row_idx);
+      yield put({
+        type: globus_actions.UPLOAD_FILE,
+        payload: {
+          row_idx: Number.isFinite(rowN) ? rowN : file_row_idx,
+          collection_path: collection_path,
+          file_path: output_path,
           file: processed_file,
-          source_endpoint: source_endpoint
-        } 
+          source_endpoint: source_endpoint,
+        },
       });
     }
 

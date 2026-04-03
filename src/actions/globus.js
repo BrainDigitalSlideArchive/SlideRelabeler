@@ -21,6 +21,12 @@ export const UPLOAD_FILE_FAILURE = 'globus/UPLOAD_FILE_FAILURE';
 export const UPLOAD_FILE_FINALIZE = 'globus/UPLOAD_FILE_FINALIZE';
 export const ADD_UPLOAD_FILE_TO_QUEUE = 'globus/ADD_UPLOAD_FILE_TO_QUEUE';
 export const REMOVE_UPLOAD_FILE_FROM_QUEUE = 'globus/REMOVE_UPLOAD_FILE_FROM_QUEUE';
+/** Increment when the serial Globus queue starts an upload (one active transfer at a time). */
+export const GLOBUS_ACQUIRE_UPLOAD_SLOT = 'globus/GLOBUS_ACQUIRE_UPLOAD_SLOT';
+/** Decrement when row_idx is unknown on IPC error; otherwise UPLOAD_FILE_COMPLETE / UPLOAD_FILE_FAILURE adjust the slot. */
+export const GLOBUS_RELEASE_UPLOAD_SLOT = 'globus/GLOBUS_RELEASE_UPLOAD_SLOT';
+/** Legacy no-op in reducer; serial queue polls with delay instead of TICK wakeups. */
+export const GLOBUS_UPLOAD_COORDINATOR_TICK = 'globus/GLOBUS_UPLOAD_COORDINATOR_TICK';
 export const SET_UPLOADING = 'globus/SET_UPLOADING';
 export const GLOBUS_COLLECTION_EXISTS = 'globus/GLOBUS_COLLECTION_EXISTS';
 export const GLOBUS_COLLECTION_DOES_NOT_EXIST = 'globus/GLOBUS_COLLECTION_DOES_NOT_EXIST';
@@ -36,3 +42,5 @@ export const SUBMIT_AUTHORIZATION_CODE = 'globus/SUBMIT_AUTHORIZATION_CODE';
 export const TOGGLE_SSL_VERIFICATION = 'globus/TOGGLE_SSL_VERIFICATION';
 export const RESTORE_GLOBUS_PERSISTED = 'globus/RESTORE_GLOBUS_PERSISTED';
 export const BUMP_GLOBUS_DIRECTORY_REFRESH = 'globus/BUMP_GLOBUS_DIRECTORY_REFRESH';
+/** Internal: keep globus.upload / delete_after aligned with uploadRouting slice */
+export const SYNC_UPLOAD_PREFS_FROM_ROUTING = 'globus/SYNC_UPLOAD_PREFS_FROM_ROUTING';

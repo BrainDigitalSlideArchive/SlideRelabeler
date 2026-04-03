@@ -10,12 +10,21 @@ import * as app_actions from '../../actions/app';
 import * as config_actions from '../../actions/config';
 import * as esm_actions from '../../actions/esm';
 import * as dsa_actions from '../../actions/dsa';
+import * as globus_actions from '../../actions/globus';
+import * as upload_routing_actions from '../../actions/uploadRouting';
+import { initialSessionMetrics } from '../../reducers/files/default_state';
+
+const globus_actions_for_save = Object.values(globus_actions).filter(
+  (a) => a !== globus_actions.GLOBUS_UPLOAD_COORDINATOR_TICK
+);
 
 let actions_to_save = [
   ...Object.values(files_actions),
   ...Object.values(config_actions),
   ...Object.values(esm_actions),
   ...Object.values(dsa_actions),
+  ...globus_actions_for_save,
+  ...Object.values(upload_routing_actions),
 ]
 
 function* watch_save_store() {
@@ -62,6 +71,43 @@ function* watch_save_store() {
         dsa_folder_exists: null,
         dsa_folder_error_message: null,
       } : store.dsa,
+      uploadRouting: store.uploadRouting ? {
+        auto_upload: store.uploadRouting.auto_upload,
+        delete_local_after: store.uploadRouting.delete_local_after,
+        max_local_pending: store.uploadRouting.max_local_pending,
+        destination: store.uploadRouting.destination,
+      } : store.uploadRouting,
+      globus: store.globus ? {
+        disable_ssl_verification: store.globus.disable_ssl_verification,
+        collection_name: store.globus.collection_name,
+        target_endpoint_id: store.globus.target_endpoint_id,
+        target_endpoint_label: store.globus.target_endpoint_label,
+        remember_target_endpoint: store.globus.remember_target_endpoint,
+        saved_target_endpoint_id: store.globus.saved_target_endpoint_id,
+        saved_target_endpoint_label: store.globus.saved_target_endpoint_label,
+        collection_path: store.globus.collection_path,
+        source_endpoint: store.globus.source_endpoint,
+        upload: store.globus.upload,
+        delete_after: store.globus.delete_after,
+        api_auth: null,
+        login_error: false,
+        login_error_message: null,
+        login_url: null,
+        access_code: null,
+        login_pending: false,
+        auth_check_pending: false,
+        authorization_code_input: '',
+        upload_queue: [],
+        globus_collection_exists: null,
+        globus_collection_error_message: null,
+        globus_collection_error_detail: null,
+        globus_collection_error_technical: null,
+        cli_available: store.globus.cli_available,
+        username: store.globus.username,
+      } : store.globus,
+      files: store.files
+        ? { ...store.files, session_metrics: { ...initialSessionMetrics } }
+        : store.files,
     };
     
     const response = yield set_store(storeToSave);
