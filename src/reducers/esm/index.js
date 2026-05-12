@@ -1,8 +1,33 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { produce } from 'immer';
 
-import default_state from './default_state';
+import default_state, { makeEsmSearchRow } from './default_state';
 import * as esm_actions from '../../actions/esm';
+
+function normalizeSearchRow(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id =
+    typeof raw.id === 'string' && raw.id.trim()
+      ? raw.id.trim()
+      : makeEsmSearchRow().id;
+  return {
+    id,
+    accession: raw.accession != null ? String(raw.accession) : '',
+    blockId: raw.blockId != null ? String(raw.blockId) : '',
+    deid: raw.deid != null ? String(raw.deid) : '',
+    stain: raw.stain != null ? String(raw.stain) : '',
+  };
+}
+
+function normalizeSearchRowsList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const item of list) {
+    const row = normalizeSearchRow(item);
+    if (row) out.push(row);
+  }
+  return out;
+}
 
 /**
  * Reducer for eSlideManager state
@@ -59,11 +84,59 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.loading = action.payload;
       })
     })
+    .addCase(esm_actions.ESM_SET_SEARCH_ROWS, (state, action) => {
+      return produce(state, (draft) => {
+        const next = normalizeSearchRowsList(action.payload);
+        draft.searchRows = next.length > 0 ? next : [makeEsmSearchRow()];
+      });
+    })
+    .addCase(esm_actions.ESM_ADD_SEARCH_ROW, (state, action) => {
+      return produce(state, (draft) => {
+        draft.searchRows = Array.isArray(draft.searchRows) ? draft.searchRows : [];
+        const row = makeEsmSearchRow();
+        const idx =
+          typeof action.payload === 'number' && action.payload >= 0 && action.payload <= draft.searchRows.length
+            ? action.payload
+            : draft.searchRows.length;
+        draft.searchRows.splice(idx, 0, row);
+      });
+    })
+    .addCase(esm_actions.ESM_UPDATE_SEARCH_ROW, (state, action) => {
+      return produce(state, (draft) => {
+        const p = action.payload && typeof action.payload === 'object' ? action.payload : {};
+        const id = p.id;
+        if (!id) return;
+        draft.searchRows = Array.isArray(draft.searchRows) ? draft.searchRows : [];
+        const idx = draft.searchRows.findIndex((r) => r && r.id === id);
+        if (idx === -1) return;
+        const cur = draft.searchRows[idx];
+        draft.searchRows[idx] = {
+          ...cur,
+          accession: p.accession !== undefined ? String(p.accession) : cur.accession,
+          blockId: p.blockId !== undefined ? String(p.blockId) : cur.blockId,
+          deid: p.deid !== undefined ? String(p.deid) : cur.deid,
+          stain: p.stain !== undefined ? String(p.stain) : cur.stain,
+        };
+      });
+    })
+    .addCase(esm_actions.ESM_REMOVE_SEARCH_ROW, (state, action) => {
+      return produce(state, (draft) => {
+        const id = action.payload;
+        if (!id) return;
+        draft.searchRows = Array.isArray(draft.searchRows) ? draft.searchRows : [];
+        if (draft.searchRows.length <= 1) return;
+        draft.searchRows = draft.searchRows.filter((r) => r && r.id !== id);
+        if (draft.searchRows.length === 0) draft.searchRows = [makeEsmSearchRow()];
+      });
+    })
     .addCase(esm_actions.ESM_SEARCH, (state, action) => {
       return produce(state, draft => {
         draft.searchLoading = true;
         draft.searchError = false;
         draft.searchErrorMessage = null;
+        draft.slidesByAccession = {};
+        draft.results = [];
+        draft.selectedIds = [];
       })
     })
     .addCase(esm_actions.ESM_SEARCH_SUCCESS, (state, action) => {
@@ -90,9 +163,17 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.selectedIds = [];
       })
     })
+    .addCase(esm_actions.ESM_SET_SLIDES_BY_ACCESSION, (state, action) => {
+      return produce(state, (draft) => {
+        const p = action.payload && typeof action.payload === 'object' ? action.payload : {};
+        draft.slidesByAccession = { ...p };
+        draft.selectedIds = [];
+      });
+    })
     .addCase(esm_actions.ESM_CLEAR_RESULTS, (state, action) => {
       return produce(state, draft => {
         draft.results = [];
+        draft.slidesByAccession = {};
         draft.selectedIds = [];
       })
     })
@@ -160,9 +241,17 @@ const esm_reducer = createReducer(default_state, (builder) => {
         },
         // Ensure arrays are always arrays
         results: Array.isArray(incoming.results) ? incoming.results : default_state.results,
+        slidesByAccession:
+          incoming.slidesByAccession && typeof incoming.slidesByAccession === 'object'
+            ? { ...incoming.slidesByAccession }
+            : default_state.slidesByAccession,
         selectedIds: Array.isArray(incoming.selectedIds) ? incoming.selectedIds : default_state.selectedIds,
         transformRules: Array.isArray(incoming.transformRules) ? incoming.transformRules : default_state.transformRules,
         selectedTransformRuleIds: Array.isArray(incoming.selectedTransformRuleIds) ? incoming.selectedTransformRuleIds : default_state.selectedTransformRuleIds,
+        searchRows: (() => {
+          const rows = normalizeSearchRowsList(incoming.searchRows);
+          return rows.length > 0 ? rows : default_state.searchRows;
+        })(),
       };
     })
 })

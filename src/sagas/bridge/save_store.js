@@ -43,6 +43,7 @@ function* watch_save_store() {
         mappingConfig: store.esm.mappingConfig,
         transformRules: store.esm.transformRules,
         selectedTransformRuleIds: store.esm.selectedTransformRuleIds,
+        searchRows: store.esm.searchRows,
         // Clear all auth/session state:
         authenticated: false,
         authToken: null,
@@ -53,6 +54,7 @@ function* watch_save_store() {
         searchError: false,
         searchErrorMessage: null,
         results: [],
+        slidesByAccession: {},
         selectedIds: [],
       } : store.esm,
       dsa: store.dsa ? {
@@ -75,6 +77,7 @@ function* watch_save_store() {
         auto_upload: store.uploadRouting.auto_upload,
         delete_local_after: store.uploadRouting.delete_local_after,
         max_local_pending: store.uploadRouting.max_local_pending,
+        max_globus_parallel_uploads: store.uploadRouting.max_globus_parallel_uploads,
         destination: store.uploadRouting.destination,
       } : store.uploadRouting,
       globus: store.globus ? {

@@ -6,19 +6,9 @@ import { isGlobusEndpointUuid } from '../../helpers/globus_helpers';
 
 const electronAPI = typeof window !== 'undefined' ? window.electronAPI : null;
 
-/** Cap concurrent Globus transfer jobs (main polls per task; IPC payloads include row_idx). */
-const MAX_CONCURRENT_GLOBUS_UPLOADS = 4;
-
-function globusSagaProbeLog(obj) {
-    const line = `[GlobusSaga] ${new Date().toISOString()} ${JSON.stringify(obj)}`;
-    console.log(line);
-    try {
-        if (typeof window !== 'undefined' && window.electronAPI?.appendDebugLogLine) {
-            window.electronAPI.appendDebugLogLine(line).catch(() => {});
-        }
-    } catch {
-        /* ignore */
-    }
+function selectMaxGlobusParallelUploads(state) {
+    const v = parseInt(state.uploadRouting?.max_globus_parallel_uploads, 10);
+    return Number.isFinite(v) && v >= 1 && v <= 16 ? v : 4;
 }
 
 function normalizeWindowsPathForGcp(rawPath) {
@@ -53,7 +43,6 @@ function toGridRowIndex(v) {
 
 function* watch_complete_upload(row_idx) {
     const want = toGridRowIndex(row_idx);
-    globusSagaProbeLog({ event: 'watch_complete waiting COMPLETE_or_FAILURE', row_idx: want });
     const action = yield take((a) => {
         if (a.type === globus_actions.UPLOAD_FILE_COMPLETE && toGridRowIndex(a.payload) === want) {
             return true;
@@ -66,7 +55,6 @@ function* watch_complete_upload(row_idx) {
         return false;
     });
     if (action.type === globus_actions.UPLOAD_FILE_COMPLETE) {
-        globusSagaProbeLog({ event: 'watch_complete got COMPLETE', row_idx: want });
         yield put({ type: files_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
 
         let delete_after = yield select(state => state.globus.delete_after);
@@ -76,8 +64,6 @@ function* watch_complete_upload(row_idx) {
             yield call(electronAPI.deleteFile, file_path.replace(/\\/g, '/'));
             yield put({ type: files_actions.UPLOAD_DELETE_AFTER, payload: { row_idx: row_idx } });
         }
-    } else {
-        globusSagaProbeLog({ event: 'watch_complete got FAILURE', row_idx: want });
     }
 }
 
@@ -110,21 +96,16 @@ function* upload_queue() {
         }
         let queue = yield select((state) => state.globus.upload_queue);
         let inFlight = yield select((state) => state.globus.upload_in_flight);
-        while (queue.length > 0 && inFlight < MAX_CONCURRENT_GLOBUS_UPLOADS) {
+        let maxConcurrent = yield select(selectMaxGlobusParallelUploads);
+        while (queue.length > 0 && inFlight < maxConcurrent) {
             yield call(syncGlobusDerivedUploading);
             const upload_payload = queue[0];
-            globusSagaProbeLog({
-                event: 'globus_parallel start',
-                row_idx: upload_payload.row_idx,
-                queueLen: queue.length,
-                upload_in_flight: inFlight,
-                maxConcurrent: MAX_CONCURRENT_GLOBUS_UPLOADS,
-            });
             yield put({ type: globus_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, payload: upload_payload.row_idx });
             yield put({ type: globus_actions.GLOBUS_ACQUIRE_UPLOAD_SLOT });
             yield fork(upload_file, upload_payload);
             queue = yield select((state) => state.globus.upload_queue);
             inFlight = yield select((state) => state.globus.upload_in_flight);
+            maxConcurrent = yield select(selectMaxGlobusParallelUploads);
         }
         yield call(syncGlobusDerivedUploading);
         yield delay(1000);
@@ -150,13 +131,6 @@ function* upload_file(payload) {
     const { collection_path, row_idx, file_path, file, source_endpoint } = payload;
 
     const runtimeApi = typeof window !== 'undefined' ? window.electronAPI : null;
-    globusSagaProbeLog({
-        event: 'upload_file enter',
-        row_idx,
-        moduleElectronApiNull: electronAPI == null,
-        hasGlobusUploadFileWithSize: !!(runtimeApi && runtimeApi.globusUploadFileWithSize),
-        hasGlobusUploadFile: !!(runtimeApi && runtimeApi.globusUploadFile),
-    });
 
     if (!(file && row_idx != null && file_path)) {
         yield put({
@@ -212,7 +186,6 @@ function* upload_file(payload) {
 
     if (api?.globusUploadFileWithSize) {
         const watchTask = yield fork(watch_complete_upload, row_idx);
-        globusSagaProbeLog({ event: 'upload_file before invoke globusUploadFileWithSize', row_idx });
         const upload_response = yield call(
             api.globusUploadFileWithSize,
             source_path,
@@ -221,12 +194,6 @@ function* upload_file(payload) {
             row_idx,
             file_size_bytes
         );
-        globusSagaProbeLog({
-            event: 'upload_file after invoke globusUploadFileWithSize',
-            row_idx,
-            ok: !!(upload_response && upload_response[0]),
-            message: upload_response && !upload_response[0] ? upload_response[1]?.message : undefined,
-        });
         if (!upload_response || !upload_response[0]) {
             yield cancel(watchTask);
             yield put({
@@ -238,21 +205,12 @@ function* upload_file(payload) {
             });
             return;
         }
-        globusSagaProbeLog({ event: 'upload_file before join watchTask', row_idx });
         yield join(watchTask);
-        globusSagaProbeLog({ event: 'upload_file after join watchTask', row_idx });
         return;
     }
 
     const watchTask = yield fork(watch_complete_upload, row_idx);
-    globusSagaProbeLog({ event: 'upload_file before invoke globusUploadFile', row_idx });
     const upload_response = yield call(api.globusUploadFile, source_path, dest_path, file_path, row_idx);
-    globusSagaProbeLog({
-        event: 'upload_file after invoke globusUploadFile',
-        row_idx,
-        ok: !!(upload_response && upload_response[0]),
-        message: upload_response && !upload_response[0] ? upload_response[1]?.message : undefined,
-    });
     if (!upload_response || !upload_response[0]) {
         yield cancel(watchTask);
         yield put({
@@ -264,9 +222,7 @@ function* upload_file(payload) {
         });
         return;
     }
-    globusSagaProbeLog({ event: 'upload_file before join watchTask', row_idx });
     yield join(watchTask);
-    globusSagaProbeLog({ event: 'upload_file after join watchTask', row_idx });
 }
 
 export default watch_upload;

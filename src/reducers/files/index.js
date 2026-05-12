@@ -295,12 +295,9 @@ const files_reducer = createReducer(default_state, (builder) => {
         for (let i = 0; i < draft.file_rows.length; i++) {
           if (i !== row_idx && (draft.file_rows[i].__reserved.upload_progress === undefined || draft.file_rows[i].__reserved.upload_progress === 0)) {
             reamining_upload_bytes += draft.file_rows[i].__reserved.bytes;
-            console.log("Adding remaining upload bytes", draft.file_rows[i].__reserved.bytes);
           }
         }
         draft.upload_remaining_bytes = reamining_upload_bytes;
-
-        console.log("Upload remaining bytes", draft.upload_remaining_bytes);
 
         if (action.payload.rate_bytes_per_ms !== undefined) {
           draft.upload_transfer_rate_bytes_per_ms = action.payload.rate_bytes_per_ms;

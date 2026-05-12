@@ -6,18 +6,6 @@ import * as dsa_actions from '../actions/dsa';
 import * as files_actions from '../actions/files';
 import * as globus_actions from '../actions/globus';
 
-/** Paired with main `globus-upload-file-*` sends; registered at preload load (no Redux/saga required). */
-ipcRenderer.on('globus-upload-ipc-pipe-debug', (_event, payload) => {
-  try {
-    console.log(
-      '[GlobusUploadIpcPipeDebug]',
-      typeof payload === 'object' && payload !== null ? JSON.stringify(payload) : String(payload)
-    );
-  } catch {
-    console.log('[GlobusUploadIpcPipeDebug]', payload);
-  }
-});
-
 function coerceGlobusRowIdx(v) {
   if (v == null) return v;
   const n = Number(v);
@@ -26,27 +14,10 @@ function coerceGlobusRowIdx(v) {
 
 let globusUploadIpcSubscribed = false;
 
-function globusIpcProbeLog(payload) {
-  const line = `[GlobusIPC] ${new Date().toISOString()} ${JSON.stringify(payload)}`;
-  console.log(line);
-  setTimeout(() => {
-    ipcRenderer.invoke('debug-append-log-line', line).catch(() => {});
-  }, 0);
-}
-
 function ensureGlobusUploadIpcSubscribed(dispatch) {
   if (globusUploadIpcSubscribed) return;
   globusUploadIpcSubscribed = true;
   ipcRenderer.on('globus-upload-file-progress', (event, progress) => {
-    const ri =
-      progress && typeof progress === 'object' ? coerceGlobusRowIdx(progress.row_idx) : null;
-    globusIpcProbeLog({
-      channel: 'globus-upload-file-progress',
-      row_idx: ri,
-      progress: progress && typeof progress === 'object' ? progress.progress : null,
-      status: progress && typeof progress === 'object' ? progress.status : null,
-      indeterminate: progress && typeof progress === 'object' ? progress.indeterminate : null,
-    });
     const p =
       progress && typeof progress === 'object'
         ? { ...progress, row_idx: coerceGlobusRowIdx(progress.row_idx) }
@@ -57,12 +28,6 @@ function ensureGlobusUploadIpcSubscribed(dispatch) {
     const rawRow =
       payload != null && typeof payload === 'object' ? payload.row_idx : payload;
     const rowIdx = coerceGlobusRowIdx(rawRow);
-    globusIpcProbeLog({
-      channel: 'globus-upload-file-complete',
-      row_idx: rowIdx,
-      has_duration_sec:
-        payload != null && typeof payload === 'object' && payload.duration_sec != null,
-    });
     if (payload != null && typeof payload === 'object' && payload.duration_sec != null) {
       dispatch({
         type: files_actions.GLOBUS_UPLOAD_FILE_METRICS,
@@ -85,7 +50,6 @@ function ensureGlobusUploadIpcSubscribed(dispatch) {
             ? String(error.message)
             : null
         : null;
-    globusIpcProbeLog({ channel: 'globus-upload-file-error', row_idx: ri, error: errMsg });
     const err =
       error && typeof error === 'object'
         ? { ...error, row_idx: coerceGlobusRowIdx(error.row_idx) }
@@ -171,17 +135,7 @@ const API = {
   globusCheckCliAvailable: () => ipcRenderer.invoke('globus-check-cli-available'),
   globusCheckAuth: () => ipcRenderer.invoke('globus-check-auth'),
   globusAuthStatus: () => ipcRenderer.invoke('globus-auth-status'),
-  globusLogin: (options = {}) => {
-    console.log('[electronAPI] globusLogin() called, invoking IPC...');
-    const result = ipcRenderer.invoke('globus-login', options);
-    console.log('[electronAPI] globusLogin() IPC invoke returned (promise):', result);
-    result.then((response) => {
-      console.log('[electronAPI] globusLogin() IPC response received:', response);
-    }).catch((error) => {
-      console.log('[electronAPI] globusLogin() IPC error:', error);
-    });
-    return result;
-  },
+  globusLogin: (options = {}) => ipcRenderer.invoke('globus-login', options),
   globusSubmitAuthorizationCode: (code) => ipcRenderer.invoke('globus-submit-authorization-code', code),
   globusSetSslVerification: (disable) => ipcRenderer.invoke('globus-set-ssl-verification', disable),
   globusLogout: () => ipcRenderer.invoke('globus-logout'),
@@ -194,18 +148,6 @@ const API = {
   globusGetLocalEndpointId: () => ipcRenderer.invoke('globus-get-local-endpoint-id'),
   globusSearchEndpoints: (query) => ipcRenderer.invoke('globus-search-endpoints', query),
   ensureGlobusUploadIpcSubscribed: (dispatch) => ensureGlobusUploadIpcSubscribed(dispatch),
-  globusSetupUploadFileProgress: (dispatch) => {
-    ensureGlobusUploadIpcSubscribed(dispatch);
-  },
-  globusSetupUploadComplete: (dispatch) => {
-    ensureGlobusUploadIpcSubscribed(dispatch);
-  },
-  globusSetupUploadFileError: (dispatch) => {
-    ensureGlobusUploadIpcSubscribed(dispatch);
-  },
-  globusStopUploadFileProgress: () => ipcRenderer.removeAllListeners('globus-upload-file-progress'),
-  globusStopUploadComplete: () => ipcRenderer.removeAllListeners('globus-upload-file-complete'),
-  globusStopUploadFileError: () => ipcRenderer.removeAllListeners('globus-upload-file-error'),
   globusSetupUploadDebugLog: (callback) => {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('globus-upload-debug-log', handler);

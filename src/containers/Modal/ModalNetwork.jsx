@@ -1001,9 +1001,56 @@ function ModalNetwork(props) {
                   }
                 />
                 <p className={"network-auto-upload__helper"}>
-                  Limits how many finished de-identified files can sit on disk at once while uploads finish. Only applies when delete-after is on. This does not set Globus or DSA transfer parallelism; each destination runs uploads one at a time from its queue.
+                  {!ur.auto_upload ? (
+                    <>
+                      Limits how many finished de-identified files can sit on disk at once while uploads finish. Only applies when auto-upload and delete-after are on. Transfer parallelism depends on the destination you select (Globus can run multiple transfers at once; DSA uses one at a time).
+                    </>
+                  ) : ur.destination === 'globus' ? (
+                    <>
+                      Limits how many finished de-identified files can sit on disk at once while uploads finish. Only applies when delete-after is on. This does not limit how many Globus transfers run at once; use the setting below for that.
+                    </>
+                  ) : (
+                    <>
+                      Limits how many finished de-identified files can sit on disk at once while uploads finish. Only applies when delete-after is on. DSA still runs uploads one at a time from its queue; this value only throttles how many files are held on disk ahead of that queue.
+                    </>
+                  )}
                 </p>
               </div>
+
+              {ur.auto_upload && ur.destination === 'globus' && (
+                <>
+                  <label
+                    className={"network-auto-upload__label-col network-auto-upload__label-col--max"}
+                    htmlFor={"network-auto-upload-max-globus-parallel"}
+                  >
+                    Max parallel Globus transfers
+                  </label>
+                  <div
+                    className={
+                      "network-auto-upload__control-col network-auto-upload__control-col--max"
+                    }
+                  >
+                    <InputText
+                      omitLabel
+                      compact
+                      inputId={"network-auto-upload-max-globus-parallel"}
+                      ariaLabel={"Max parallel Globus transfers"}
+                      type={"number"}
+                      disabled={!ur.auto_upload}
+                      value={String(ur.max_globus_parallel_uploads)}
+                      onChange={(new_value) =>
+                        dispatch({
+                          type: upload_routing_actions.SET_MAX_GLOBUS_PARALLEL_UPLOADS,
+                          payload: new_value,
+                        })
+                      }
+                    />
+                    <p className={"network-auto-upload__helper"}>
+                      Upper bound on concurrent Globus transfer jobs from this app. Higher values may use more bandwidth and CPU; Globus CLI calls are still serialized internally to avoid conflicts.
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

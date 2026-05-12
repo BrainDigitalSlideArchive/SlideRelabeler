@@ -14,7 +14,7 @@ function get_input_text_class(disabled, error) {
 }
 
 function InputText(props) {
-  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId } = props;
+  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress } = props;
   let rootClass = variant === 'onLight' ? 'InputText InputText--onLight' : 'InputText';
   if (compact) rootClass += ' InputText--compact';
   if (omitLabel) rootClass += ' InputText--controlOnly';
@@ -180,6 +180,7 @@ function InputText(props) {
             className={get_input_text_class(disabled, error)}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyPress={onKeyPress}
             aria-label={ariaLabel || undefined}
           />
         </div>
@@ -194,6 +195,7 @@ function InputText(props) {
           className={get_input_text_class(disabled, error)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyPress={onKeyPress}
         />
       )}
     </div>

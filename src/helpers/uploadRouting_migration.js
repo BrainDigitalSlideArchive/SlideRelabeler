@@ -8,6 +8,7 @@ export function migrateUploadRoutingFromLegacy(dsa, globus, savedRouting) {
       auto_upload: !!savedRouting.auto_upload,
       delete_local_after: !!savedRouting.delete_local_after,
       max_local_pending: clampPending(savedRouting.max_local_pending),
+      max_globus_parallel_uploads: clampGlobusParallel(savedRouting.max_globus_parallel_uploads),
       destination: savedRouting.destination === 'globus' ? 'globus' : 'dsa',
     };
   }
@@ -30,11 +31,23 @@ export function migrateUploadRoutingFromLegacy(dsa, globus, savedRouting) {
   const delete_local_after = !!(dsa?.delete_after || globus?.delete_after);
   const max_local_pending = clampPending(dsa?.upload_throttle_limit);
 
-  return { auto_upload, delete_local_after, max_local_pending, destination };
+  return {
+    auto_upload,
+    delete_local_after,
+    max_local_pending,
+    max_globus_parallel_uploads: 4,
+    destination,
+  };
 }
 
 function clampPending(n) {
   const v = parseInt(n, 10);
   if (Number.isFinite(v) && v >= 1 && v <= 50) return v;
   return 2;
+}
+
+function clampGlobusParallel(n) {
+  const v = parseInt(n, 10);
+  if (Number.isFinite(v) && v >= 1 && v <= 16) return v;
+  return 4;
 }

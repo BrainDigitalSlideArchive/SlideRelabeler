@@ -24,6 +24,12 @@ let dsa_client = null;
 let esm_client = null;
 let globus_client = null;
 
+function globusHandlerDebug(...args) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+}
+
 function normalizePath(path) {
   return path.replaceAll('\\', '/');
 }
@@ -273,82 +279,61 @@ ipcMain.handle('globus-auth-status', async (event) => {
 });
 
 ipcMain.handle('globus-login', async (event, options = {}) => {
-  console.log('[Handlers] ===== globus-login IPC handler called =====');
-  
+  globusHandlerDebug('[Handlers] globus-login IPC');
+
   if (!globus_client) {
-    console.log('[Handlers] Creating new GlobusAPI instance');
     globus_client = new GlobusAPI();
   }
-  
+
   const isAvailable = globus_client.isAvailable();
-  console.log('[Handlers] globus_client.isAvailable():', isAvailable);
   if (!isAvailable) {
-    console.log('[Handlers] Globus CLI not available, returning error');
     return [false, { message: 'Globus CLI not available' }];
   }
-  
-  console.log('[Handlers] Calling globus_client.login()...', options);
+
   const response = await globus_client.login(options);
-  console.log('[Handlers] globus_client.login() response:', {
+  globusHandlerDebug('[Handlers] globus-login response', {
     ok: response?.ok,
-    isAuthenticated: response?.isAuthenticated,
     classification: response?.classification,
-    username: response?.username,
     hasUrl: !!response?.url,
-    hasAccessCode: !!response?.accessCode,
-    message: response?.message
   });
 
   // If login returned a URL, open it in the user's browser (best-effort)
   if (response && response.ok && response.classification === 'needsBrowserAuth' && response.url) {
     try {
-      console.log('[Handlers] Attempting to open URL in browser:', response.url);
       await shell.openExternal(response.url);
       return { ...response, browserOpened: true };
     } catch (error) {
-      console.log('[Handlers] Error opening browser:', error?.message || error);
+      console.error('[Handlers] globus-login: failed to open browser', error?.message || error);
       return { ...response, browserOpened: false, browserOpenError: error?.message || String(error) };
     }
   }
 
-  console.log('[Handlers] ===== globus-login handler complete =====');
   return response;
 });
 
 ipcMain.handle('globus-submit-authorization-code', async (event, code) => {
-  console.log('[Handlers] globus-submit-authorization-code IPC handler called with code:', code ? code.substring(0, 4) + '...' : 'null');
-  
+  globusHandlerDebug('[Handlers] globus-submit-authorization-code IPC');
+
   if (!globus_client) {
-    console.log('[Handlers] Creating new GlobusAPI instance');
     globus_client = new GlobusAPI();
   }
   if (!globus_client.isAvailable()) {
-    console.log('[Handlers] Globus CLI not available');
     return [false, { message: 'Globus CLI not available' }];
   }
-  
+
   if (!code || !code.trim()) {
-    console.log('[Handlers] No authorization code provided');
     return [false, { message: 'Authorization code is required' }];
   }
-  
-  console.log('[Handlers] Calling globus_client.submitAuthorizationCode()...');
-  const response = await globus_client.submitAuthorizationCode(code.trim());
-  console.log('[Handlers] globus_client.submitAuthorizationCode() response:', response);
-  
-  return response;
+
+  return globus_client.submitAuthorizationCode(code.trim());
 });
 
 ipcMain.handle('globus-set-ssl-verification', async (event, disable) => {
-  console.log('[Handlers] globus-set-ssl-verification IPC handler called with disable:', disable);
-  
   if (!globus_client) {
-    console.log('[Handlers] Creating new GlobusAPI instance');
     globus_client = new GlobusAPI();
   }
-  
+
   globus_client.setDisableSslVerification(disable);
-  console.log('[Handlers] SSL verification setting updated on GlobusAPI instance');
   return [true, { message: 'SSL verification setting updated' }];
 });
 
@@ -414,23 +399,19 @@ ipcMain.handle('globus-search-endpoints', async (event, query) => {
 const runningCommands = new Map();
 
 ipcMain.handle('globus-execute-command', async (event, args, useJsonFormat = false) => {
-  console.log('[Handlers] globus-execute-command IPC handler called');
-  console.log('[Handlers] Args:', args);
-  console.log('[Handlers] Use JSON format:', useJsonFormat);
-  
+  globusHandlerDebug('[Handlers] globus-execute-command', args, useJsonFormat);
+
   if (!globus_client) {
     globus_client = new GlobusAPI();
   }
   if (!globus_client.isAvailable()) {
     return [false, { message: 'Globus CLI not available' }];
   }
-  
+
   // Generate unique command ID
   const commandId = `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const webContents = event.sender; // event.sender is the webContents object
-  
-  console.log('[Handlers] Starting command with ID:', commandId);
-  
+
   // Set up output callbacks
   const outputCallbacks = {
     onStdout: (chunk) => {
@@ -448,7 +429,7 @@ ipcMain.handle('globus-execute-command', async (event, args, useJsonFormat = fal
       });
     },
     onComplete: (exitCode, stdout, stderr) => {
-      console.log('[Handlers] Command completed:', commandId, 'exitCode:', exitCode);
+      globusHandlerDebug('[Handlers] globus command complete', commandId, exitCode);
       runningCommands.delete(commandId);
       webContents.send('globus-command-complete', {
         commandId: commandId,
@@ -458,7 +439,7 @@ ipcMain.handle('globus-execute-command', async (event, args, useJsonFormat = fal
       });
     },
     onError: (error) => {
-      console.log('[Handlers] Command error:', commandId, error);
+      console.error('[Handlers] globus command error', commandId, error);
       runningCommands.delete(commandId);
       webContents.send('globus-command-error', {
         commandId: commandId,
@@ -466,38 +447,37 @@ ipcMain.handle('globus-execute-command', async (event, args, useJsonFormat = fal
       });
     }
   };
-  
+
   // Execute command with streaming
   try {
     const childProcess = globus_client.executeCommandStream(args, useJsonFormat, {}, outputCallbacks);
-    
+
     if (!childProcess) {
       return [false, { message: 'Failed to start command process' }];
     }
-    
+
     // Store process reference for potential cancellation
     runningCommands.set(commandId, childProcess);
-    
-    console.log('[Handlers] Command started successfully:', commandId);
+
+    globusHandlerDebug('[Handlers] globus command started', commandId);
     return [true, { commandId: commandId }];
   } catch (error) {
-    console.log('[Handlers] Error starting command:', error);
+    console.error('[Handlers] globus-execute-command: failed to start', error);
     return [false, { message: error.message || 'Failed to start command' }];
   }
 });
 
 ipcMain.handle('globus-cancel-command', async (event, commandId) => {
-  console.log('[Handlers] globus-cancel-command IPC handler called for:', commandId);
-  
+  globusHandlerDebug('[Handlers] globus-cancel-command', commandId);
+
   const childProcess = runningCommands.get(commandId);
   if (childProcess && !childProcess.killed) {
     try {
       childProcess.kill();
       runningCommands.delete(commandId);
-      console.log('[Handlers] Command cancelled:', commandId);
       return [true, { message: 'Command cancelled' }];
     } catch (error) {
-      console.log('[Handlers] Error cancelling command:', error);
+      console.error('[Handlers] globus-cancel-command failed', error);
       return [false, { message: error.message || 'Failed to cancel command' }];
     }
   } else {
@@ -513,41 +493,6 @@ function emitGlobusUploadDebugLog(webContents, file_row_idx, stream, message, me
       stream,
       message: message != null ? String(message) : '',
       time: new Date().getTime(),
-      ...meta,
-    });
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Main-process probe: log immediately before globus upload IPC push to renderer. */
-function logGlobusMainSend(webContents, channel, meta = {}) {
-  const destroyed = !webContents || webContents.isDestroyed();
-  console.log(
-    '[GlobusMain]',
-    JSON.stringify({
-      t: new Date().toISOString(),
-      channel,
-      webContentsDestroyed: destroyed,
-      ...meta,
-    })
-  );
-}
-
-/** Paired with each real globus-upload-file-* send; preload logs `[GlobusUploadIpcPipeDebug]`. */
-function sendGlobusUploadIpcPipeDebug(webContents, mirrorChannel, meta = {}) {
-  if (!webContents || webContents.isDestroyed()) return;
-  try {
-    let wcId = null;
-    try {
-      wcId = typeof webContents.id === 'number' ? webContents.id : null;
-    } catch {
-      /* ignore */
-    }
-    webContents.send('globus-upload-ipc-pipe-debug', {
-      t: new Date().toISOString(),
-      mirrorChannel,
-      webContentsId: wcId,
       ...meta,
     });
   } catch {
@@ -643,22 +588,12 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
       emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', status_response?.[1]?.message || 'Task status check failed', {
         task_id,
       });
-      logGlobusMainSend(webContents, 'globus-upload-file-error', {
-        task_id,
-        row_idx: file_row_idx,
-        phase: 'task_status_rpc_failed',
-      });
       if (webContents && !webContents.isDestroyed()) {
         try {
           webContents.send('globus-upload-file-error', { 
             file_path: file_path, 
             error: status_response[1].message, 
             row_idx: file_row_idx 
-          });
-          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
-            task_id,
-            row_idx: file_row_idx,
-            phase: 'task_status_rpc_failed',
           });
         } catch {
           /* ignore */
@@ -693,14 +628,6 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
     last_reported_progress = progress;
 
     // Send progress update
-    logGlobusMainSend(webContents, 'globus-upload-file-progress', {
-      task_id,
-      row_idx: file_row_idx,
-      progress,
-      status,
-      indeterminate,
-      phase: 'poll',
-    });
     if (webContents && !webContents.isDestroyed()) {
       try {
         webContents.send('globus-upload-file-progress', { 
@@ -710,14 +637,6 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
           status: status,
           row_idx: file_row_idx,
           globus: true,
-        });
-        sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-progress', {
-          task_id,
-          row_idx: file_row_idx,
-          progress,
-          status,
-          indeterminate,
-          phase: 'poll',
         });
       } catch {
         /* ignore */
@@ -729,23 +648,11 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
       const durationSec = Math.max(1, Math.round((Date.now() - pollStartMs) / 1000));
       const effectiveBps = globusTaskNumericField(task, 'effective_bytes_per_second');
       try {
-        logGlobusMainSend(webContents, 'globus-upload-file-complete', {
-          task_id,
-          row_idx: file_row_idx,
-          durationSec,
-          phase: 'SUCCEEDED',
-        });
         if (webContents && !webContents.isDestroyed()) {
           webContents.send('globus-upload-file-complete', {
             row_idx: file_row_idx,
             duration_sec: durationSec,
             effective_bytes_per_second: effectiveBps != null ? effectiveBps : 0,
-          });
-          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-complete', {
-            task_id,
-            row_idx: file_row_idx,
-            durationSec,
-            phase: 'SUCCEEDED',
           });
         }
       } catch (e) {
@@ -757,22 +664,12 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
       return;
     } else if (status === 'FAILED') {
       emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', task?.message || 'Transfer failed', { task_id });
-      logGlobusMainSend(webContents, 'globus-upload-file-error', {
-        task_id,
-        row_idx: file_row_idx,
-        phase: 'FAILED',
-      });
       if (webContents && !webContents.isDestroyed()) {
         try {
           webContents.send('globus-upload-file-error', { 
             file_path: file_path, 
             error: task.message || `Transfer ${status}`, 
             row_idx: file_row_idx 
-          });
-          sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
-            task_id,
-            row_idx: file_row_idx,
-            phase: 'FAILED',
           });
         } catch {
           /* ignore */
@@ -787,22 +684,12 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
   
   // Timeout after max polls
   emitGlobusUploadDebugLog(webContents, file_row_idx, 'stderr', 'Transfer polling timeout', { task_id });
-  logGlobusMainSend(webContents, 'globus-upload-file-error', {
-    task_id,
-    row_idx: file_row_idx,
-    phase: 'polling_timeout',
-  });
   if (webContents && !webContents.isDestroyed()) {
     try {
       webContents.send('globus-upload-file-error', { 
         file_path: file_path, 
         error: 'Transfer polling timeout', 
         row_idx: file_row_idx 
-      });
-      sendGlobusUploadIpcPipeDebug(webContents, 'globus-upload-file-error', {
-        task_id,
-        row_idx: file_row_idx,
-        phase: 'polling_timeout',
       });
     } catch {
       /* ignore */
@@ -850,12 +737,6 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
   // Push progress/complete to the same WebContents that invoked this handler (matches globus-execute-command).
   if (!sender.isDestroyed()) {
     emitGlobusUploadDebugLog(sender, ipcRowIdx, 'stdout', `Transfer task_id: ${task_id}`, { file_path, task_id });
-    logGlobusMainSend(sender, 'globus-upload-file-progress', {
-      task_id,
-      row_idx: ipcRowIdx,
-      status: 'INITIATED',
-      phase: 'after_submit',
-    });
     try {
       sender.send('globus-upload-file-progress', {
         file_path,
@@ -864,12 +745,6 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
         status: 'INITIATED',
         row_idx: ipcRowIdx,
         globus: true,
-      });
-      sendGlobusUploadIpcPipeDebug(sender, 'globus-upload-file-progress', {
-        task_id,
-        row_idx: ipcRowIdx,
-        status: 'INITIATED',
-        phase: 'after_submit',
       });
     } catch (e) {
       console.error('[Handlers] globus-upload-file: send initial progress failed', e?.message || e);

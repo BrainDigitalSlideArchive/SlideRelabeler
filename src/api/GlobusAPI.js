@@ -35,13 +35,23 @@ async function runGlobusCliExclusive(fn) {
     }
 }
 
+/** Verbose tracing: `SLIDERELABELER_GLOBUS_VERBOSE=1` forces on; in development default on unless `SLIDERELABELER_GLOBUS_VERBOSE=0`. */
+const GLOBUS_API_VERBOSE_LOG =
+    process.env.SLIDERELABELER_GLOBUS_VERBOSE === '1' ||
+    (process.env.NODE_ENV === 'development' && process.env.SLIDERELABELER_GLOBUS_VERBOSE !== '0');
+
+function globusApiVLog(...args) {
+    if (GLOBUS_API_VERBOSE_LOG) {
+        console.log(...args);
+    }
+}
+
 class GlobusAPI {
     constructor() {
-        // Debug logging
-        console.log('[GlobusAPI] Initializing...');
-        console.log('[GlobusAPI] process.resourcesPath:', process.resourcesPath);
-        console.log('[GlobusAPI] NODE_ENV:', process.env.NODE_ENV);
-        console.log('[GlobusAPI] process.platform:', process.platform);
+        globusApiVLog('[GlobusAPI] Initializing...');
+        globusApiVLog('[GlobusAPI] process.resourcesPath:', process.resourcesPath);
+        globusApiVLog('[GlobusAPI] NODE_ENV:', process.env.NODE_ENV);
+        globusApiVLog('[GlobusAPI] process.platform:', process.platform);
         
         // Store reference to login process for submitting authorization code
         this._loginProcess = null;
@@ -60,29 +70,29 @@ class GlobusAPI {
             globusCli = 'globus-cli.app';
             globusCliExecutable = path.join('globus-cli.app', 'Contents', 'MacOS', 'globus-cli');
         }
-        console.log('[GlobusAPI] Looking for:', globusCli);
+        globusApiVLog('[GlobusAPI] Looking for:', globusCli);
         
         // Check for bundled globus-cli in resourcesPath (all platforms)
         const resourcesGlobusPath1 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli');
         const resourcesGlobusPath2 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli.app');
         const resourcesGlobusPath3 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli.exe');
-        console.log('[GlobusAPI] Checking resourcesPath paths:');
-        console.log('[GlobusAPI]   -', resourcesGlobusPath1, 'exists:', fs.existsSync(resourcesGlobusPath1));
-        console.log('[GlobusAPI]   -', resourcesGlobusPath2, 'exists:', fs.existsSync(resourcesGlobusPath2));
-        console.log('[GlobusAPI]   -', resourcesGlobusPath3, 'exists:', fs.existsSync(resourcesGlobusPath3));
+        globusApiVLog('[GlobusAPI] Checking resourcesPath paths:');
+        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath1, 'exists:', fs.existsSync(resourcesGlobusPath1));
+        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath2, 'exists:', fs.existsSync(resourcesGlobusPath2));
+        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath3, 'exists:', fs.existsSync(resourcesGlobusPath3));
         
         // List contents of process.resourcesPath if it exists
         if (process.resourcesPath && fs.existsSync(process.resourcesPath)) {
             try {
                 const resourcesContents = fs.readdirSync(process.resourcesPath);
-                console.log('[GlobusAPI] Contents of process.resourcesPath:', resourcesContents);
+                globusApiVLog('[GlobusAPI] Contents of process.resourcesPath:', resourcesContents);
                 if (resourcesContents.includes('globus-cli')) {
                     const globusCliPath = path.join(process.resourcesPath, 'globus-cli');
                     const globusCliContents = fs.readdirSync(globusCliPath);
-                    console.log('[GlobusAPI] Contents of globus-cli directory:', globusCliContents);
+                    globusApiVLog('[GlobusAPI] Contents of globus-cli directory:', globusCliContents);
                 }
             } catch (error) {
-                console.log('[GlobusAPI] Error reading resourcesPath:', error.message);
+                globusApiVLog('[GlobusAPI] Error reading resourcesPath:', error.message);
             }
         }
         
@@ -90,7 +100,7 @@ class GlobusAPI {
             fs.existsSync(resourcesGlobusPath1) ||
             fs.existsSync(resourcesGlobusPath2) ||
             fs.existsSync(resourcesGlobusPath3);
-        console.log('[GlobusAPI] usePyinstaller:', usePyinstaller);
+        globusApiVLog('[GlobusAPI] usePyinstaller:', usePyinstaller);
         
         // Initialize conda environment tracking
         this._usingCondaEnv = false;
@@ -100,12 +110,12 @@ class GlobusAPI {
         
         // Priority 1: Production mode - use bundled executable (always check this first)
         const bundledPath = path.join(process.resourcesPath, 'globus-cli', globusCli);
-        console.log('[GlobusAPI] Checking bundled path:', bundledPath, 'exists:', fs.existsSync(bundledPath));
+        globusApiVLog('[GlobusAPI] Checking bundled path:', bundledPath, 'exists:', fs.existsSync(bundledPath));
         if (fs.existsSync(bundledPath)) {
             if (process.platform === 'darwin') {
                 // On macOS, .app bundles need to execute the binary inside
                 const macExecutable = path.join(process.resourcesPath, 'globus-cli', globusCliExecutable);
-                console.log('[GlobusAPI] Checking macOS executable:', macExecutable, 'exists:', fs.existsSync(macExecutable));
+                globusApiVLog('[GlobusAPI] Checking macOS executable:', macExecutable, 'exists:', fs.existsSync(macExecutable));
                 if (fs.existsSync(macExecutable)) {
                     this._pathToGlobus = macExecutable;
                 } else {
@@ -115,12 +125,12 @@ class GlobusAPI {
                 this._pathToGlobus = path.join(process.resourcesPath, 'globus-cli', globusCli);
             }
             this._status = 'Globus: using bundled executable from resourcesPath';
-            console.log('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
+            globusApiVLog('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
         }
         // Priority 2: Local build for testing
         else {
             const localPath = path.join('./dist/globus-cli', globusCli);
-            console.log('[GlobusAPI] Checking local build path:', localPath, 'exists:', fs.existsSync(localPath));
+            globusApiVLog('[GlobusAPI] Checking local build path:', localPath, 'exists:', fs.existsSync(localPath));
             if (fs.existsSync(localPath)) {
             if (process.platform === 'darwin') {
                 // On macOS, .app bundles need to execute the binary inside
@@ -134,7 +144,7 @@ class GlobusAPI {
                 this._pathToGlobus = path.join('./dist/globus-cli', globusCli);
             }
             this._status = 'Globus: using local build';
-                console.log('[GlobusAPI] Found local build at:', this._pathToGlobus);
+                globusApiVLog('[GlobusAPI] Found local build at:', this._pathToGlobus);
             }
             // Priority 3: Development mode - try conda environment first, then system globus
             else if (!usePyinstaller && process.env.NODE_ENV === 'development') {
@@ -146,13 +156,13 @@ class GlobusAPI {
                         ? path.join(condaPrefix, 'Scripts', 'globus.exe')
                         : path.join(condaPrefix, 'bin', 'globus');
                     
-                    console.log('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
+                    globusApiVLog('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
                     if (fs.existsSync(condaGlobusPath)) {
                         this._pathToGlobus = condaGlobusPath;
                         this._status = 'Globus: using conda environment globus-cli';
                         this._usingCondaEnv = true;
                         this._condaPrefix = condaPrefix;
-                        console.log('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
+                        globusApiVLog('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
                     }
                 }
                 
@@ -160,7 +170,7 @@ class GlobusAPI {
                 if (!this._pathToGlobus) {
                     this._pathToGlobus = 'globus';
                     this._status = 'Globus: using system globus (development mode)';
-                    console.log('[GlobusAPI] Using system globus');
+                    globusApiVLog('[GlobusAPI] Using system globus');
                 }
             }
         }
@@ -168,10 +178,10 @@ class GlobusAPI {
         // If no path was found, set error status
         if (!this._pathToGlobus) {
             this._status = 'Globus: No path detected, not available';
-            console.log('[GlobusAPI] No globus-cli path found. Status:', this._status);
+            globusApiVLog('[GlobusAPI] No globus-cli path found. Status:', this._status);
         }
-        console.log('[GlobusAPI] Final pathToGlobus:', this._pathToGlobus);
-        console.log('[GlobusAPI] Final status:', this._status);
+        globusApiVLog('[GlobusAPI] Final pathToGlobus:', this._pathToGlobus);
+        globusApiVLog('[GlobusAPI] Final status:', this._status);
     }
 
     sanitizeCliOutput(text) {
@@ -245,22 +255,22 @@ class GlobusAPI {
             commandArgs.push('--format', 'json');
         }
 
-        console.log('[GlobusAPI] executeCommand: Starting command execution');
-        console.log('[GlobusAPI] executeCommand: Executable:', this._pathToGlobus);
-        console.log('[GlobusAPI] executeCommand: Args:', commandArgs);
-        console.log('[GlobusAPI] executeCommand: Additional env vars:', additionalEnv.env ? Object.keys(additionalEnv.env) : []);
+        globusApiVLog('[GlobusAPI] executeCommand: Starting command execution');
+        globusApiVLog('[GlobusAPI] executeCommand: Executable:', this._pathToGlobus);
+        globusApiVLog('[GlobusAPI] executeCommand: Args:', commandArgs);
+        globusApiVLog('[GlobusAPI] executeCommand: Additional env vars:', additionalEnv.env ? Object.keys(additionalEnv.env) : []);
 
         const finalEnv = this.buildEnv(additionalEnv);
         if (this._disableSslVerification) {
-            console.log('[GlobusAPI] executeCommand: SSL verification disabled (GLOBUS_SDK_VERIFY_SSL=false)');
+            globusApiVLog('[GlobusAPI] executeCommand: SSL verification disabled (GLOBUS_SDK_VERIFY_SSL=false)');
         }
 
         const relevantEnvVars = Object.keys(finalEnv).filter(k => k.startsWith('GLOBUS') || k === 'PATH' || k === 'CONDA_PREFIX');
-        console.log('[GlobusAPI] executeCommand: Final env vars:', relevantEnvVars);
+        globusApiVLog('[GlobusAPI] executeCommand: Final env vars:', relevantEnvVars);
         if (finalEnv.GLOBUS_CLI_INTERACTIVE !== undefined) {
-            console.log('[GlobusAPI] executeCommand: GLOBUS_CLI_INTERACTIVE value:', finalEnv.GLOBUS_CLI_INTERACTIVE);
+            globusApiVLog('[GlobusAPI] executeCommand: GLOBUS_CLI_INTERACTIVE value:', finalEnv.GLOBUS_CLI_INTERACTIVE);
         } else {
-            console.log('[GlobusAPI] executeCommand: GLOBUS_CLI_INTERACTIVE NOT SET');
+            globusApiVLog('[GlobusAPI] executeCommand: GLOBUS_CLI_INTERACTIVE NOT SET');
         }
 
         const spawnOptions = {
@@ -322,10 +332,10 @@ class GlobusAPI {
                 settled = true;
                 clearTimeout(timer);
                 const duration = Date.now() - startTime;
-                console.log('[GlobusAPI] executeCommand: Command completed in', duration, 'ms');
-                console.log('[GlobusAPI] executeCommand: exit code:', code, 'signal:', signal);
-                console.log('[GlobusAPI] executeCommand: stdout length:', stdout?.length || 0);
-                console.log('[GlobusAPI] executeCommand: stderr length:', stderr?.length || 0);
+                globusApiVLog('[GlobusAPI] executeCommand: Command completed in', duration, 'ms');
+                globusApiVLog('[GlobusAPI] executeCommand: exit code:', code, 'signal:', signal);
+                globusApiVLog('[GlobusAPI] executeCommand: stdout length:', stdout?.length || 0);
+                globusApiVLog('[GlobusAPI] executeCommand: stderr length:', stderr?.length || 0);
 
                 const combinedOutput = (stdout || '') + (stderr || '');
 
@@ -438,8 +448,8 @@ class GlobusAPI {
     async loginWithSpawn(options = {}) {
         // Use spawn instead of exec for better control over stdin/stdout/stderr
         // This prevents the process from waiting for stdin input
-        console.log('[GlobusAPI] loginWithSpawn() called');
-        console.log('[GlobusAPI] Using globus-cli path:', this._pathToGlobus);
+        globusApiVLog('[GlobusAPI] loginWithSpawn() called');
+        globusApiVLog('[GlobusAPI] Using globus-cli path:', this._pathToGlobus);
         
         return new Promise((resolve) => {
             // Prepare environment (includes conda PATH, SSL settings, and PyInstaller debug suppression)
@@ -450,12 +460,12 @@ class GlobusAPI {
             
             // Don't set GLOBUS_CLI_INTERACTIVE=0 - we need interactive mode to submit code
             // baseEnv.GLOBUS_CLI_INTERACTIVE = '0'; // Removed - we need stdin to submit code
-            console.log('[GlobusAPI] loginWithSpawn: Using interactive mode to allow code submission');
+            globusApiVLog('[GlobusAPI] loginWithSpawn: Using interactive mode to allow code submission');
             
             // Spawn the process with stdin piped so we can write to it
             // Verbose output is a dev toggle (default off)
             const args = options?.verbose ? ['login', '-v', '--no-local-server'] : ['login', '--no-local-server'];
-            console.log('[GlobusAPI] loginWithSpawn: Spawning process with args:', args);
+            globusApiVLog('[GlobusAPI] loginWithSpawn: Spawning process with args:', args);
             
             const child = spawn(this._pathToGlobus, args, {
                 env: baseEnv,
@@ -465,7 +475,7 @@ class GlobusAPI {
             
             // Store process reference so we can write to stdin later
             this._loginProcess = child;
-            console.log('[GlobusAPI] loginWithSpawn: Stored process reference for code submission');
+            globusApiVLog('[GlobusAPI] loginWithSpawn: Stored process reference for code submission');
             
             let stdout = '';
             let stderr = '';
@@ -478,12 +488,12 @@ class GlobusAPI {
             const timeout = 300000; // 5 minutes
             timeoutId = setTimeout(() => {
                 if (!urlFound) {
-                    console.log('[GlobusAPI] loginWithSpawn: Timeout reached before URL found, killing process');
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Timeout reached before URL found, killing process');
                     child.kill();
                     this._loginProcess = null;
                 } else {
                     // URL found but no code submitted - kill after extended timeout
-                    console.log('[GlobusAPI] loginWithSpawn: Extended timeout reached, killing process');
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Extended timeout reached, killing process');
                     child.kill();
                     this._loginProcess = null;
                 }
@@ -493,14 +503,14 @@ class GlobusAPI {
             child.stdout.on('data', (data) => {
                 const chunk = data.toString();
                 stdout += chunk;
-                console.log('[GlobusAPI] loginWithSpawn: stdout chunk:', chunk.substring(0, 200));
+                globusApiVLog('[GlobusAPI] loginWithSpawn: stdout chunk:', chunk.substring(0, 200));
                 
                 // Try to extract URL as soon as it appears
                 if (!urlFound && !promiseResolved) {
                     const urlMatch = chunk.match(/https?:\/\/[^\s\)]+/);
             if (urlMatch) {
                         urlFound = true;
-                        console.log('[GlobusAPI] loginWithSpawn: URL found in stdout:', urlMatch[0]);
+                        globusApiVLog('[GlobusAPI] loginWithSpawn: URL found in stdout:', urlMatch[0]);
                         
                         // Extract access code from full accumulated output (not just chunk)
                         // Wait a moment for more output to arrive, then extract
@@ -522,7 +532,7 @@ class GlobusAPI {
                                         potentialCode.toLowerCase() !== 'code' &&
                                         /^[A-Z0-9-]+$/i.test(potentialCode)) {
                                         accessCode = potentialCode;
-                                        console.log('[GlobusAPI] loginWithSpawn: Access code found:', accessCode);
+                                        globusApiVLog('[GlobusAPI] loginWithSpawn: Access code found:', accessCode);
                                         break;
                                     }
                                 }
@@ -539,7 +549,7 @@ class GlobusAPI {
                                         !trimmed.startsWith('http') &&
                                         trimmed.toLowerCase() !== 'here') {
                                         accessCode = trimmed;
-                                        console.log('[GlobusAPI] loginWithSpawn: Access code found as standalone line:', accessCode);
+                                        globusApiVLog('[GlobusAPI] loginWithSpawn: Access code found as standalone line:', accessCode);
                                         break;
                                     }
                                 }
@@ -558,8 +568,8 @@ class GlobusAPI {
                                     isTimeout: false
                                 }];
                                 
-                                console.log('[GlobusAPI] loginWithSpawn: Resolving promise immediately with URL:', urlMatch[0], 'code:', accessCode || 'none');
-                                console.log('[GlobusAPI] loginWithSpawn: Resolve value structure:', {
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Resolving promise immediately with URL:', urlMatch[0], 'code:', accessCode || 'none');
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Resolve value structure:', {
                                     isArray: Array.isArray(resolveValue),
                                     length: resolveValue.length,
                                     response0: resolveValue[0],
@@ -571,7 +581,7 @@ class GlobusAPI {
                                 });
                                 
                                 // Process stays alive for interactive use (code submission)
-                                console.log('[GlobusAPI] loginWithSpawn: Process will stay alive for code submission');
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Process will stay alive for code submission');
                                 resolve(resolveValue);
                             }
                         }, 500); // Wait 500ms for more output to arrive
@@ -583,14 +593,14 @@ class GlobusAPI {
             child.stderr.on('data', (data) => {
                 const chunk = data.toString();
                 stderr += chunk;
-                console.log('[GlobusAPI] loginWithSpawn: stderr chunk:', chunk.substring(0, 200));
+                globusApiVLog('[GlobusAPI] loginWithSpawn: stderr chunk:', chunk.substring(0, 200));
                 
                 // Also check stderr for URL (some commands output to stderr)
                 if (!urlFound && !promiseResolved) {
                     const urlMatch = chunk.match(/https?:\/\/[^\s\)]+/);
                     if (urlMatch) {
                         urlFound = true;
-                        console.log('[GlobusAPI] loginWithSpawn: URL found in stderr:', urlMatch[0]);
+                        globusApiVLog('[GlobusAPI] loginWithSpawn: URL found in stderr:', urlMatch[0]);
                         
                         // Extract access code from full accumulated output (not just chunk)
                         // Wait a moment for more output to arrive, then extract
@@ -612,7 +622,7 @@ class GlobusAPI {
                                         potentialCode.toLowerCase() !== 'code' &&
                                         /^[A-Z0-9-]+$/i.test(potentialCode)) {
                                         accessCode = potentialCode;
-                                        console.log('[GlobusAPI] loginWithSpawn: Access code found in stderr:', accessCode);
+                                        globusApiVLog('[GlobusAPI] loginWithSpawn: Access code found in stderr:', accessCode);
                                         break;
                                     }
                                 }
@@ -629,7 +639,7 @@ class GlobusAPI {
                                         !trimmed.startsWith('http') &&
                                         trimmed.toLowerCase() !== 'here') {
                                         accessCode = trimmed;
-                                        console.log('[GlobusAPI] loginWithSpawn: Access code found as standalone line in stderr:', accessCode);
+                                        globusApiVLog('[GlobusAPI] loginWithSpawn: Access code found as standalone line in stderr:', accessCode);
                                         break;
                                     }
                                 }
@@ -648,8 +658,8 @@ class GlobusAPI {
                                     isTimeout: false
                                 }];
                                 
-                                console.log('[GlobusAPI] loginWithSpawn: Resolving promise immediately with URL from stderr:', urlMatch[0], 'code:', accessCode || 'none');
-                                console.log('[GlobusAPI] loginWithSpawn: Resolve value structure:', {
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Resolving promise immediately with URL from stderr:', urlMatch[0], 'code:', accessCode || 'none');
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Resolve value structure:', {
                                     isArray: Array.isArray(resolveValue),
                                     length: resolveValue.length,
                                     response0: resolveValue[0],
@@ -661,7 +671,7 @@ class GlobusAPI {
                                 });
                                 
                                 // Process stays alive for interactive use (code submission)
-                                console.log('[GlobusAPI] loginWithSpawn: Process will stay alive for code submission');
+                                globusApiVLog('[GlobusAPI] loginWithSpawn: Process will stay alive for code submission');
                                 resolve(resolveValue);
                             }
                         }, 500); // Wait 500ms for more output to arrive
@@ -672,7 +682,7 @@ class GlobusAPI {
             // Handle process exit
             child.on('exit', (code, signal) => {
                 clearTimeout(timeoutId);
-                console.log('[GlobusAPI] loginWithSpawn: Process exited with code:', code, 'signal:', signal);
+                globusApiVLog('[GlobusAPI] loginWithSpawn: Process exited with code:', code, 'signal:', signal);
                 
                 // Clear process reference
                 if (this._loginProcess === child) {
@@ -681,7 +691,7 @@ class GlobusAPI {
                 
                 // If promise was already resolved (URL found), just clean up
                 if (promiseResolved) {
-                    console.log('[GlobusAPI] loginWithSpawn: Process exited but promise already resolved, just cleaning up');
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Process exited but promise already resolved, just cleaning up');
                     return;
                 }
                 
@@ -692,7 +702,7 @@ class GlobusAPI {
                 if (urlFound) {
                     const urlMatch = combinedOutput.match(/https?:\/\/[^\s\)]+/);
                     if (urlMatch && !promiseResolved) {
-                        console.log('[GlobusAPI] loginWithSpawn: WARNING - URL found but promise not resolved, resolving now');
+                        globusApiVLog('[GlobusAPI] loginWithSpawn: WARNING - URL found but promise not resolved, resolving now');
                         promiseResolved = true;
                         
                         // Extract access code from full output if not already found
@@ -739,7 +749,7 @@ class GlobusAPI {
                             hasConnectionWarning: combinedOutput.includes('ConnectionError') || combinedOutput.includes('Connection'),
                             isTimeout: false
                         }];
-                        console.log('[GlobusAPI] loginWithSpawn: Resolving from exit handler with URL:', urlMatch[0], 'code:', accessCode || 'none');
+                        globusApiVLog('[GlobusAPI] loginWithSpawn: Resolving from exit handler with URL:', urlMatch[0], 'code:', accessCode || 'none');
                         resolve(resolveValue);
                         return;
                     }
@@ -747,7 +757,7 @@ class GlobusAPI {
                 
                 // If no URL found, check if it's a connection error
                 if (combinedOutput.includes('ConnectionError') || combinedOutput.includes('Connection')) {
-                    console.log('[GlobusAPI] loginWithSpawn: Connection error detected in output');
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Connection error detected in output');
                     if (!promiseResolved) {
                         promiseResolved = true;
                         const resolveValue = [false, {
@@ -756,7 +766,7 @@ class GlobusAPI {
                             stdout: stdout,
                             stderr: stderr
                         }];
-                        console.log('[GlobusAPI] loginWithSpawn: Resolving with connection error:', resolveValue);
+                        globusApiVLog('[GlobusAPI] loginWithSpawn: Resolving with connection error:', resolveValue);
                         resolve(resolveValue);
                     }
                     return;
@@ -765,19 +775,19 @@ class GlobusAPI {
                 // No URL found - return error
                 if (!promiseResolved) {
                     promiseResolved = true;
-                    console.log('[GlobusAPI] loginWithSpawn: No URL found in output');
-                    console.log('[GlobusAPI] loginWithSpawn: urlFound flag:', urlFound);
-                    console.log('[GlobusAPI] loginWithSpawn: Combined output length:', combinedOutput.length);
-                    console.log('[GlobusAPI] loginWithSpawn: Stdout length:', stdout.length);
-                    console.log('[GlobusAPI] loginWithSpawn: Stderr length:', stderr.length);
-                    console.log('[GlobusAPI] loginWithSpawn: Combined output (first 500 chars):', combinedOutput.substring(0, 500));
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: No URL found in output');
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: urlFound flag:', urlFound);
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Combined output length:', combinedOutput.length);
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Stdout length:', stdout.length);
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Stderr length:', stderr.length);
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Combined output (first 500 chars):', combinedOutput.substring(0, 500));
                     const resolveValue = [false, {
                         message: 'Login command completed but no authentication URL was found. Please try again.',
                         stdout: stdout,
                         stderr: stderr,
                         combinedOutput: combinedOutput
                     }];
-                    console.log('[GlobusAPI] loginWithSpawn: Resolving with error (no URL):', resolveValue);
+                    globusApiVLog('[GlobusAPI] loginWithSpawn: Resolving with error (no URL):', resolveValue);
                     resolve(resolveValue);
                 }
             });
@@ -785,7 +795,7 @@ class GlobusAPI {
             // Handle process errors
             child.on('error', (error) => {
                 clearTimeout(timeoutId);
-                console.log('[GlobusAPI] loginWithSpawn: Process error:', error);
+                globusApiVLog('[GlobusAPI] loginWithSpawn: Process error:', error);
                 if (this._loginProcess === child) {
                     this._loginProcess = null;
                 }
@@ -798,15 +808,15 @@ class GlobusAPI {
     }
     
     async submitAuthorizationCode(code) {
-        console.log('[GlobusAPI] submitAuthorizationCode() called with code:', code ? code.substring(0, 4) + '...' : 'null');
+        globusApiVLog('[GlobusAPI] submitAuthorizationCode() called with code:', code ? code.substring(0, 4) + '...' : 'null');
         
         if (!this._loginProcess) {
-            console.log('[GlobusAPI] submitAuthorizationCode: No active login process');
+            globusApiVLog('[GlobusAPI] submitAuthorizationCode: No active login process');
             return [false, { message: 'No active login process. Please start login again.' }];
         }
         
         if (this._loginProcess.killed) {
-            console.log('[GlobusAPI] submitAuthorizationCode: Login process has been killed');
+            globusApiVLog('[GlobusAPI] submitAuthorizationCode: Login process has been killed');
             this._loginProcess = null;
             return [false, { message: 'Login process has ended. Please start login again.' }];
         }
@@ -820,13 +830,13 @@ class GlobusAPI {
             const stdoutHandler = (data) => {
                 const chunk = data.toString();
                 stdout += chunk;
-                console.log('[GlobusAPI] submitAuthorizationCode: stdout chunk:', chunk.substring(0, 200));
+                globusApiVLog('[GlobusAPI] submitAuthorizationCode: stdout chunk:', chunk.substring(0, 200));
             };
             
             const stderrHandler = (data) => {
                 const chunk = data.toString();
                 stderr += chunk;
-                console.log('[GlobusAPI] submitAuthorizationCode: stderr chunk:', chunk.substring(0, 200));
+                globusApiVLog('[GlobusAPI] submitAuthorizationCode: stderr chunk:', chunk.substring(0, 200));
             };
             
             // Attach handlers if not already attached
@@ -840,7 +850,7 @@ class GlobusAPI {
             // Handle process exit after code submission
             const exitHandler = (code, signal) => {
                 exitCode = code;
-                console.log('[GlobusAPI] submitAuthorizationCode: Process exited with code:', code, 'signal:', signal);
+                globusApiVLog('[GlobusAPI] submitAuthorizationCode: Process exited with code:', code, 'signal:', signal);
                 
                 const combinedOutput = stdout + stderr;
                 
@@ -854,7 +864,7 @@ class GlobusAPI {
                         combinedOutput.includes('logged in') ||
                         combinedOutput.includes('authenticated') ||
                         combinedOutput.length === 0) { // Sometimes success has no output
-                        console.log('[GlobusAPI] submitAuthorizationCode: Authentication successful');
+                        globusApiVLog('[GlobusAPI] submitAuthorizationCode: Authentication successful');
                         resolve([true, {
                             message: 'Authentication successful',
                             stdout: stdout,
@@ -862,7 +872,7 @@ class GlobusAPI {
                         }]);
                     } else {
                         // Exit code 0 but unclear output
-                        console.log('[GlobusAPI] submitAuthorizationCode: Exit code 0 but unclear output');
+                        globusApiVLog('[GlobusAPI] submitAuthorizationCode: Exit code 0 but unclear output');
                         resolve([true, {
                             message: 'Code submitted. Please check authentication status.',
                             stdout: stdout,
@@ -871,7 +881,7 @@ class GlobusAPI {
                     }
                 } else {
                     // Non-zero exit code - likely failure
-                    console.log('[GlobusAPI] submitAuthorizationCode: Authentication failed, exit code:', code);
+                    globusApiVLog('[GlobusAPI] submitAuthorizationCode: Authentication failed, exit code:', code);
                     resolve([false, {
                         message: 'Authentication failed. Please check the code and try again.',
                         exitCode: code,
@@ -887,23 +897,23 @@ class GlobusAPI {
             
             // Write code to stdin
             try {
-                console.log('[GlobusAPI] submitAuthorizationCode: Writing code to stdin');
+                globusApiVLog('[GlobusAPI] submitAuthorizationCode: Writing code to stdin');
                 this._loginProcess.stdin.write(code + '\n', (err) => {
                     if (err) {
-                        console.log('[GlobusAPI] submitAuthorizationCode: Error writing to stdin:', err);
+                        globusApiVLog('[GlobusAPI] submitAuthorizationCode: Error writing to stdin:', err);
                         this._loginProcess = null;
                         resolve([false, {
                             message: 'Failed to submit code: ' + err.message,
                             error: err
                         }]);
                     } else {
-                        console.log('[GlobusAPI] submitAuthorizationCode: Code written to stdin, closing stdin');
+                        globusApiVLog('[GlobusAPI] submitAuthorizationCode: Code written to stdin, closing stdin');
                         // Close stdin to signal end of input
                         this._loginProcess.stdin.end();
                     }
                 });
             } catch (error) {
-                console.log('[GlobusAPI] submitAuthorizationCode: Exception writing to stdin:', error);
+                globusApiVLog('[GlobusAPI] submitAuthorizationCode: Exception writing to stdin:', error);
                 this._loginProcess = null;
                 resolve([false, {
                     message: 'Failed to submit code: ' + error.message,
@@ -916,9 +926,11 @@ class GlobusAPI {
     async login(options = {}) {
         // Robust login flow:
         // 1) Preflight whoami: if authenticated, return alreadyAuthenticated.
-        // 2) Otherwise, run interactive login spawn (keeps process alive for code submission).\n+        // 3) Postflight whoami: if authenticated after a \"failure\", treat as authenticated and return success.\n+        console.log('[GlobusAPI] ===== login() called =====');
-        console.log('[GlobusAPI] login(): options:', options);
-        console.log('[GlobusAPI] Current _loginProcess state:', this._loginProcess ? 'exists' : 'null');
+        // 2) Otherwise, run interactive login spawn (keeps process alive for code submission).
+        // 3) Postflight whoami: if authenticated after a "failure", treat as authenticated and return success.
+        globusApiVLog('[GlobusAPI] ===== login() called =====');
+        globusApiVLog('[GlobusAPI] login(): options:', options);
+        globusApiVLog('[GlobusAPI] Current _loginProcess state:', this._loginProcess ? 'exists' : 'null');
 
         try {
             const pre = await this.getAuthStatus();
@@ -932,9 +944,9 @@ class GlobusAPI {
                 };
             }
 
-            console.log('[GlobusAPI] login(): Not authenticated, calling loginWithSpawn()...');
+            globusApiVLog('[GlobusAPI] login(): Not authenticated, calling loginWithSpawn()...');
             const result = await this.loginWithSpawn(options);
-            console.log('[GlobusAPI] login(): loginWithSpawn returned (legacy tuple):', {
+            globusApiVLog('[GlobusAPI] login(): loginWithSpawn returned (legacy tuple):', {
                 result0: result?.[0],
                 hasUrl: !!result?.[1]?.url,
                 hasAccessCode: !!result?.[1]?.access_code,
@@ -997,7 +1009,7 @@ class GlobusAPI {
         } catch (error) {
             return { ok: false, isAuthenticated: false, classification: 'unknownError', message: error.message || 'Login failed unexpectedly' };
         } finally {
-            console.log('[GlobusAPI] ===== login() complete =====');
+            globusApiVLog('[GlobusAPI] ===== login() complete =====');
         }
     }
 
@@ -1143,9 +1155,9 @@ class GlobusAPI {
             return null;
         }
         
-        console.log('[GlobusAPI] executeCommandStream: Starting streaming command execution');
-        console.log('[GlobusAPI] executeCommandStream: Args:', args);
-        console.log('[GlobusAPI] executeCommandStream: Use JSON format:', useJsonFormat);
+        globusApiVLog('[GlobusAPI] executeCommandStream: Starting streaming command execution');
+        globusApiVLog('[GlobusAPI] executeCommandStream: Args:', args);
+        globusApiVLog('[GlobusAPI] executeCommandStream: Use JSON format:', useJsonFormat);
         
         // Build command args
         const commandArgs = [...args];
@@ -1156,7 +1168,7 @@ class GlobusAPI {
         // Prepare environment - start with process.env
         const finalEnv = this.buildEnv(additionalEnv);
         if (this._disableSslVerification) {
-            console.log('[GlobusAPI] executeCommandStream: SSL verification disabled');
+            globusApiVLog('[GlobusAPI] executeCommandStream: SSL verification disabled');
         }
         
         let stdout = '';
@@ -1164,7 +1176,7 @@ class GlobusAPI {
         let processExited = false;
         let stderrBuffer = ''; // Buffer for incomplete stderr lines
         
-        console.log('[GlobusAPI] executeCommandStream: Spawning process with args:', commandArgs);
+        globusApiVLog('[GlobusAPI] executeCommandStream: Spawning process with args:', commandArgs);
         
         const child = spawn(this._pathToGlobus, commandArgs, {
             env: finalEnv,
@@ -1176,7 +1188,7 @@ class GlobusAPI {
         child.stdout.on('data', (data) => {
             const chunk = data.toString();
             stdout += chunk;
-            console.log('[GlobusAPI] executeCommandStream: stdout chunk:', chunk.substring(0, 200));
+            globusApiVLog('[GlobusAPI] executeCommandStream: stdout chunk:', chunk.substring(0, 200));
             if (outputCallbacks.onStdout) {
                 outputCallbacks.onStdout(chunk);
             }
@@ -1186,7 +1198,7 @@ class GlobusAPI {
         child.stderr.on('data', (data) => {
             const chunk = data.toString();
             stderr += chunk;
-            console.log('[GlobusAPI] executeCommandStream: stderr chunk:', chunk.substring(0, 200));
+            globusApiVLog('[GlobusAPI] executeCommandStream: stderr chunk:', chunk.substring(0, 200));
             
             // Add chunk to buffer
             stderrBuffer += chunk;
@@ -1218,7 +1230,7 @@ class GlobusAPI {
             if (processExited) return;
             processExited = true;
             
-            console.log('[GlobusAPI] executeCommandStream: Process exited with code:', code, 'signal:', signal);
+            globusApiVLog('[GlobusAPI] executeCommandStream: Process exited with code:', code, 'signal:', signal);
             
             // Flush any remaining stderr buffer
             if (stderrBuffer && outputCallbacks.onStderr) {
@@ -1243,7 +1255,7 @@ class GlobusAPI {
             if (processExited) return;
             processExited = true;
             
-            console.log('[GlobusAPI] executeCommandStream: Process error:', error);
+            globusApiVLog('[GlobusAPI] executeCommandStream: Process error:', error);
             
             if (outputCallbacks.onError) {
                 outputCallbacks.onError(error);
@@ -1254,12 +1266,12 @@ class GlobusAPI {
     }
 
     setDisableSslVerification(disable) {
-        console.log('[GlobusAPI] setDisableSslVerification() called with:', disable);
+        globusApiVLog('[GlobusAPI] setDisableSslVerification() called with:', disable);
         this._disableSslVerification = disable;
         if (disable) {
-            console.log('[GlobusAPI] SSL verification will be disabled for all globus-cli processes (GLOBUS_SDK_VERIFY_SSL=false)');
+            globusApiVLog('[GlobusAPI] SSL verification will be disabled for all globus-cli processes (GLOBUS_SDK_VERIFY_SSL=false)');
         } else {
-            console.log('[GlobusAPI] SSL verification will be enabled (default behavior)');
+            globusApiVLog('[GlobusAPI] SSL verification will be enabled (default behavior)');
         }
     }
 }

@@ -6,13 +6,21 @@ export const ESM_LOGIN_SUCCESS = 'ESM_LOGIN_SUCCESS';
 export const ESM_LOGIN_ERROR = 'ESM_LOGIN_ERROR';
 export const ESM_LOGOUT = 'ESM_LOGOUT';
 export const ESM_LOGOUT_SUCCESS = 'ESM_LOGOUT_SUCCESS';
+// Search criteria rows (accession / optional de-ID / optional stain)
+export const ESM_SET_SEARCH_ROWS = 'ESM_SET_SEARCH_ROWS';
+export const ESM_ADD_SEARCH_ROW = 'ESM_ADD_SEARCH_ROW';
+export const ESM_UPDATE_SEARCH_ROW = 'ESM_UPDATE_SEARCH_ROW';
+export const ESM_REMOVE_SEARCH_ROW = 'ESM_REMOVE_SEARCH_ROW';
+
 export const ESM_SEARCH = 'ESM_SEARCH';
+export const ESM_SEARCH_BATCH = 'ESM_SEARCH_BATCH';
 export const ESM_SEARCH_SUCCESS = 'ESM_SEARCH_SUCCESS';
 export const ESM_SEARCH_ERROR = 'ESM_SEARCH_ERROR';
 export const ESM_SET_LOADING = 'ESM_SET_LOADING';
 
 // Results + selection + mapping config
 export const ESM_SET_RESULTS = 'ESM_SET_RESULTS';
+export const ESM_SET_SLIDES_BY_ACCESSION = 'ESM_SET_SLIDES_BY_ACCESSION';
 export const ESM_CLEAR_RESULTS = 'ESM_CLEAR_RESULTS';
 export const ESM_SET_SELECTION = 'ESM_SET_SELECTION';
 export const ESM_SET_MAPPING_CONFIG = 'ESM_SET_MAPPING_CONFIG';

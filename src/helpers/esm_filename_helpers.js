@@ -13,9 +13,22 @@ export function getAccessionFromBarcodeId(barcodeId) {
   return s.split(";")[0] || "";
 }
 
-export function computeAccessionToken(slide, mappingConfig) {
+/** Stable id for eSM staging grid rows and selection (matches prior normalizeSlidesToRows). */
+export function getEsmStagingSlideId(slide) {
+  const accession = getAccessionFromBarcodeId(slide?.BarcodeId);
+  return (slide?.ImageId ?? slide?.SlideId ?? `${accession}:${slide?.SlideNum ?? ""}:${slide?.CompressedFileLocation ?? ""}`).toString();
+}
+
+/**
+ * @param {object | null | undefined} criteriaRow — search criteria row (deid used in manual mode)
+ */
+export function computeAccessionToken(slide, mappingConfig, criteriaRow) {
   const mode = mappingConfig?.accessionMode || "original";
-  if (mode === "manual") return safeToken(mappingConfig?.accessionToken || "");
+  if (mode === "manual") {
+    const rowDeid = criteriaRow && String(criteriaRow.deid ?? "").trim();
+    if (rowDeid) return safeToken(rowDeid);
+    return safeToken(mappingConfig?.accessionToken || "");
+  }
   if (mode === "auto") {
     // Simple deterministic token (no PHI) derived from ImageId/SlideId.
     // If you want something else (e.g., sequential CASE001, UUID short),

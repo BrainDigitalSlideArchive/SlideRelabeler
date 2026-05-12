@@ -1,0 +1,343 @@
+@import './esm_light_panel_shared';
+
+.esm-light-panel__card {
+  background: $esm-panel-bg;
+  color: $esm-panel-text;
+  border: 1px solid $esm-panel-border;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  padding: 0.75rem 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.esm-light-panel__card-header {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: $esm-panel-text;
+}
+
+.esm-light-panel__subsection-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: $esm-panel-text;
+  letter-spacing: 0.02em;
+}
+
+.esm-light-panel__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: $esm-panel-muted;
+}
+
+.esm-light-panel__divider {
+  border: none;
+  border-top: 1px solid $esm-row-border;
+  margin: 0.35rem 0;
+}
+
+.esm-light-panel__actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.esm-light-panel__field-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.esm-light-panel__field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem 1rem;
+
+  &--grow {
+    align-items: stretch;
+  }
+}
+
+.esm-light-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.esm-light-panel__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $esm-panel-text;
+}
+
+.esm-light-panel__select {
+  appearance: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0 2rem 0 0.45rem;
+  border: 1px solid $esm-input-border;
+  border-radius: 4px;
+  background-color: #fff;
+  color: $esm-panel-text;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+  cursor: pointer;
+  max-width: 100%;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background-color: #f1f5f9;
+  }
+
+  &:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 1px;
+  }
+}
+
+.esm-light-panel__checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.esm-light-panel__check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: $esm-panel-text;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 0.95rem;
+    height: 0.95rem;
+    accent-color: $esm-primary;
+    cursor: pointer;
+  }
+
+  &:has(input:disabled) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.esm-light-panel__btn {
+  appearance: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 5px;
+  line-height: 1.2;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.esm-light-panel__btn--primary {
+  background: $esm-primary;
+  color: #fff;
+  border-color: $esm-primary;
+
+  &:hover:not(:disabled) {
+    background: $esm-primary-hover;
+    border-color: $esm-primary-hover;
+  }
+}
+
+.esm-light-panel__btn--secondary {
+  background: #fff;
+  color: $esm-panel-text;
+  border-color: $esm-input-border;
+
+  &:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+}
+
+.esm-light-panel__btn--outline {
+  background: #fff;
+  color: $esm-panel-text;
+  border-color: $esm-input-border;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.75rem;
+
+  &:hover:not(:disabled) {
+    background: #f8fafc;
+  }
+}
+
+.esm-light-panel__btn--danger {
+  background: #fff;
+  color: $esm-remove;
+  border: 1px solid $esm-remove-border;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.75rem;
+
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.06);
+  }
+}
+
+.esm-light-panel__rule-card {
+  border: 1px solid $esm-panel-border;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  background: #fafbfc;
+}
+
+.esm-light-panel__rule-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.esm-light-panel__rule-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $esm-panel-text;
+}
+
+.esm-light-panel__rule-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.esm-light-panel__rule-edit {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.esm-light-panel__step-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.esm-light-panel__inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: $esm-panel-text;
+  white-space: nowrap;
+
+  input[type='checkbox'] {
+    accent-color: $esm-primary;
+  }
+}
+
+.esm-light-panel__scroll {
+  max-height: min(42vh, 18rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.15rem;
+}
+
+// Slim labeled + compact control-only InputText inside light cards
+.esm-light-panel__card {
+  .InputText.InputText--onLight {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 0;
+
+    .InputText__label-row {
+      margin-bottom: 0.2rem;
+    }
+
+    .InputText__label-row .__label {
+      color: $esm-panel-text;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .InputText__control-row {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .InputText__control-row .__input-text {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 1.75rem;
+      height: 1.75rem;
+      padding: 0 0.45rem;
+      font-size: 0.8125rem;
+      box-sizing: border-box;
+      background-color: #fff;
+      color: $esm-panel-text;
+      border: 1px solid $esm-input-border;
+      border-radius: 4px;
+
+      &::placeholder {
+        color: $esm-placeholder;
+      }
+
+      &._error {
+        border-color: $esm-remove;
+        box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
+      }
+
+      &._disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background-color: #f1f5f9;
+      }
+    }
+  }
+}
+
+.esm-output-settings {
+  width: 100%;
+  min-width: 0;
+}
+
+.esm-staging-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.esm-staging-panel__grid-wrap {
+  border: 1px solid $esm-panel-border;
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 12rem;
+  background: $esm-panel-bg;
+}

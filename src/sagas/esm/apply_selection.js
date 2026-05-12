@@ -12,9 +12,11 @@ import {
   buildBaseFilename,
   applyDuplicateStrategy,
   getAccessionFromBarcodeId,
+  getEsmStagingSlideId,
 } from "../../helpers/esm_filename_helpers";
 
 import { applyRules, getSelectedTransformRules } from "../../helpers/esm_transform_rules";
+import { buildStagingSlides } from "../../helpers/esm_results_filter";
 
 function getFileExtFromPath(p) {
   const s = (p ?? "").toString();
@@ -31,9 +33,8 @@ function* slideToFileRow(slide, output_dir, mappedRename) {
   const { filename, directory } = return_filename_dir_from_path(file_path);
   const path_sep = return_separator();
 
-  // Use the same robust extension extraction as getFileExtFromPath for consistency
-  const extWithDot = getFileExtFromPath(filename); // e.g. ".svs" or ""
-  const ext = extWithDot.slice(1); // "svs" or ""
+  const extWithDot = getFileExtFromPath(filename);
+  const ext = extWithDot.slice(1);
   const name = extWithDot ? filename.slice(0, filename.length - extWithDot.length) : filename;
 
   const source = {
@@ -41,7 +42,7 @@ function* slideToFileRow(slide, output_dir, mappedRename) {
     directory: directory,
     path: file_path,
     parsed: {
-      ext: extWithDot, // includes the dot or empty string
+      ext: extWithDot,
       dir: directory,
       base: filename,
       name: name,
@@ -69,7 +70,7 @@ function* slideToFileRow(slide, output_dir, mappedRename) {
     },
   };
 
-  file_row.__reserved.destinationDirectory = output_dir; // can be null
+  file_row.__reserved.destinationDirectory = output_dir;
   return file_row;
 }
 
@@ -77,39 +78,44 @@ export function* watch_apply_selection() {
   while (true) {
     yield take(esm_actions.ESM_APPLY_SELECTION);
 
-    const slides = yield select((state) => state.esm.results);
+    const searchRows = yield select((state) => state.esm.searchRows);
+    const slidesByAccession = yield select((state) => state.esm.slidesByAccession);
     const selectedIds = yield select((state) => state.esm.selectedIds);
     const mappingConfig = yield select((state) => state.esm.mappingConfig);
     const transformRules = yield select((state) => state.esm.transformRules);
     const selectedTransformRuleIds = yield select((state) => state.esm.selectedTransformRuleIds);
     const output_dir = yield select((state) => state.files.output_dir);
 
-    if (!Array.isArray(slides) || slides.length === 0 || !Array.isArray(selectedIds) || selectedIds.length === 0) {
+    const selectedRules = getSelectedTransformRules(transformRules, selectedTransformRuleIds);
+    const stagingRows = buildStagingSlides({
+      searchRows,
+      slidesByAccession,
+      mappingConfig,
+      transformRules,
+      selectedTransformRuleIds,
+    });
+
+    if (!Array.isArray(selectedIds) || selectedIds.length === 0 || stagingRows.length === 0) {
       continue;
     }
 
-    // Filter slides to selection (IDs align with ESMAgGrid normalize logic)
-    const selectedSlides = slides.filter((s) => {
-      const accession = getAccessionFromBarcodeId(s?.BarcodeId);
-      const id = (s?.ImageId ?? s?.SlideId ?? `${accession}:${s?.SlideNum ?? ""}:${s?.CompressedFileLocation ?? ""}`).toString();
-      return selectedIds.includes(id);
-    });
+    const selectedStaging = stagingRows.filter((r) => selectedIds.includes(r?.__esm?.id));
 
-    if (selectedSlides.length === 0) continue;
+    if (selectedStaging.length === 0) continue;
 
-    // Build base filenames for duplicate handling across the selection.
-    const selectedRules = getSelectedTransformRules(transformRules, selectedTransformRuleIds);
-    const filenameItems = selectedSlides.map((s) => {
-      const accessionToken = computeAccessionToken(s, mappingConfig);
+    const filenameItems = selectedStaging.map((row) => {
+      const slide = row.__raw;
+      const criteriaRow = row.__esm?.criteriaRow;
+      const accessionToken = computeAccessionToken(slide, mappingConfig, criteriaRow);
       const baseName = buildBaseFilename(
-        s,
+        slide,
         accessionToken,
         mappingConfig,
         (value) => applyRules(value, selectedRules),
       );
-      const ext = getFileExtFromPath(s?.CompressedFileLocation);
-      const id = (s?.ImageId ?? s?.SlideId ?? `${getAccessionFromBarcodeId(s?.BarcodeId)}:${s?.SlideNum ?? ""}:${s?.CompressedFileLocation ?? ""}`).toString();
-      return { id, slide: s, baseName, ext };
+      const ext = getFileExtFromPath(slide?.CompressedFileLocation);
+      const id = getEsmStagingSlideId(slide);
+      return { id, slide, baseName, ext };
     });
 
     const deduped = applyDuplicateStrategy(
@@ -120,14 +126,13 @@ export function* watch_apply_selection() {
     const renameById = new Map();
     for (const it of deduped) {
       const base = it.finalBaseName || it.baseName || "";
-      renameById.set(it.id, base || "");  // Store stem only, no extension
+      renameById.set(it.id, base || "");
     }
 
     const file_rows = [];
     for (const it of filenameItems) {
       const rename = renameById.get(it.id) || "";
-      // If duplicateStrategy skipped the slide, it won't be present in renameById.
-      if (!renameById.has(it.id) && (mappingConfig?.duplicateStrategy === "skip-duplicates")) {
+      if (!renameById.has(it.id) && mappingConfig?.duplicateStrategy === "skip-duplicates") {
         continue;
       }
       const row = yield call(slideToFileRow, it.slide, output_dir, rename);
@@ -136,13 +141,10 @@ export function* watch_apply_selection() {
 
     if (file_rows.length > 0) {
       yield put({ type: files_actions.ADD_FILE_ROWS, payload: file_rows });
-      // Trigger metadata processing (thumbnails, file size, etc.)
       yield put({ type: files_actions.UPDATE_FILES_WITHOUT_METADATA });
     }
 
-    // Clear staging state but keep modal open for continued searching while processing.
     yield put({ type: esm_actions.ESM_CLEAR_RESULTS });
     yield put({ type: modal_actions.TOGGLE_MODAL, payload: { type: "esm" } });
   }
 }
-

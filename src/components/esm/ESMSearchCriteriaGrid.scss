@@ -1,0 +1,246 @@
+// Light sub-panel for eSM criteria (contrasts with dark modal chrome)
+@import './esm_light_panel_shared';
+
+.esm-search-criteria {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.esm-search-criteria__panel {
+  background: $esm-panel-bg;
+  color: $esm-panel-text;
+  border: 1px solid $esm-panel-border;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  padding: 0.75rem 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.esm-search-criteria__panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.esm-search-criteria__panel-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.esm-search-criteria__panel-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.esm-search-criteria__hint-panel {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: $esm-panel-muted;
+}
+
+.esm-search-criteria__import-error {
+  font-size: 0.8125rem;
+  color: $esm-remove;
+  line-height: 1.35;
+}
+
+.esm-search-criteria__hidden-file {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.esm-search-criteria__table {
+  border: 1px solid $esm-panel-border;
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+$esm-cols: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+
+.esm-search-criteria__thead {
+  display: grid;
+  grid-template-columns: $esm-cols;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.55rem;
+  background: $esm-thead-bg;
+  border-bottom: 1px solid $esm-row-border;
+}
+
+.esm-search-criteria__th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: $esm-panel-text;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.esm-search-criteria__th--action {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  padding: 0;
+}
+
+.esm-search-criteria__body-scroll {
+  max-height: min(50vh, 22rem);
+  overflow-y: auto;
+  background: $esm-panel-bg;
+}
+
+.esm-search-criteria__data-row {
+  display: grid;
+  grid-template-columns: $esm-cols;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid $esm-row-border;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.esm-search-criteria__cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+
+  &--action {
+    justify-content: flex-end;
+    width: 4.5rem;
+    min-width: 4.5rem;
+  }
+}
+
+// Slim full-width inputs inside the light panel (override global compact widths)
+.esm-search-criteria__panel .esm-search-criteria__cell {
+  .InputText.InputText--onLight.InputText--controlOnly.InputText--compact {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 0;
+    align-self: stretch;
+
+    .InputText__control-row {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .InputText__control-row .__input-text {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      height: 1.75rem;
+      min-height: 1.75rem;
+      padding: 0 0.45rem;
+      font-size: 0.8125rem;
+      box-sizing: border-box;
+      margin-left: 0;
+      flex: 1 1 auto;
+      background-color: #fff;
+      color: $esm-panel-text;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+
+      &::placeholder {
+        color: #94a3b8;
+      }
+
+      &._error {
+        border-color: $esm-remove;
+        box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
+      }
+
+      &._disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background-color: #f1f5f9;
+      }
+    }
+  }
+}
+
+.esm-search-criteria__btn-remove {
+  appearance: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.28rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid $esm-remove-border;
+  background: #fff;
+  color: $esm-remove;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.06);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.esm-search-criteria__btn {
+  appearance: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 5px;
+  line-height: 1.2;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.esm-search-criteria__btn--primary {
+  background: $esm-primary;
+  color: #fff;
+  border-color: $esm-primary;
+
+  &:hover:not(:disabled) {
+    background: $esm-primary-hover;
+    border-color: $esm-primary-hover;
+  }
+}
+
+.esm-search-criteria__btn--secondary {
+  background: #fff;
+  color: $esm-panel-text;
+  border-color: #cbd5e1;
+
+  &:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+}
+
+.esm-search-criteria__panel-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding-top: 0.15rem;
+}

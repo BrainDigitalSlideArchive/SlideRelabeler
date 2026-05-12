@@ -15,6 +15,9 @@ const uploadRouting_reducer = createReducer(default_state, (builder) => {
         const v = parseInt(p.max_local_pending, 10);
         draft.max_local_pending =
           Number.isFinite(v) && v >= 1 && v <= 50 ? v : 2;
+        const gp = parseInt(p.max_globus_parallel_uploads, 10);
+        draft.max_globus_parallel_uploads =
+          Number.isFinite(gp) && gp >= 1 && gp <= 16 ? gp : 4;
         draft.destination = p.destination === 'globus' ? 'globus' : 'dsa';
       });
     })
@@ -42,6 +45,12 @@ const uploadRouting_reducer = createReducer(default_state, (builder) => {
       return produce(state, (draft) => {
         const v = parseInt(action.payload, 10);
         if (Number.isFinite(v) && v >= 1 && v <= 50) draft.max_local_pending = v;
+      });
+    })
+    .addCase(upload_routing_actions.SET_MAX_GLOBUS_PARALLEL_UPLOADS, (state, action) => {
+      return produce(state, (draft) => {
+        const v = parseInt(action.payload, 10);
+        if (Number.isFinite(v) && v >= 1 && v <= 16) draft.max_globus_parallel_uploads = v;
       });
     })
     .addCase(upload_routing_actions.SET_UPLOAD_DESTINATION, (state, action) => {
