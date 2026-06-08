@@ -7,10 +7,10 @@ const { execSync } = require('child_process');
 let extraResource = [];
 
 if(os.platform() === 'darwin') {
-  extraResource = ['./dist/engine.app', './dist/globus-cli.app'];
+  extraResource = ['./dist/engine.app', './dist/globus_cli.app'];
 }
 else {
-  extraResource = ['./dist/engine', './dist/globus-cli'];
+  extraResource = ['./dist/engine', './dist/globus_cli'];
 }
 
 module.exports = {
