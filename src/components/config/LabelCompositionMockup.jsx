@@ -27,12 +27,16 @@ export default function LabelCompositionMockup({
       <div className="label-composition-mockup__card">
         <div
           id="label-mockup-text"
+          data-state={addText ? 'on' : 'off'}
+          aria-label={`Label text zone: ${textDisplay}`}
           className={`label-composition-mockup__zone label-composition-mockup__zone--text ${addText ? 'label-composition-mockup__zone--on' : 'label-composition-mockup__zone--off'}`}
         >
           {textDisplay}
         </div>
         <div
           id="label-mockup-icon"
+          data-state={addIcon ? 'on' : 'off'}
+          aria-label={`Label image zone: ${addIcon && iconPath ? truncate(iconPath.split(/[/\\]/).pop(), 24) : 'Image'}`}
           className={`label-composition-mockup__zone label-composition-mockup__zone--icon ${addIcon ? 'label-composition-mockup__zone--on' : 'label-composition-mockup__zone--off'}`}
         >
           {addIcon && iconPath ? (
@@ -45,6 +49,8 @@ export default function LabelCompositionMockup({
         </div>
         <div
           id="label-mockup-qr"
+          data-state={addQr ? 'on' : 'off'}
+          aria-label={`Label QR zone: ${qrDisplay}`}
           className={`label-composition-mockup__zone label-composition-mockup__zone--qr ${addQr ? 'label-composition-mockup__zone--on' : 'label-composition-mockup__zone--off'}`}
         >
           <div className="label-composition-mockup__qr-box">{qrDisplay}</div>

@@ -488,12 +488,59 @@
             font-style: italic;
           }
 
+          .label-config-section {
+            background: $surface-elevated;
+            color: $on-surface;
+            border-radius: 0.5em;
+            padding: 1em;
+            box-shadow: 0 2px 8px rgba($black, 0.15);
+
+            .__config-control-section-title,
+            .__config-control-section-description,
+            .label-composition-panel__heading,
+            .label-composition-mockup__title,
+            .__config-control-subsection-title,
+            .__config-control-subsection-description {
+              color: $on-surface;
+            }
+
+            .__config-control-section-description,
+            .label-composition-controls__helper,
+            .__config-control-subsection-description {
+              color: $on-surface-muted;
+            }
+
+            .Checkbox label {
+              color: $on-surface;
+            }
+
+            .label-content-builder__advanced-toggle {
+              color: $accent-label;
+            }
+
+            .label-thumbnail-preview .__config-control-subsection-title,
+            .label-thumbnail-preview__placeholder {
+              color: $on-surface-muted;
+            }
+
+            .label-composition-mockup {
+              @media (min-width: 721px) {
+                border-left-color: $border-surface;
+              }
+            }
+
+            .label-composition-controls__row:has(.Checkbox:focus-within) {
+              border-left-color: $accent-label;
+            }
+          }
+
           .label-composition-panel {
             margin-bottom: 1.5em;
 
             &__heading {
               font-weight: bold;
               margin-bottom: 0.75em;
+              margin-top: 0.5em;
             }
 
             &__columns {
@@ -517,29 +564,48 @@
               display: flex;
               flex-direction: column;
               gap: 0.25em;
+              padding-left: 0.25em;
+              border-left: 3px solid transparent;
+              transition: border-color 0.2s ease;
+
+              &:has(.Checkbox:focus-within) {
+                border-left-color: rgba($beige, 0.5);
+              }
             }
 
             &__helper {
               font-size: 0.85em;
               font-style: italic;
               margin-left: 2.5em;
-              color: $black;
-              opacity: 0.85;
+              color: $on-modal-muted;
+              opacity: 1;
             }
           }
 
+          .label-config-section .label-composition-controls__helper {
+            color: $on-surface-muted;
+          }
+
           .label-composition-mockup {
+            @media (min-width: 721px) {
+              padding-left: 1em;
+              border-left: 1px solid rgba($beige, 0.25);
+            }
+
             &__title {
               font-size: 0.9em;
               font-weight: bold;
               margin-bottom: 0.5em;
+              color: $on-modal-muted;
             }
 
             &__card {
-              border: 2px solid $light-blue;
+              border: 2px solid $border-surface-strong;
               border-radius: 0.5em;
               padding: 0.75em;
-              background-color: $beige;
+              background-color: $surface-elevated;
+              color: $on-surface;
+              box-shadow: 0 1px 4px rgba($black, 0.12);
               min-height: 10em;
               display: flex;
               flex-direction: column;
@@ -551,22 +617,29 @@
               padding: 0.5em;
               text-align: center;
               font-size: 0.9em;
-              transition: opacity 0.2s ease, border-color 0.2s ease;
+              transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 
               &--off {
-                opacity: 0.35;
-                border: 1px dashed $light-blue;
-                color: $black;
+                opacity: 1;
+                border: 1.5px dashed $on-surface-muted;
+                background: transparent;
+                color: $on-surface-muted;
+                font-style: italic;
               }
 
               &--on {
-                opacity: 1;
-                border: 1px solid $blue;
-                background-color: rgba(255, 255, 255, 0.6);
+                border: 2px solid $accent-label;
+                background: #FFFFFF;
+                color: $on-surface;
+                font-style: normal;
               }
 
               &--text {
-                font-weight: bold;
+                min-height: 2em;
+
+                &.label-composition-mockup__zone--on {
+                  font-weight: 700;
+                }
               }
 
               &--icon {
@@ -585,22 +658,53 @@
             &__qr-box {
               width: 4em;
               height: 4em;
-              border: 1px solid $black;
+              border: 1px solid $on-surface-muted;
               display: flex;
               align-items: center;
               justify-content: center;
               font-size: 0.75em;
               word-break: break-all;
               padding: 0.25em;
+              color: inherit;
+            }
+
+            &__zone--on &__qr-box {
+              border: 2px solid $on-surface;
+              background-image:
+                linear-gradient(45deg, rgba($black, 0.04) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba($black, 0.04) 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, rgba($black, 0.04) 75%),
+                linear-gradient(-45deg, transparent 75%, rgba($black, 0.04) 75%);
+              background-size: 8px 8px;
+              background-position: 0 0, 0 4px, 4px -4px, -4px 0;
             }
 
             &__icon-name {
               font-size: 0.85em;
+              color: inherit;
             }
           }
 
           .label-content-builder {
             margin-bottom: 1em;
+            background: $surface-elevated;
+            padding: 0.75em;
+            border-radius: 0.5em;
+            color: $on-surface;
+            border: 1px solid $border-surface;
+            box-shadow: 0 1px 3px rgba($black, 0.08);
+
+            .__config-control-subsection-title,
+            .__config-control-subsection-description,
+            .__config-control-subsection-row-label,
+            .__config-control-subsection-note-description {
+              color: $on-surface;
+            }
+
+            .__config-control-subsection-description,
+            .__config-control-subsection-note-description {
+              color: $on-surface-muted;
+            }
 
             &__field-list {
               display: flex;
@@ -612,6 +716,7 @@
               display: flex;
               align-items: center;
               gap: 4px;
+              color: $on-surface;
             }
 
             &__advanced-toggle {
@@ -621,6 +726,7 @@
               cursor: pointer;
               font-size: 0.9em;
               padding: 0;
+              color: $accent-label;
 
               &:disabled {
                 opacity: 0.5;
@@ -631,14 +737,44 @@
 
           .de-id-token-card {
             margin-bottom: 1em;
+            background: $surface-elevated;
+            padding: 0.75em;
+            border-radius: 0.5em;
+            color: $on-surface;
+            border: 1px solid $border-surface;
+            box-shadow: 0 1px 3px rgba($black, 0.08);
+
+            .__config-control-subsection-title,
+            .__config-control-subsection-description,
+            .__config-control-subsection-note-description {
+              color: $on-surface;
+            }
+
+            .__config-control-subsection-description,
+            .__config-control-subsection-note-description {
+              color: $on-surface-muted;
+            }
           }
 
           .label-config-preview {
             margin-top: 1em;
+            background: $surface-elevated;
+            padding: 0.75em;
+            border-radius: 0.5em;
+            color: $on-surface;
+            border: 1px solid $border-surface;
+            box-shadow: 0 1px 3px rgba($black, 0.08);
+
+            .__config-control-subsection-title {
+              color: $on-surface;
+            }
 
             &__banner {
-              background-color: $light-blue;
-              padding: 0.5em;
+              background-color: $surface-elevated;
+              color: $on-surface;
+              border: 1px solid $border-surface;
+              border-left: 4px solid $accent-label;
+              padding: 0.5em 0.75em;
               border-radius: 0.25em;
               margin-bottom: 0.75em;
               font-size: 0.9em;
@@ -654,33 +790,46 @@
             &__label {
               font-weight: bold;
               min-width: 7em;
+              color: $on-surface;
             }
 
             &__value {
               word-break: break-all;
+              font-weight: 600;
+              color: $on-surface;
             }
 
             &__warnings {
-              margin: 0.5em 0 0 1.25em;
+              margin: 0.5em 0 0 0;
+              padding: 0.5em 0.75em;
+              list-style: none;
               font-size: 0.9em;
-              color: darken($red, 10%);
+              background: $surface-elevated;
+              border: 1px solid $border-surface;
+              border-radius: 0.25em;
+              color: $surface-warning-text;
             }
           }
 
           .label-thumbnail-preview {
             margin-top: 1em;
 
+            .__config-control-subsection-title {
+              color: $on-modal-muted;
+            }
+
             &__image {
               max-width: 100%;
               max-height: 12em;
-              border: 1px solid $light-blue;
+              border: 2px solid $border-surface-strong;
               border-radius: 0.25em;
             }
 
             &__placeholder {
               font-style: italic;
               font-size: 0.9em;
-              opacity: 0.8;
+              color: $on-modal-muted;
+              opacity: 1;
             }
           }
         }

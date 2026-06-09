@@ -185,6 +185,7 @@ function ModalConfig(props) {
               Configure the generated label for deidentified files.
             </div>
 
+            <div className="label-config-section">
             <LabelCompositionPanel
               disabled={controlsDisabled}
               addText={label_config.add_text}
@@ -277,6 +278,7 @@ function ModalConfig(props) {
               filePath={previewFilePath}
               enabled={label_config.add_text || label_config.add_qr || label_config.add_icon}
             />
+            </div>
           </div>
           <div className={"__divider"} />
           <div className={"__config-control-section"}>
