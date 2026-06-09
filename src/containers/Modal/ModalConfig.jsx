@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from "react-redux";
 
 import * as config_actions from "../../actions/config";
@@ -10,7 +10,12 @@ import Dropdown from '../../components/controls/dropdown/Dropdown';
 import Button from '../../components/controls/button/Button';
 import { return_file_extension_from_path, return_filename_basename_from_filename } from "../../helpers/renderer_path_helpers";
 import { generate_dropdown_for_table_columns } from "../../helpers/fe_helpers";
-import TemplateAssemblyEditor from '../../components/config/TemplateAssemblyEditor';
+import { previewLabelStrings } from '../../helpers/label_config_preview';
+import LabelCompositionPanel from '../../components/config/LabelCompositionPanel';
+import LabelContentBuilder from '../../components/config/LabelContentBuilder';
+import DeIdTokenCard from '../../components/config/DeIdTokenCard';
+import LabelConfigPreview from '../../components/config/LabelConfigPreview';
+import LabelThumbnailPreview from '../../components/config/LabelThumbnailPreview';
 
 function ModalConfig(props) {
 
@@ -25,18 +30,13 @@ function ModalConfig(props) {
   const processing = useSelector(state => state.files.processing);
   const copy_config = useSelector(state => state.config.copy);
   const disable_changes = useSelector(state => state.files.disable_changes);
+  const file_rows = useSelector(state => state.files.file_rows);
+  const config = useSelector(state => state.config);
   const dsa = useSelector(state => state.dsa);
 
   const { api_auth } = dsa;
 
   const dispatch = useDispatch();
-
-  const qr_mode_options = [
-    { label: 'Encode Filename', value: 'user_defined', description: 'Use rename column featuring output filename' },
-    { label: 'Encode UUID', value: 'uuid', description: 'Use uuid value generated for file regardless of output filename. ' },
-    { label: 'JSON from columns', value: 'column_fields', description: 'Use base64 encoded JSON from selected columns.' },
-    { label: 'Single Column Value', value: 'column_field', description: 'Use text from a single column' },
-  ]
 
   const blocked_fields = useSelector(state => state.files.blocked_fields);
 
@@ -45,14 +45,33 @@ function ModalConfig(props) {
   const example_ext = return_file_extension_from_path(example_filename);
   const example_uuid = "acde070d-8c4c-4f0d-9d8a-162843c10333";
   const [rename, set_rename] = useState(example_basename);
+  const [previewRowSource, setPreviewRowSource] = useState('sample');
 
-  const exampleRow = {
+  const hasLoadedFiles = Array.isArray(file_rows) && file_rows.length > 0;
+  const firstFileRow = hasLoadedFiles ? file_rows[0] : null;
+  const previewFilePath = firstFileRow?.__reserved?.source?.path ?? null;
+
+  const sampleRow = useMemo(() => ({
     BlockId: 'B12',
     StainId: 'HE',
     SlideNum: '1',
     Accession: 'DEMO_ACC',
     __reserved: { uuid: example_uuid, rename: rename },
-  };
+  }), [rename, example_uuid]);
+
+  const activePreviewRow = useMemo(() => {
+    if (previewRowSource === 'first' && firstFileRow) return firstFileRow;
+    return sampleRow;
+  }, [previewRowSource, firstFileRow, sampleRow]);
+
+  const resolvedPreview = useMemo(
+    () => previewLabelStrings(config, activePreviewRow, {
+      usingSample: !hasLoadedFiles,
+    }),
+    [config, activePreviewRow, hasLoadedFiles],
+  );
+
+  const controlsDisabled = processing || disable_changes;
 
   function triggerRecompute() {
     dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING });
@@ -165,98 +184,98 @@ function ModalConfig(props) {
             <div className={"__config-control-section-description"}>
               Configure the generated label for deidentified files.
             </div>
-            <div className={"__config-control-section-group"}>
-              <div className={"__config-control-section-group"}>
-                <Checkbox disabled={processing || disable_changes} label={"Add Text"} checked={label_config.add_text} onClick={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_TEXT })} />
-                {(label_config.label_text_assembly?.mode || 'legacy') === 'legacy' && (
-                  <Dropdown disabled={processing || disable_changes || !label_config.add_text} multiSelect={false} items={column_options} label={"Column"} placeholder={"Select column"} selectedItems={label_config.text_column_field ? [label_config.text_column_field] : []} onSelect={(item) => dispatch({ type: config_actions.CHANGE_TEXT_COLUMN_FIELD, payload: item })} />
-                )}
-              </div>
-            </div>
-            <TemplateAssemblyEditor
-              title="Label text assembly"
-              description="Optional. When not legacy, overrides the column picker above."
-              assemblyConfig={label_config.label_text_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '_' }}
-              onChange={(cfg) => dispatch({ type: config_actions.SET_LABEL_TEXT_ASSEMBLY, payload: cfg })}
-              onRecompute={triggerRecompute}
-              columnOptions={column_options}
-              disabled={processing || disable_changes || !label_config.add_text}
-              exampleRow={exampleRow}
-              exampleDeidToken={naming_config?.accessionToken || 'CASE_DEMO'}
+
+            <LabelCompositionPanel
+              disabled={controlsDisabled}
+              addText={label_config.add_text}
+              addQr={label_config.add_qr}
+              addIcon={label_config.add_icon}
+              onToggleText={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_TEXT })}
+              onToggleQr={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_QR })}
+              onToggleIcon={() => dispatch({ type: config_actions.TOGGLE_ADD_ICON })}
+              previewText={resolvedPreview.labelText}
+              previewQr={resolvedPreview.qrPayload}
+              iconPath={label_config.icon_file?.source?.path}
             />
-            <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"Add icon"} checked={label_config.add_icon} onClick={() => dispatch({ type: config_actions.TOGGLE_ADD_ICON })} />
-              <Button disabled={processing || disable_changes || !label_config.add_icon} text={"Select icon (file)"} onClick={() => dispatch({ type: config_actions.SELECT_ICON_FILE })} result={label_config.icon_file && label_config.icon_file.source.path} />
-            </div>
-            <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"Add code QR"} checked={label_config.add_qr} onClick={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_QR })} />
-              {(label_config.qr_assembly?.mode || 'legacy') === 'legacy' && (
-                <Dropdown disabled={processing || disable_changes || !label_config.add_qr} items={qr_mode_options} show_selected_descriptions={true} placeholder={"QR mode"} selectedItems={[label_config.qr_mode]} onSelect={(item) => dispatch({ type: config_actions.CHANGE_QR_MODE, payload: item })} />
-              )}
-            </div>
-            <TemplateAssemblyEditor
-              title="QR content assembly"
-              description="Optional. When not legacy, overrides QR mode below. QR can encode any text, not only URLs."
-              assemblyConfig={label_config.qr_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '' }}
-              onChange={(cfg) => dispatch({ type: config_actions.SET_QR_ASSEMBLY, payload: cfg })}
-              onRecompute={triggerRecompute}
-              columnOptions={column_options}
-              disabled={processing || disable_changes || !label_config.add_qr}
-              exampleRow={exampleRow}
-              exampleDeidToken={naming_config?.accessionToken || 'CASE_DEMO'}
-            />
-            {(label_config.qr_assembly?.mode || 'legacy') === 'legacy' && (
-            <div className={"__config-control-section-group"}>
-              <div className={"__config-control-section-space-holder"} />
-              {
-                label_config.qr_mode.value === qr_mode_options[3].value ? <Dropdown disabled={processing || disable_changes || label_config.qr_mode.value !== qr_mode_options[3].value} multiSelect={false} items={column_options} label={"QR column field/s"} placeholder={"Select column"} selectedItems={label_config.qr_column_field ? [label_config.qr_column_field] : []} onSelect={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELD, payload: item })} /> :
-                  <Dropdown disabled={processing || disable_changes || label_config.qr_mode.value !== qr_mode_options[2].value} multiSelect={true} items={column_options} label={"QR column field/s"} placeholder={"Select columns"} selectedItems={label_config.qr_column_fields} onSelect={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELDS, payload: item })} />
-              }
-            </div>
-            )}
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>De-ID token (optional)</div>
-            <div className={"__config-control-section-description"}>
-              Configure how a de-identified accession token is derived for templates and DSA metadata. Leave as original to use legacy behavior only.
-            </div>
-            <div className={"__config-control-section-group"}>
-              <label className="__config-control-subsection-row-label" htmlFor="accession-mode">Accession mode</label>
-              <select
-                id="accession-mode"
-                className="__input-text"
-                disabled={processing || disable_changes}
-                value={naming_config?.accessionMode || 'original'}
-                onChange={(e) => {
-                  dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: { accessionMode: e.target.value } });
-                  triggerRecompute();
-                }}
-              >
-                <option value="original">Original accession (from metadata)</option>
-                <option value="manual">Manual de-ID token</option>
-                <option value="auto">Auto token from ImageId</option>
-              </select>
-            </div>
-            {naming_config?.accessionMode === 'manual' && (
-              <InputText
-                disabled={processing || disable_changes}
-                label="Manual token (fallback)"
-                value={naming_config?.accessionToken || ''}
-                onChange={(v) => {
-                  dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: { accessionToken: v } });
-                  triggerRecompute();
-                }}
+
+            {(label_config.add_text || label_config.add_qr) && (
+              <DeIdTokenCard
+                disabled={controlsDisabled}
+                namingConfig={naming_config}
+                columnOptions={column_options}
+                previewToken={resolvedPreview.deidToken}
+                onNamingChange={(partial) => dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: partial })}
+                onRecompute={triggerRecompute}
               />
             )}
-            <InputText
-              disabled={processing || disable_changes}
-              label="CSV column for per-row token (optional)"
-              value={naming_config?.tokenIdColumn || ''}
-              onChange={(v) => {
-                dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: { tokenIdColumn: v } });
-                triggerRecompute();
-              }}
+
+            {label_config.add_text && (
+              <LabelContentBuilder
+                kind="labelText"
+                assemblyConfig={label_config.label_text_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '_' }}
+                onChange={(cfg) => dispatch({ type: config_actions.SET_LABEL_TEXT_ASSEMBLY, payload: cfg })}
+                onRecompute={triggerRecompute}
+                columnOptions={column_options}
+                disabled={controlsDisabled}
+                exampleRow={activePreviewRow}
+                exampleDeidToken={resolvedPreview.deidToken || naming_config?.accessionToken || 'CASE_DEMO'}
+                textColumnField={label_config.text_column_field}
+                onTextColumnChange={(item) => dispatch({ type: config_actions.CHANGE_TEXT_COLUMN_FIELD, payload: item })}
+              />
+            )}
+
+            {label_config.add_qr && (
+              <LabelContentBuilder
+                kind="qrPayload"
+                assemblyConfig={label_config.qr_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '' }}
+                onChange={(cfg) => dispatch({ type: config_actions.SET_QR_ASSEMBLY, payload: cfg })}
+                onRecompute={triggerRecompute}
+                columnOptions={column_options}
+                disabled={controlsDisabled}
+                exampleRow={activePreviewRow}
+                exampleDeidToken={resolvedPreview.deidToken || naming_config?.accessionToken || 'CASE_DEMO'}
+                qrMode={label_config.qr_mode}
+                onQrModeChange={(item) => dispatch({ type: config_actions.CHANGE_QR_MODE, payload: item })}
+                qrColumnField={label_config.qr_column_field}
+                onQrColumnFieldChange={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELD, payload: item })}
+                qrColumnFields={label_config.qr_column_fields}
+                onQrColumnFieldsChange={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELDS, payload: item })}
+                filenameUsesUuid={filename_config.use_uuid}
+              />
+            )}
+
+            {label_config.add_icon && (
+              <div className={"__config-control-section-group"}>
+                <Button
+                  disabled={controlsDisabled}
+                  text={"Select icon (file)"}
+                  onClick={() => dispatch({ type: config_actions.SELECT_ICON_FILE })}
+                  result={label_config.icon_file && label_config.icon_file.source.path}
+                />
+              </div>
+            )}
+
+            <LabelConfigPreview
+              addText={label_config.add_text}
+              addQr={label_config.add_qr}
+              labelText={resolvedPreview.labelText}
+              qrPayload={resolvedPreview.qrPayload}
+              warnings={resolvedPreview.warnings}
+              rowSource={hasLoadedFiles && previewRowSource === 'first' ? 'first' : 'sample'}
+              onRowSourceChange={setPreviewRowSource}
+              hasLoadedFiles={hasLoadedFiles}
+              emptyFilesBanner={
+                !hasLoadedFiles
+                  ? 'Load files or import from eSM to pick metadata columns. Sample values used below.'
+                  : null
+              }
+            />
+
+            <LabelThumbnailPreview
+              config={config}
+              fileRow={activePreviewRow}
+              filePath={previewFilePath}
+              enabled={label_config.add_text || label_config.add_qr || label_config.add_icon}
             />
           </div>
           <div className={"__divider"} />
