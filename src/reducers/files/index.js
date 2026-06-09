@@ -141,6 +141,24 @@ const files_reducer = createReducer(default_state, (builder) => {
         draft.file_rows[action.payload.file_row_idx].__reserved.error = action.payload.error;
       })
     })
+    .addCase(files_actions.UPDATE_FILE_ROW_NAMING, (state, action) => {
+      return produce(state, draft => {
+        const { row_idx, file_row } = action.payload;
+        if (!draft.file_rows[row_idx] || !file_row?.__reserved) return;
+        const r = draft.file_rows[row_idx].__reserved;
+        const u = file_row.__reserved;
+        const keys = ['deidToken', 'labelText', 'qrPayload', 'assembledItemName', 'dsa_enrich_error', 'dsa_item_id'];
+        for (const k of keys) {
+          if (u[k] !== undefined) {
+            if (u[k] === '' || u[k] == null) {
+              delete r[k];
+            } else {
+              r[k] = u[k];
+            }
+          }
+        }
+      })
+    })
     .addCase(files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA, (state, action) => {
       return produce(state, draft => {
         draft.file_rows[action.payload.idx] = action.payload.row;

@@ -2,6 +2,7 @@ import {put, select} from 'redux-saga/effects';
 import get_uuid from "./get_uuid";
 import * as files_actions from "../../actions/files";
 import {return_filename_basename_from_filename} from "../../helpers/renderer_path_helpers";
+import { applyTemplatesToRowWithStore } from "../../helpers/slide_naming.js";
 
 export function* make_file_row(file) {
   // let metadata = yield electronAPI.getMetadata(file.source.path);
@@ -17,6 +18,10 @@ export function* make_file_row(file) {
   }
 
   file_row.__reserved.uuid = yield get_uuid(file_row.__reserved.source.path);
+
+  const config = yield select(state => state.config);
+  const esm = yield select(state => state.esm);
+  file_row = applyTemplatesToRowWithStore(file_row, config, esm);
 
   return file_row;
 }

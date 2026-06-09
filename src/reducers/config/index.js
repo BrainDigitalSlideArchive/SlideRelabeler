@@ -5,6 +5,7 @@ import default_state from './default_state';
 import * as config_actions from '../../actions/config';
 import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
+import { migrateNamingConfig } from '../../helpers/naming_config_migration.js';
 
 // Helper function to deep merge config with defaults
 function mergeConfigWithDefaults(loadedConfig, defaults) {
@@ -28,8 +29,8 @@ function mergeConfigWithDefaults(loadedConfig, defaults) {
 const config_reducer  = createReducer(default_state, (builder) => {
   builder
     .addCase(config_actions.UPDATE_CONFIG, (state, action) => {
-      // Merge loaded config with default state to ensure all required properties exist
-      return mergeConfigWithDefaults(action.payload, default_state);
+      const merged = mergeConfigWithDefaults(action.payload, default_state);
+      return migrateNamingConfig(merged);
     })
     .addCase(config_actions.CHANGE_PREFIX, (state, action) => {
       return produce(state, draft => {
@@ -147,6 +148,33 @@ const config_reducer  = createReducer(default_state, (builder) => {
     .addCase(config_actions.TOGGLE_ENABLE_COPY_MODE, (state, action) => {
       return produce(state, draft => {
         draft.copy.enable_copy_mode = !state.copy.enable_copy_mode;
+      })
+    })
+    .addCase(config_actions.SET_NAMING_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        Object.assign(draft.naming, action.payload || {});
+      })
+    })
+    .addCase(config_actions.SET_LABEL_TEXT_ASSEMBLY, (state, action) => {
+      return produce(state, draft => {
+        Object.assign(draft.label.label_text_assembly, action.payload || {});
+      })
+    })
+    .addCase(config_actions.SET_QR_ASSEMBLY, (state, action) => {
+      return produce(state, draft => {
+        Object.assign(draft.label.qr_assembly, action.payload || {});
+      })
+    })
+    .addCase(config_actions.SET_DSA_UPLOAD_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        if (p.item_name_assembly) {
+          Object.assign(draft.dsa_upload.item_name_assembly, p.item_name_assembly);
+          const { item_name_assembly, ...rest } = p;
+          Object.assign(draft.dsa_upload, rest);
+        } else {
+          Object.assign(draft.dsa_upload, p);
+        }
       })
     })
     // .addCase(files_actions.CLEAR_FILES, (state, aciton) => {

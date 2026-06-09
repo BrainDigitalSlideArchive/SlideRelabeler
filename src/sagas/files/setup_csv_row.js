@@ -4,6 +4,7 @@ import get_uuid from "./get_uuid";
 // import path from "path";
 
 import {is_path_absolute, normalizePath} from "../../helpers/renderer_path_helpers";
+import { applyTemplatesToRowWithStore } from "../../helpers/slide_naming.js";
 
 export default function* setup_csv_row(headers, row) {
   let output_row = {};
@@ -74,6 +75,12 @@ export default function* setup_csv_row(headers, row) {
     } else {
       output_row.__reserved.destinationDirectory = output_dir;
     }
+  }
+
+  if (output_row.__reserved?.source) {
+    const config = yield select((state) => state.config);
+    const esm = yield select((state) => state.esm);
+    output_row = applyTemplatesToRowWithStore(output_row, config, esm);
   }
 
   return output_row;

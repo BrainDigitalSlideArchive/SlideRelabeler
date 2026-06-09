@@ -100,6 +100,14 @@ class DSAAPI {
         });
     }
 
+    updateItem(item_id, fields) {
+        return this.put(`/item/${item_id}`, fields);
+    }
+
+    setItemMetadata(item_id, metadata) {
+        return this.put(`/item/${item_id}/metadata`, metadata);
+    }
+
     get_tile(item_id, level, x, y) {
         return this.get(`/item/${item_id}/tiles/zxy/${level}/${x}/${y}`);
     }

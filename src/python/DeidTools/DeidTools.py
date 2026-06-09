@@ -632,14 +632,19 @@ class DeidTools:
         return image, output_height
 
     def get_field_data(self, output_dict, field):
-        if field == '__reserved.rename':
-            return self.get_rename(output_dict)
+        if field == 'rename' or field == '__reserved.rename':
+            reserved = output_dict.get('__reserved', {})
+            return reserved.get('rename', '')
         else:
             field_split = field.split('.')
             data = output_dict
             for subfield in field_split:
                 if subfield in data:
                     data = data.get(subfield)
+                elif isinstance(data, dict) and '__reserved' in data and subfield in data.get('__reserved', {}):
+                    data = data['__reserved'][subfield]
+                else:
+                    return None
             return data
 
     def add_qr_code_to_image(self, image, output_dict, desired_title, output_height=0):
@@ -649,7 +654,11 @@ class DeidTools:
         qr_data = {}
         qr_code_string = None
 
-        if 'config' in output_dict and 'label' in output_dict['config'] and 'qr_mode' in output_dict['config']['label']:
+        reserved = output_dict.get('__reserved', {})
+        precomputed = reserved.get('qrPayload')
+        if precomputed is not None and str(precomputed).strip():
+            qr_code_string = str(precomputed)
+        elif 'config' in output_dict and 'label' in output_dict['config'] and 'qr_mode' in output_dict['config']['label']:
             label_config = output_dict['config']['label']
             qr_mode = label_config['qr_mode']['value']
             match qr_mode:
@@ -754,6 +763,11 @@ class DeidTools:
         return labelImage
 
     def get_label_text(self, output_dict):
+        reserved = output_dict.get('__reserved', {})
+        precomputed = reserved.get('labelText')
+        if precomputed is not None and str(precomputed).strip():
+            return str(precomputed)
+
         text = ''
 
         if 'config' in output_dict and 'label' in output_dict['config'] and 'filename' in output_dict['config']:
@@ -762,7 +776,11 @@ class DeidTools:
 
             if 'text_column_field' in label_config and label_config['text_column_field'] is not None:
                 field = label_config['text_column_field']['value']
-                text = self.get_field_data(output_dict, field)        
+                text = self.get_field_data(output_dict, field)
+                if text is None:
+                    text = ''
+                else:
+                    text = str(text)
 
         return text
 

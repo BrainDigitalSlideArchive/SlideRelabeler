@@ -8,7 +8,10 @@ export default function* output_csv(file) {
     "rows": []
   };
 
-  output_data.header.push("path", "output_path", "destination", "filename", "ext", "size", "uuid", "status");
+  output_data.header.push(
+    "path", "output_path", "destination", "filename", "ext", "size", "uuid",
+    "deidToken", "labelText", "qrPayload", "assembledItemName", "status"
+  );
 
   for (let file_row_idx in file_rows) {
     let file_row = file_rows[file_row_idx];
@@ -25,12 +28,16 @@ export default function* output_csv(file) {
     let column_data = get_column_data(file_row, column_names);
 
     column_data.path = file_row.__reserved.source.path;
-    column_data.output_path = file_row.__reserved.rename;
+    column_data.output_path = file_row.__reserved.output_path ?? '';
     column_data.destination = file_row.__reserved.destinationDirectory;
     column_data.filename = file_row.__reserved.source.filename;
     column_data.ext = file_row.__reserved.source.parsed.ext;
     column_data.size = file_row.__reserved.bytes;
     column_data.uuid = file_row.__reserved.uuid;
+    column_data.deidToken = file_row.__reserved.deidToken ?? '';
+    column_data.labelText = file_row.__reserved.labelText ?? '';
+    column_data.qrPayload = file_row.__reserved.qrPayload ?? '';
+    column_data.assembledItemName = file_row.__reserved.assembledItemName ?? '';
 
     if (file_row.__reserved.processed === 1) {
       column_data.status = "success";

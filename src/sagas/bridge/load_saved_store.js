@@ -41,6 +41,18 @@ function* load_saved_store() {
     }
     if (store.esm) {
       yield put({type: esm_actions.UPDATE_ESM, payload: store.esm});
+      const mc = store.esm.mappingConfig;
+      if (mc && !store.config?.naming) {
+        yield put({
+          type: config_actions.SET_NAMING_CONFIG,
+          payload: {
+            accessionMode: mc.accessionMode || 'original',
+            accessionToken: mc.accessionToken || '',
+            duplicateStrategy: mc.duplicateStrategy || 'suffix-index',
+            fieldsOrder: Array.isArray(mc.fieldsOrder) ? mc.fieldsOrder : [],
+          },
+        });
+      }
     }
     if (store.dsa) {
       yield put({type: dsa_actions.UPDATE_DSA, payload: store.dsa});
@@ -54,6 +66,9 @@ function* load_saved_store() {
       store.uploadRouting
     );
     yield put({ type: upload_routing_actions.RESTORE_UPLOAD_ROUTING, payload: uploadRouting });
+    if (store.files?.file_rows?.length > 0) {
+      yield put({ type: config_actions.RECOMPUTE_ALL_NAMING });
+    }
   }
 }
 

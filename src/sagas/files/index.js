@@ -14,6 +14,7 @@ import output_csv_xlsx from "./output_csv_xlsx";
 import choose_csv_output_dir from "./choose_csv_output_dir";
 import update_files_without_metadata from "./update_files_without_metadata";
 import {watch_add_csv} from "./add_csv";
+import watch_recompute_row_naming from "./recompute_row_naming";
 
 export function* files_saga () {
   while(true) {
@@ -33,6 +34,7 @@ export function* files_saga () {
     const add_csv_watcher = yield fork(watch_add_csv);
     const add_folders_watcher = yield fork(add_folders);
     const update_files_without_metadata_watcher = yield fork(update_files_without_metadata);
+    const recompute_row_naming_watcher = yield fork(watch_recompute_row_naming);
 
     // Stop all async watchers when the component is unmounted
     yield take(files_actions.STOP_FILES_SAGA);
@@ -50,6 +52,7 @@ export function* files_saga () {
     yield cancel(output_csv_xlsx_watcher);
     yield cancel(add_folders_watcher);
     yield cancel(update_files_without_metadata_watcher);
+    yield cancel(recompute_row_naming_watcher);
   }
 }
 

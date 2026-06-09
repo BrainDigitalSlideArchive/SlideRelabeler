@@ -95,10 +95,22 @@ export const default_state = {
         {
           field: '__reserved.rename',
           headerName: 'Renamed as',
-          // editable: params=>params.data.reserved.processed===0,
-          // cellClass:({data})=>data.reserved.processed === 0 ? 'editable copy-as' : 'left-ellipsis copy-as copied-path',
           singleClickEdit: true,
-          // onCellClicked:({value, data})=>data.reserved.processed && electronAPI.openViewer(value)
+        },
+        {
+          field: '__reserved.labelText',
+          headerName: 'Label text',
+          cellClass: 'cell-container __cell',
+        },
+        {
+          field: '__reserved.qrPayload',
+          headerName: 'QR content',
+          cellClass: 'cell-container __cell',
+        },
+        {
+          field: '__reserved.deidToken',
+          headerName: 'De-ID token',
+          cellClass: 'cell-container __cell',
         },
         {
           field: '__reserved.progress',

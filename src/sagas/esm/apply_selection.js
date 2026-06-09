@@ -17,6 +17,7 @@ import {
 
 import { applyRules, getSelectedTransformRules } from "../../helpers/esm_transform_rules";
 import { buildStagingSlides } from "../../helpers/esm_results_filter";
+import { applyTemplatesToRowWithStore } from "../../helpers/slide_naming.js";
 
 function getFileExtFromPath(p) {
   const s = (p ?? "").toString();
@@ -85,6 +86,8 @@ export function* watch_apply_selection() {
     const transformRules = yield select((state) => state.esm.transformRules);
     const selectedTransformRuleIds = yield select((state) => state.esm.selectedTransformRuleIds);
     const output_dir = yield select((state) => state.files.output_dir);
+    const config = yield select((state) => state.config);
+    const esmState = yield select((state) => state.esm);
 
     const selectedRules = getSelectedTransformRules(transformRules, selectedTransformRuleIds);
     const stagingRows = buildStagingSlides({
@@ -135,8 +138,11 @@ export function* watch_apply_selection() {
       if (!renameById.has(it.id) && mappingConfig?.duplicateStrategy === "skip-duplicates") {
         continue;
       }
-      const row = yield call(slideToFileRow, it.slide, output_dir, rename);
-      if (row) file_rows.push(row);
+      let row = yield call(slideToFileRow, it.slide, output_dir, rename);
+      if (row) {
+        row = applyTemplatesToRowWithStore(row, config, esmState);
+        file_rows.push(row);
+      }
     }
 
     if (file_rows.length > 0) {

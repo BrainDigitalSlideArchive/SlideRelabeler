@@ -4,6 +4,7 @@ import { useSelector, useDispatch, useStore } from "react-redux";
 import * as dsa_actions from "../../actions/dsa";
 import * as globus_actions from "../../actions/globus";
 import * as upload_routing_actions from "../../actions/uploadRouting";
+import * as config_actions from "../../actions/config";
 import { selectUploadReadiness } from "../../selectors/uploadRouting";
 
 import ModalHeader from './ModalHeader';
@@ -28,8 +29,9 @@ const AUTO_UPLOAD_MODE_ITEMS = [
   { label: 'DSA', value: 'dsa' },
 ];
 
-function render_network_config_dsa_content(dispatch, dsa) {
+function render_network_config_dsa_content(dispatch, dsa, dsa_upload) {
   const { folder_id, username, password, api_url, api_auth, login_error, login_error_message, dsa_folder_exists, dsa_folder_error_message } = dsa;
+  const uploadOpts = dsa_upload || {};
 
   let expiration_date = null;
   if (api_auth) {
@@ -111,6 +113,27 @@ function render_network_config_dsa_content(dispatch, dsa) {
                 <InputText tooltip={dsa_folder_error_message? dsa_folder_error_message : null} input_style={dsa_folder_exists_style(dsa_folder_exists)} label={"DSA folder ID"} value={folder_id} onChange={(new_value) => dispatch({ type: dsa_actions.SET_DSA_FOLDER_ID, payload: new_value })} />
               </div>
             </div>
+            <div className={"__divider"} />
+            <div className={"__config-control-section-title"}>After upload (optional)</div>
+            <div className={"__config-control-section-description"}>
+              Uploaded files keep their UUID filename. These options only affect the Girder item name and metadata.
+            </div>
+            <Checkbox
+              label="Rename DSA item to human-readable name"
+              checked={!!uploadOpts.rename_item_after_upload}
+              onClick={() => dispatch({
+                type: config_actions.SET_DSA_UPLOAD_CONFIG,
+                payload: { rename_item_after_upload: !uploadOpts.rename_item_after_upload },
+              })}
+            />
+            <Checkbox
+              label="Attach deidUpload metadata to DSA item"
+              checked={!!uploadOpts.set_item_metadata}
+              onClick={() => dispatch({
+                type: config_actions.SET_DSA_UPLOAD_CONFIG,
+                payload: { set_item_metadata: !uploadOpts.set_item_metadata },
+              })}
+            />
           </div>
         </div>
     </>
@@ -636,6 +659,7 @@ function render_network_config_globus_content(dispatch, globus, globusUi) {
 
 function ModalNetwork(props) {
   const dsa = useSelector(state => state.dsa);
+  const dsa_upload = useSelector(state => state.config.dsa_upload);
   const globus = useSelector(state => state.globus);
   const uploadRouting = useSelector((state) => state.uploadRouting);
   const readiness = useSelector(selectUploadReadiness);
@@ -1063,7 +1087,7 @@ function ModalNetwork(props) {
           </p>
         )}
 
-        {ur.auto_upload && ur.destination === 'dsa' && render_network_config_dsa_content(dispatch, dsa)}
+        {ur.auto_upload && ur.destination === 'dsa' && render_network_config_dsa_content(dispatch, dsa, dsa_upload)}
         {ur.auto_upload && ur.destination === 'globus' &&
           render_network_config_globus_content(dispatch, globus, {
             searchingEndpoints,

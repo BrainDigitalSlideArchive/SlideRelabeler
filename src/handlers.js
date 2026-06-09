@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app, safeStorage, shell } from 'electron';
 import { GrpcPythonBridge } from './bridge/grpcPythonBridge';
-import path, { join } from 'path';
+import path, { join, extname } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
 import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
@@ -10,6 +10,7 @@ import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 import GlobusAPI from './api/GlobusAPI';
+import { buildDeidUploadMetadata } from './helpers/dsa_upload_metadata.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
@@ -182,11 +183,25 @@ function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path
         const progress = (response[1].received / file_size) * 100;
 
         if (finalize) {
-          window.webContents.send('dsa-upload-file-complete', file_row_idx);
+          const complete = await dsa_client.upload_file_complete(upload_id);
           close(fd);
-        } else {
-          window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
+          if (complete && complete[0]) {
+            const fileDoc = complete[1];
+            window.webContents.send('dsa-upload-file-complete', {
+              row_idx: file_row_idx,
+              itemId: fileDoc.itemId,
+              fileId: fileDoc._id,
+              fileName: fileDoc.name,
+            });
+            resolve(true);
+          } else {
+            const errMsg = complete?.[1]?.message || 'Upload completion failed';
+            window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
+            reject(false);
+          }
+          return;
         }
+        window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
         resolve(true);
       } else {
         window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: response[1].message, row_idx: file_row_idx });
@@ -227,6 +242,43 @@ ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_pa
     }
   }
   return response;
+});
+
+ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, options }) => {
+  if (!dsa_client || !itemId || !fileRow) {
+    return [false, { message: 'Missing DSA client, item id, or file row' }];
+  }
+  const opts = options || {};
+  const reserved = fileRow.__reserved || {};
+  const results = {};
+
+  try {
+    if (opts.renameItem) {
+      const stem =
+        reserved.assembledItemName || reserved.labelText || reserved.rename || '';
+      const fileName = opts.fileName || '';
+      const ext = extname(fileName) || reserved.source?.parsed?.ext || '';
+      if (stem && ext) {
+        const itemName = `${stem}${ext}`;
+        const renameResp = await dsa_client.updateItem(itemId, { name: itemName });
+        if (!renameResp[0]) {
+          return [false, renameResp[1] || { message: 'Item rename failed' }];
+        }
+        results.item = renameResp[1];
+      }
+    }
+    if (opts.setMetadata) {
+      const metadata = buildDeidUploadMetadata(fileRow);
+      const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
+      if (!metaResp[0]) {
+        return [false, metaResp[1] || { message: 'Metadata update failed' }];
+      }
+      results.metadata = metaResp[1];
+    }
+    return [true, results];
+  } catch (err) {
+    return [false, { message: err?.message || String(err) }];
+  }
 });
 
 ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {

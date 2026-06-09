@@ -115,8 +115,9 @@ const API = {
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
   dsaUploadFile: (folder_id, file_row_idx, file_path) => ipcRenderer.invoke('dsa-upload-file', folder_id, file_row_idx, file_path),
-  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, file_row_idx) => {
-    dispatch({ type: dsa_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
+  dsaEnrichUploadedItem: (payload) => ipcRenderer.invoke('dsa-enrich-uploaded-item', payload),
+  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, payload) => {
+    dispatch({ type: dsa_actions.UPLOAD_FILE_COMPLETE, payload });
   }),
   dsaSetupUploadFileProgress: (dispatch) => ipcRenderer.on('dsa-upload-file-progress', (event, progress) => {
     dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
