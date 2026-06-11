@@ -2,25 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from "react-redux";
 
 import * as config_actions from "../../actions/config";
-import * as app_actions from "../../actions/app";
 import ModalHeader from './ModalHeader';
 import Checkbox from '../../components/controls/checkbox/Checkbox';
 import InputText from '../../components/controls/input/InputText';
-import Dropdown from '../../components/controls/dropdown/Dropdown';
 import Button from '../../components/controls/button/Button';
 import { return_file_extension_from_path, return_filename_basename_from_filename } from "../../helpers/renderer_path_helpers";
 import { generate_dropdown_for_table_columns } from "../../helpers/fe_helpers";
 import { previewLabelStrings } from '../../helpers/label_config_preview';
-import LabelCompositionPanel from '../../components/config/LabelCompositionPanel';
-import LabelContentBuilder from '../../components/config/LabelContentBuilder';
-import DeIdTokenCard from '../../components/config/DeIdTokenCard';
-import LabelConfigPreview from '../../components/config/LabelConfigPreview';
-import LabelThumbnailPreview from '../../components/config/LabelThumbnailPreview';
-import AssembledNameSection from '../../components/config/AssembledNameSection';
 import { buildAssembledName } from '../../helpers/assembly_routing';
+import ConfigStickyNav from '../../components/config/ConfigStickyNav';
+import ConfigOverviewSection from '../../components/config/ConfigOverviewSection';
+import AssemblyBuildControls from '../../components/config/AssemblyBuildControls';
+import LabelGuidedSteps from '../../components/config/LabelGuidedSteps';
+import AssembledNameSection from '../../components/config/AssembledNameSection';
+import ConfigAdvancedSection from '../../components/config/ConfigAdvancedSection';
 
-function ModalConfig(props) {
-
+function ModalConfig() {
   const file_cols = useSelector(state => state.files.file_columns);
   const reserved_cols = useSelector(state => state.files.reserved_columns);
   const filename_config = useSelector(state => state.config.filename);
@@ -38,10 +35,7 @@ function ModalConfig(props) {
   const routing_config = useSelector(state => state.config.routing);
   const dsa = useSelector(state => state.dsa);
 
-  const { api_auth } = dsa;
-
   const dispatch = useDispatch();
-
   const blocked_fields = useSelector(state => state.files.blocked_fields);
 
   const example_filename = '1234.tiff';
@@ -82,34 +76,38 @@ function ModalConfig(props) {
   );
 
   const controlsDisabled = processing || disable_changes;
+  const useReadableFilename = !filename_config.use_uuid;
+
+  const [column_options, set_column_options] = useState([]);
+
+  useEffect(() => {
+    const new_all_cols = [...reserved_cols, ...file_cols];
+    set_column_options(generate_dropdown_for_table_columns(new_all_cols, blocked_fields));
+  }, [reserved_cols, file_cols, blocked_fields]);
 
   function triggerRecompute() {
     dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING });
   }
 
-  // let all_cols = [...reserved_cols, ...file_cols];
+  function setAssembly(partial) {
+    dispatch({ type: config_actions.SET_ASSEMBLY_CONFIG, payload: partial });
+    triggerRecompute();
+  }
 
-  let [all_cols, set_all_cols] = useState([...reserved_cols, ...file_cols]);
-  let [column_options, set_column_options] = useState([]);
+  function selectFilenameStyle(style) {
+    if (style === 'uuid' && !filename_config.use_uuid) {
+      dispatch({ type: config_actions.TOGGLE_UUID });
+    } else if (style === 'readable' && filename_config.use_uuid) {
+      dispatch({ type: config_actions.TURN_ON_RENAME_MODE });
+    }
+  }
 
-  useEffect(() => {
-    let new_all_cols = [...reserved_cols, ...file_cols];
-
-    set_all_cols(new_all_cols);
-
-    let new_column_options = generate_dropdown_for_table_columns(new_all_cols, blocked_fields);
-
-    set_column_options(new_column_options);
-
-  }, [reserved_cols, file_cols]);
-
-
-  function create_filename_example(example_basename) {
-    let output_filename = ''
+  function create_filename_example() {
+    let output_filename = '';
     if (filename_config.use_uuid) {
       output_filename += example_uuid;
     } else {
-      output_filename += (routing_config?.outputFilename?.enabled ? assembledPreview : example_basename);
+      output_filename += assembledPreview || example_basename;
     }
     if (filename_config.use_prefix) {
       output_filename = filename_config.prefix + output_filename;
@@ -117,21 +115,188 @@ function ModalConfig(props) {
     if (filename_config.use_suffix) {
       output_filename = output_filename + filename_config.suffix;
     }
-
     return output_filename;
   }
 
-  let expiration_date = null;
-  if (api_auth) {
-    expiration_date = new Date(api_auth.authToken.expires);
-  }
+  const catalogConfigured = Boolean(dsa?.api_auth && routing_config?.dsaItemName?.enabled);
 
   return (
     <div className="__modal">
       <ModalHeader title={"Configuration"} type={"config"} />
       <div className={"__content"}>
         <div className={"__divider"} />
+        <ConfigStickyNav />
         <div className={"__config-controls"}>
+          <ConfigOverviewSection
+            outputFilenameExample={`${create_filename_example()}.${example_ext}`}
+            labelTextExample={resolvedPreview.labelText}
+            qrExample={resolvedPreview.qrPayload}
+            assembledNameExample={assembledPreview}
+            catalogConfigured={catalogConfigured}
+            hasLoadedFiles={hasLoadedFiles}
+          />
+
+          <div className={"__divider"} />
+
+          <section className="__config-control-section config-guided-section" id="config-output-filename">
+            <div className={"__config-control-section-title"}>Output filename</div>
+            <div className={"__config-control-section-description"}>
+              Choose how de-identified files are named when saved to disk. This does not change the slide label unless
+              you configure that separately.
+            </div>
+
+            <div className="config-filename-style" role="radiogroup" aria-label="Naming style">
+              <label className="config-filename-style__option">
+                <input
+                  type="radio"
+                  name="filename-style"
+                  disabled={controlsDisabled}
+                  checked={filename_config.use_uuid}
+                  onChange={() => selectFilenameStyle('uuid')}
+                />
+                <span className="config-filename-style__label">Use a system file ID (recommended for sharing)</span>
+                <span className="config-filename-style__helper">Assigns a random UUID per file.</span>
+              </label>
+              <label className="config-filename-style__option">
+                <input
+                  type="radio"
+                  name="filename-style"
+                  disabled={controlsDisabled}
+                  checked={useReadableFilename}
+                  onChange={() => selectFilenameStyle('readable')}
+                />
+                <span className="config-filename-style__label">Use assembled name from metadata</span>
+                <span className="config-filename-style__helper">Builds the filename from slide metadata below.</span>
+              </label>
+            </div>
+
+            {useReadableFilename && (
+              <div className="config-filename-style__assembly">
+                <div className="__config-control-subsection-title">Build assembled name</div>
+                <AssemblyBuildControls
+                  assembly={assembly_config}
+                  disabled={controlsDisabled}
+                  columnOptions={column_options}
+                  sampleRow={activePreviewRow}
+                  onAssemblyChange={setAssembly}
+                  compact
+                />
+              </div>
+            )}
+
+            {useReadableFilename && (
+              <div className={"__config-control-section-group"}>
+                <Checkbox disabled={controlsDisabled} label={"Add prefix"} checked={filename_config.use_prefix} onClick={() => dispatch({ type: config_actions.TOGGLE_PREFIX })} />
+                <InputText disabled={controlsDisabled || !filename_config.use_prefix} label={"Prefix"} value={filename_config.prefix} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_PREFIX, payload: new_value })} />
+              </div>
+            )}
+            {useReadableFilename && (
+              <div className={"__config-control-section-group"}>
+                <Checkbox disabled={controlsDisabled} label={"Add suffix"} checked={filename_config.use_suffix} onClick={() => dispatch({ type: config_actions.TOGGLE_SUFFIX })} />
+                <InputText disabled={controlsDisabled || !filename_config.use_suffix} label={"Suffix"} value={filename_config.suffix} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_SUFFIX, payload: new_value })} />
+              </div>
+            )}
+
+            <div className={"__config-control-section-infobox"}>
+              <div className={"__infobox-title"}>Example for one file</div>
+              <div className={"__infobox-labels"}>
+                <div className={"__infobox-label"}>Original file</div>
+                <div className={"__infobox-label"}>Assembled name</div>
+                <div className={"__infobox-label"}>Your output filename</div>
+              </div>
+              <div className={"__infobox-items"}>
+                <div className={"__infobox-item"}>{example_filename}</div>
+                <div className={"__infobox-item"}>
+                  {filename_config.use_prefix && useReadableFilename && <span>{filename_config.prefix}</span>}
+                  <input
+                    className={controlsDisabled ? "__input-text _disabled" : "__input-text"}
+                    disabled={controlsDisabled || filename_config.use_uuid}
+                    value={filename_config.use_uuid ? example_uuid : assembledPreview}
+                    onChange={(e) => set_rename(e.target.value)}
+                  />
+                  {filename_config.use_suffix && useReadableFilename && <span>{filename_config.suffix}</span>}
+                  {!filename_config.use_uuid && <span>.{example_ext}</span>}
+                </div>
+                <div className={"__infobox-item"}>
+                  {create_filename_example()}.{example_ext}
+                </div>
+              </div>
+            </div>
+            <div className="__config-control-subsection-note-description">
+              Globus uploads use the same filename as the file on disk. There is no separate Globus display name.
+            </div>
+          </section>
+
+          <div className={"__divider"} />
+
+          <section className="__config-control-section" id="config-slide-label">
+            <div className={"__config-control-section-title"}>Slide label</div>
+            <div className={"__config-control-section-description"}>
+              Configure text, QR, and optional overlay on the deidentified slide label.
+            </div>
+            <div className="label-config-section">
+              <LabelGuidedSteps
+                config={config}
+                labelConfig={label_config}
+                assemblyConfig={assembly_config}
+                routingConfig={routing_config}
+                namingConfig={naming_config}
+                columnOptions={column_options}
+                disabled={controlsDisabled}
+                activePreviewRow={activePreviewRow}
+                previewFilePath={previewFilePath}
+                resolvedPreview={resolvedPreview}
+                hasLoadedFiles={hasLoadedFiles}
+                previewRowSource={previewRowSource}
+                onPreviewRowSourceChange={setPreviewRowSource}
+                onRecompute={triggerRecompute}
+                assembledPreview={assembledPreview}
+              />
+            </div>
+          </section>
+
+          <div className={"__divider"} />
+
+          <section className="__config-control-section" id="config-import-csv">
+            <div className={"__config-control-section-title"}>Import from CSV</div>
+            <div className={"__config-control-section-description"}>
+              If you process slides from a spreadsheet, specify which columns mean file path, optional rename hint, and
+              optional output folder. Column names are case-sensitive.
+            </div>
+            <div className={"__config-control-section-container"}>
+              <div className={"__config-control-subsection"}>
+                <InputText disabled={controlsDisabled} label={"File path column (required)"} value={csv_config.file_path_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_PATH_COLUMN, payload: new_value })} />
+                <InputText disabled={controlsDisabled} label={"Rename hint column (optional)"} value={csv_config.file_rename_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: new_value })} />
+                <InputText disabled={controlsDisabled} label={"Output folder column (optional)"} value={csv_config.file_destination_directory_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: new_value })} />
+                <div className={"__config-control-subsection-row _top-margin _align-center"}>
+                  <Button text={"Export sample CSV"} onClick={() => dispatch({ type: config_actions.EXPORT_SAMPLE_CSV_TEMPLATE })} />
+                </div>
+              </div>
+              <div className={"__config-control-subsection"}>
+                <Checkbox disabled={controlsDisabled} label={"Save processing log CSV (deid_output.csv)"} checked={csv_config.save_csv} onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_CSV })} />
+                <Checkbox
+                  disabled={controlsDisabled}
+                  label={"Include assembled name in exported CSV"}
+                  checked={!!routing_config?.exportCsv?.enabled}
+                  onClick={() => dispatch({
+                    type: config_actions.SET_ROUTING_CONFIG,
+                    payload: {
+                      exportCsv: {
+                        enabled: !routing_config?.exportCsv?.enabled,
+                        columnHeader: assembly_config?.columnName || 'AssembledName',
+                      },
+                    },
+                  })}
+                />
+                <div className="__config-control-subsection-note-description">
+                  Build rules for assembled name are in the <strong>Assembled name</strong> section.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className={"__divider"} />
+
           <AssembledNameSection
             assembly={assembly_config}
             routing={routing_config}
@@ -139,296 +304,21 @@ function ModalConfig(props) {
             columnOptions={column_options}
             sampleRow={activePreviewRow}
             onScrollToLabel={() => {
-              const el = document.getElementById('config-slide-label');
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              document.getElementById('config-slide-label')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           />
+
           <div className={"__divider"} />
-          <div className={"__config-control-section"} id="config-output-filename">
-            <div className={"__config-control-section-title"}>Output filename</div>
-            <div className={"__config-control-section-description"}>
-              Controls the file on disk (and Globus upload name). Independent from the label image.
-            </div>
-            <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"System file ID (recommended for sharing)"} checked={filename_config.use_uuid} onClick={() => dispatch({ type: config_actions.TOGGLE_UUID })} />
-              <Checkbox
-                disabled={processing || disable_changes || !routing_config?.outputFilename?.enabled}
-                label={"Assembled name"}
-                checked={!filename_config.use_uuid}
-                onClick={() => dispatch({ type: config_actions.TOGGLE_NON_RANDOM })}
-              />
-            </div>
-            {!routing_config?.outputFilename?.enabled && (
-              <div className="__config-control-subsection-note-description">
-                Enable <strong>Use for output filename</strong> in Assembled name to use readable filenames.
-              </div>
-            )}
-            <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"Add prefix"} checked={filename_config.use_prefix} onClick={() => dispatch({ type: config_actions.TOGGLE_PREFIX })} />
-              <InputText disabled={processing || disable_changes || !filename_config.use_prefix} label={"Prefix"} value={filename_config.prefix} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_PREFIX, payload: new_value })} />
-            </div>
-            <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"Add suffix"} checked={filename_config.use_suffix} onClick={() => dispatch({ type: config_actions.TOGGLE_SUFFIX })} />
-              <InputText disabled={processing || disable_changes || !filename_config.use_suffix} label={"Suffix"} value={filename_config.suffix} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_SUFFIX, payload: new_value })} />
-            </div>
-            <div className={"__config-control-section-infobox"}>
-              <div className={"__infobox-title"}>
-                Example output filename:
-              </div>
-              <div className={"__infobox-labels"}>
-                <div className={"__infobox-label"}>
-                  Filename:
-                </div>
-                <div className={"__infobox-label"}>
-                  Assembled name:
-                </div>
-                <div className={"__infobox-label"}>
-                  Output filename:
-                </div>
-              </div>
-              <div className={"__infobox-items"}>
-                <div className={"__infobox-item"}>
-                  {example_filename}
-                </div>
-                <div className={"__infobox-item"}>
-                  {filename_config.use_prefix && <span>{filename_config.prefix}</span>}
-                  <input className={processing || disable_changes ? "__input-text _disabled" : "__input-text"} disabled={processing || disable_changes || filename_config.use_uuid} value={filename_config.use_uuid ? example_uuid : assembledPreview} onChange={(e) => set_rename(e.target.value)} />
-                  {filename_config.use_suffix && <span>{filename_config.suffix}</span>}
-                  <span>.{example_ext}</span>
-                </div>
-                <div className={"__infobox-item"}>
-                  {create_filename_example(assembledPreview) + '.' + example_ext}
-                </div>
-              </div>
-            </div>
-            <div className="__config-control-subsection-note-description">
-              Globus uploads use the same filename as the file on disk. There is no separate Globus display name.
-            </div>
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Whole slide image</div>
-            <div className={"__config-control-section-description"}>
-              Control whether the deidentified files contain macro images.
-            </div>
-            <Checkbox disabled={processing || disable_changes} label={"Keep macro image"} checked={wsi_config.save_macro_image} onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_MACRO })} />
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"} id="config-slide-label">
-            <div className={"__config-control-section-title"}>Slide label</div>
-            <div className={"__config-control-section-description"}>
-              Configure the generated label for deidentified files.
-            </div>
 
-            <div className="label-config-section">
-            <LabelCompositionPanel
-              disabled={controlsDisabled}
-              addText={label_config.add_text}
-              addQr={label_config.add_qr}
-              addIcon={label_config.add_icon}
-              onToggleText={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_TEXT })}
-              onToggleQr={() => dispatch({ type: config_actions.TOGGLE_ADD_LABEL_QR })}
-              onToggleIcon={() => dispatch({ type: config_actions.TOGGLE_ADD_ICON })}
-              previewText={resolvedPreview.labelText}
-              previewQr={resolvedPreview.qrPayload}
-              iconPath={label_config.icon_file?.source?.path}
-            />
-
-            {(label_config.add_text || label_config.add_qr) && (
-              <DeIdTokenCard
-                disabled={controlsDisabled}
-                namingConfig={naming_config}
-                columnOptions={column_options}
-                previewToken={resolvedPreview.deidToken}
-                onNamingChange={(partial) => dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: partial })}
-                onRecompute={triggerRecompute}
-              />
-            )}
-
-            {label_config.add_text && !routing_config?.labelText?.enabled && (
-              <div className="__config-control-subsection-note-description">
-                <Button
-                  disabled={controlsDisabled}
-                  text="Use assembled name column"
-                  onClick={() => {
-                    dispatch({ type: config_actions.USE_ASSEMBLED_NAME_FOR_LABEL });
-                    triggerRecompute();
-                  }}
-                />
-              </div>
-            )}
-            {label_config.add_text &&
-              (label_config.label_text_assembly?.mode !== 'legacy' ||
-                (routing_config?.labelText?.enabled &&
-                  label_config.text_column_field?.value !== (assembly_config?.columnName || 'AssembledName'))) && (
-              <div className="__config-control-subsection-note-description">
-                Label uses custom pattern (not assembled name).
-              </div>
-            )}
-
-            {label_config.add_text && (
-              <LabelContentBuilder
-                kind="labelText"
-                assemblyConfig={label_config.label_text_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '_' }}
-                onChange={(cfg) => dispatch({ type: config_actions.SET_LABEL_TEXT_ASSEMBLY, payload: cfg })}
-                onRecompute={triggerRecompute}
-                columnOptions={column_options}
-                disabled={controlsDisabled}
-                exampleRow={activePreviewRow}
-                exampleDeidToken={resolvedPreview.deidToken || naming_config?.accessionToken || 'CASE_DEMO'}
-                textColumnField={label_config.text_column_field}
-                onTextColumnChange={(item) => dispatch({ type: config_actions.CHANGE_TEXT_COLUMN_FIELD, payload: item })}
-              />
-            )}
-
-            {label_config.add_qr && (
-              <LabelContentBuilder
-                kind="qrPayload"
-                assemblyConfig={label_config.qr_assembly || { mode: 'legacy', template: '', fieldsOrder: [], separator: '' }}
-                onChange={(cfg) => dispatch({ type: config_actions.SET_QR_ASSEMBLY, payload: cfg })}
-                onRecompute={triggerRecompute}
-                columnOptions={column_options}
-                disabled={controlsDisabled}
-                exampleRow={activePreviewRow}
-                exampleDeidToken={resolvedPreview.deidToken || naming_config?.accessionToken || 'CASE_DEMO'}
-                qrMode={label_config.qr_mode}
-                onQrModeChange={(item) => dispatch({ type: config_actions.CHANGE_QR_MODE, payload: item })}
-                qrColumnField={label_config.qr_column_field}
-                onQrColumnFieldChange={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELD, payload: item })}
-                qrColumnFields={label_config.qr_column_fields}
-                onQrColumnFieldsChange={(item) => dispatch({ type: config_actions.CHANGE_QR_COLUMN_FIELDS, payload: item })}
-                filenameUsesUuid={filename_config.use_uuid}
-              />
-            )}
-
-            {label_config.add_icon && (
-              <div className={"__config-control-section-group"}>
-                <Button
-                  disabled={controlsDisabled}
-                  text={"Select icon (file)"}
-                  onClick={() => dispatch({ type: config_actions.SELECT_ICON_FILE })}
-                  result={label_config.icon_file && label_config.icon_file.source.path}
-                />
-              </div>
-            )}
-
-            <LabelConfigPreview
-              addText={label_config.add_text}
-              addQr={label_config.add_qr}
-              labelText={resolvedPreview.labelText}
-              qrPayload={resolvedPreview.qrPayload}
-              warnings={resolvedPreview.warnings}
-              rowSource={hasLoadedFiles && previewRowSource === 'first' ? 'first' : 'sample'}
-              onRowSourceChange={setPreviewRowSource}
-              hasLoadedFiles={hasLoadedFiles}
-              emptyFilesBanner={
-                !hasLoadedFiles
-                  ? 'Load files or import from eSM to pick metadata columns. Sample values used below.'
-                  : null
-              }
-            />
-
-            <LabelThumbnailPreview
-              config={config}
-              fileRow={activePreviewRow}
-              filePath={previewFilePath}
-              enabled={label_config.add_text || label_config.add_qr || label_config.add_icon}
-            />
-            </div>
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"} id="config-export-csv">
-            <div className={"__config-control-section-title"}>Export CSV</div>
-            <div className={"__config-control-section-description"}>
-              Settings for import spreadsheets and the processing log. Assembled name export is controlled in Assembled name → Include in exported CSV.
-            </div>
-            <div className={"__config-control-section-container"}>
-
-              <div className={"__config-control-subsection"}>
-                <div className={"__config-control-subsection-title"}>Input</div>
-                <div className={"__config-control-subsection-description"}>
-                  Control the columns in an input CSV file which get interpreted as relevant input and output fields.
-                </div>
-                <div className={"__config-control-subsection-row-header"}>
-                  <div className={"__config-control-subsection-row-label"}>
-                    &nbsp;
-                  </div>
-                  <div className={"__config-control-subsection-row-column"}>Column:</div>
-                </div>
-                <div className={"__config-control-subsection-row"}>
-                  {/* <Dropdown disabled={processing || disable_changes} items={column_options} label={"File location (required)"} placeholder={"Select column"} selectedItems={csv_config.file_path_column? column_options.filter(option => option.value === csv_config.file_path_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_PATH_COLUMN, payload: item.value})}/> */}
-                  <InputText disabled={processing || disable_changes} label={"File location (required)"} value={csv_config.file_path_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_PATH_COLUMN, payload: new_value })} />
-                </div>
-                <div className={"__config-control-subsection-row"}>
-                  {/* <Dropdown disabled={processing || disable_changes} items={column_options} label={"Rename (optional)"} placeholder={"Select column"} selectedItems={csv_config.file_rename_column? column_options.filter(option => option.value === csv_config.file_rename_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: item.value})}/> */}
-                  <InputText disabled={processing || disable_changes} label={"Rename (optional)"} value={csv_config.file_rename_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: new_value })} />
-                </div>
-                <div className={"__config-control-subsection-row"}>
-                  {/* <Dropdown disabled={processing || disable_changes} items={column_options} label={"Destination directory (optional)"} placeholder={"Select column"} selectedItems={csv_config.file_destination_directory_column? column_options.filter(option => option.value === csv_config.file_destination_directory_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: item.value})}/> */}
-                  <InputText disabled={processing || disable_changes} label={"Destination directory (optional)"} value={csv_config.file_destination_directory_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: new_value })} />
-                </div>
-                <div className={"__config-control-subsection-row _top-margin _align-center"}>
-                  <Button text={"Export Sample CSV"} onClick={() => dispatch({ type: config_actions.EXPORT_SAMPLE_CSV_TEMPLATE })} tooltip={"Export a sample CSV file to the output directory using the currently loaded files as a template."} />
-                </div>
-                <div className={"__config-control-subsection-note"}>
-                  <div className={"__config-control-subsection-note-title"}>
-                    Note:
-                  </div>
-                  <div className={"__config-control-subsection-note-description"}>
-                    <p>The CSV input file can feature any column with the purpose of linking metadata to deidentified files.</p>
-                    <p>The CSV input file can feature should feature at least path one column <b>"{csv_config.file_path_column}"</b> that features a full path to file.</p>
-                    <p>The CSV input file can also feature a rename column <b>"{csv_config.file_rename_column}"</b> that will be used an initial possible filename for the respective output file.</p>
-                    <p>The CSV input file can also feature a destination directory column <b>"{csv_config.file_destination_directory_column}"</b> that will be used as the output directory for the respective output file.  If the column is not provided, you must select an output directory.</p>
-                    <p>The provided columns are case-sensitive.</p>
-                  </div>
-                </div>
-              </div>
-              <div className={"__config-control-subsection"}>
-                <div className={"__config-control-subsection-title"}>Output</div>
-                <div className={"__config-control-subsection-description"}>
-                  Control whether or not to save a CSV file to the output directory.
-                </div>
-                <Checkbox disabled={processing || disable_changes} label={"Save CSV"} checked={csv_config.save_csv} onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_CSV })} />
-                <div className={"__config-control-subsection-note"}>
-                  <div className={"__config-control-subsection-note-title"}>
-                    Note:
-                  </div>
-                  <div className={"__config-control-subsection-note-description"}>
-                    The output CSV file will be saved to the output directory as deid_output.csv.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Copy</div>
-            <div className={"__config-control-section-description"}>
-              Enable copy mode to just copy files to output directory without deidentifying them.
-            </div>
-            <Checkbox label={"Enable copy mode"} checked={copy_config?.enable_copy_mode ?? false} onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_COPY_MODE })} />
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Debug</div>
-            <div className={"__config-control-section-description"}>
-              Enable debug messages to be displayed in the debug modal.
-            </div>
-            <Checkbox label={"Enable debug"} checked={debug_config.enable_debug} onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_DEBUG })} />
-          </div>
-          <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Reset</div>
-            <div className={"__config-control-section-description"}>
-              Reset the application's front end state back to default.  Using this feature will immediately cause the application to exit.
-              Please manually restart the application after using this feature.
-            </div>
-            <Button text={"Reset"} onClick={() => dispatch({ type: app_actions.DELETE_STORE })} />
-          </div>
+          <ConfigAdvancedSection
+            wsiConfig={wsi_config}
+            copyConfig={copy_config}
+            debugConfig={debug_config}
+            disabled={controlsDisabled}
+          />
         </div>
       </div>
-      <div className={"__footer"}>
-      </div>
+      <div className={"__footer"} />
     </div>
   );
 }

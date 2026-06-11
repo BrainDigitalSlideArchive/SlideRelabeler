@@ -14,7 +14,7 @@ export const DEFAULT_ASSEMBLY = {
 
 export const DEFAULT_ROUTING = {
   outputFilename: { enabled: false },
-  labelText: { enabled: true, column: 'AssembledName' },
+  labelText: { enabled: false, column: 'AssembledName' },
   dsaItemName: { enabled: false },
   exportCsv: { enabled: true, columnHeader: 'AssembledName' },
   qr: { enabled: false, mode: 'off' },

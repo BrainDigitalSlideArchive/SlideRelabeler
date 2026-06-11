@@ -2,27 +2,36 @@ import React, { useMemo, useState } from 'react';
 import InputText from '../controls/input/InputText';
 import Dropdown from '../controls/dropdown/Dropdown';
 import { evaluateTemplate, assembleFromFields } from '../../helpers/template_engine';
-
-const MODE_OPTIONS = [
-  { label: 'Single column', value: 'legacy' },
-  { label: 'Build from fields', value: 'fields' },
-  { label: 'Custom template', value: 'template' },
-];
+import { assemblyModeToGoal, goalToAssemblyMode } from '../../helpers/label_config_helpers';
 
 const PSEUDO_FIELDS = [
-  { label: 'De-ID token', value: 'deidToken' },
+  { label: 'Specimen ID', value: 'deidToken' },
   { label: 'UUID', value: 'uuid' },
 ];
 
-const QR_MODE_OPTIONS = [
-  { label: 'Encode output filename', value: 'user_defined', description: 'Use rename column featuring output filename' },
-  { label: 'Encode UUID', value: 'uuid', description: 'Use uuid value generated for file regardless of output filename.' },
-  { label: 'JSON from columns', value: 'column_fields', description: 'Use base64 encoded JSON from selected columns.' },
-  { label: 'Single column value', value: 'column_field', description: 'Use text from a single column' },
+const LABEL_GOAL_OPTIONS = [
+  { label: 'Show one metadata field', value: 'one_column', helper: 'Pick a single column (e.g. stain, block, or assembled name).' },
+  { label: 'Combine several fields', value: 'combine_fields', helper: 'Join fields with a separator (e.g. CASE42_B12_HE).' },
+  { label: 'Write a custom pattern', value: 'custom_pattern', helper: 'For advanced layouts with placeholders.' },
 ];
 
+const QR_GOAL_OPTIONS = [
+  { label: 'Link to this file (system file ID)', value: 'link_file', helper: 'Encodes the UUID assigned to the file.' },
+  { label: 'One metadata field', value: 'one_field', helper: 'Encode a single column value.' },
+  { label: 'Combine fields', value: 'combine_fields', helper: 'Join selected fields with a separator.' },
+  { label: 'Custom pattern', value: 'custom_pattern', helper: 'Full control over encoded string.' },
+];
+
+const QR_GOAL_ADVANCED = [
+  { label: 'Structured data (JSON)', value: 'structured', helper: 'Encodes selected columns as JSON (advanced).' },
+];
+
+function mapFieldsToAssembly(fieldsOrder) {
+  return fieldsOrder.map((f) => (f === 'deidToken' ? 'specimenId' : f));
+}
+
 /**
- * Unified builder for label text or QR payload.
+ * Unified builder for label text or QR payload with goal-first radios.
  */
 export default function LabelContentBuilder({
   kind,
@@ -42,17 +51,13 @@ export default function LabelContentBuilder({
   qrColumnFields = [],
   onQrColumnFieldsChange,
   filenameUsesUuid = true,
+  onAssemblyFieldsChange,
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const mode = assemblyConfig?.mode || 'legacy';
+  const goal = assemblyModeToGoal(mode);
   const fieldsOrder = Array.isArray(assemblyConfig?.fieldsOrder) ? assemblyConfig.fieldsOrder : [];
   const separator = assemblyConfig?.separator ?? (kind === 'qrPayload' ? '' : '_');
-
-  const title = kind === 'labelText' ? 'Label text' : 'QR code';
-  const description =
-    kind === 'labelText'
-      ? 'Choose what human-readable text appears on the label.'
-      : 'Any text can be encoded — URL, UUID, identifier, or structured data.';
 
   const fieldItems = useMemo(() => {
     const fromCols = (columnOptions || [])
@@ -80,52 +85,82 @@ export default function LabelContentBuilder({
     if (onRecompute) onRecompute();
   }
 
+  function setGoal(nextGoal) {
+    const nextMode = goalToAssemblyMode(nextGoal);
+    patch({ mode: nextMode });
+    if (kind === 'qrPayload') {
+      if (nextGoal === 'link_file' && onQrModeChange) {
+        onQrModeChange({ value: 'uuid', label: 'Encode UUID' });
+      } else if (nextGoal === 'one_field' && onQrModeChange) {
+        onQrModeChange({ value: 'column_field', label: 'Single column value' });
+      } else if (nextGoal === 'structured' && onQrModeChange) {
+        onQrModeChange({ value: 'column_fields', label: 'JSON from columns' });
+      }
+    }
+  }
+
   function toggleField(value) {
     const exists = fieldsOrder.includes(value);
     const next = exists ? fieldsOrder.filter((x) => x !== value) : [...fieldsOrder, value];
     patch({ fieldsOrder: next });
+    if (kind === 'labelText' && onAssemblyFieldsChange) {
+      onAssemblyFieldsChange({ fieldsOrder: mapFieldsToAssembly(next) });
+    }
   }
 
-  const selectedMode = MODE_OPTIONS.filter((o) => o.value === mode);
-  const showQrLegacy = kind === 'qrPayload' && mode === 'legacy';
-  const qrModeValue = qrMode?.value ?? 'user_defined';
-  const basicQrModes = ['uuid', 'column_field'];
-  const visibleQrModes = advancedOpen
-    ? QR_MODE_OPTIONS
-    : QR_MODE_OPTIONS.filter(
-      (o) => basicQrModes.includes(o.value) || o.value === qrModeValue,
-    );
-  const showQrColumnSingle = showQrLegacy && qrModeValue === 'column_field';
-  const showQrColumnMulti = showQrLegacy && qrModeValue === 'column_fields';
+  const goalOptions = kind === 'labelText' ? LABEL_GOAL_OPTIONS : [...QR_GOAL_OPTIONS, ...(advancedOpen ? QR_GOAL_ADVANCED : [])];
+  const qrGoalValue = (() => {
+    if (mode !== 'legacy') return goal;
+    const qm = qrMode?.value ?? 'user_defined';
+    if (qm === 'uuid') return 'link_file';
+    if (qm === 'column_field') return 'one_field';
+    if (qm === 'column_fields') return 'structured';
+    return 'link_file';
+  })();
+  const activeGoal = kind === 'qrPayload' && mode === 'legacy' ? qrGoalValue : goal;
+
   const showFilenameWarning =
     kind === 'qrPayload' &&
-    mode === 'legacy' &&
-    qrModeValue === 'user_defined' &&
+    activeGoal === 'link_file' &&
     filenameUsesUuid;
 
   return (
     <div className="__config-control-subsection label-content-builder">
-      <div className="__config-control-subsection-title">{title}</div>
-      <div className="__config-control-subsection-description">{description}</div>
-
-      <div className="__config-control-subsection-row">
-        <Dropdown
-          disabled={disabled}
-          label="Content source"
-          placeholder="Select mode"
-          items={MODE_OPTIONS}
-          selectedItems={selectedMode}
-          onSelect={(item) => patch({ mode: item.value })}
-        />
+      <div className="label-content-builder__goals" role="radiogroup" aria-label={kind === 'labelText' ? 'Label text goal' : 'QR goal'}>
+        {goalOptions.map((opt) => (
+          <label key={opt.value} className="label-content-builder__goal">
+            <input
+              type="radio"
+              name={`${kind}-goal`}
+              disabled={disabled}
+              checked={activeGoal === opt.value}
+              onChange={() => setGoal(opt.value)}
+            />
+            <span className="label-content-builder__goal-label">{opt.label}</span>
+            {opt.helper && <span className="label-content-builder__goal-helper">{opt.helper}</span>}
+          </label>
+        ))}
       </div>
 
-      {mode === 'legacy' && kind === 'labelText' && (
+      {kind === 'qrPayload' && (
+        <button
+          type="button"
+          className="label-content-builder__advanced-toggle"
+          disabled={disabled}
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          aria-expanded={advancedOpen}
+        >
+          {advancedOpen ? 'Hide advanced QR options' : 'More QR options'}
+        </button>
+      )}
+
+      {activeGoal === 'one_column' && kind === 'labelText' && (
         <div className="__config-control-subsection-row">
           <Dropdown
             disabled={disabled}
             multiSelect={false}
-            items={columnOptions}
-            label="Column"
+            items={fieldItems}
+            label="Which field?"
             placeholder="Select column"
             selectedItems={textColumnField ? [textColumnField] : []}
             onSelect={(item) => {
@@ -136,86 +171,57 @@ export default function LabelContentBuilder({
         </div>
       )}
 
-      {showQrLegacy && (
-        <>
-          <div className="__config-control-subsection-row">
-            <Dropdown
-              disabled={disabled}
-              items={visibleQrModes}
-              show_selected_descriptions={true}
-              label="QR encoding"
-              placeholder="QR mode"
-              selectedItems={qrMode ? [qrMode] : []}
-              onSelect={(item) => {
-                if (onQrModeChange) onQrModeChange(item);
-                if (onRecompute) onRecompute();
-              }}
-            />
-          </div>
-          {showFilenameWarning && (
-            <div className="__config-control-subsection-note-description">
-              Output filename mode is UUID — the QR will encode the UUID, not the human-readable rename.
-            </div>
-          )}
-          {showQrColumnSingle && (
-            <div className="__config-control-subsection-row">
-              <Dropdown
-                disabled={disabled}
-                multiSelect={false}
-                items={columnOptions}
-                label="QR column"
-                placeholder="Select column"
-                selectedItems={qrColumnField ? [qrColumnField] : []}
-                onSelect={(item) => {
-                  if (onQrColumnFieldChange) onQrColumnFieldChange(item);
-                  if (onRecompute) onRecompute();
-                }}
-              />
-            </div>
-          )}
-          {showQrColumnMulti && (
-            <div className="__config-control-subsection-row">
-              <Dropdown
-                disabled={disabled}
-                multiSelect={true}
-                items={columnOptions}
-                label="QR columns"
-                placeholder="Select columns"
-                selectedItems={qrColumnFields}
-                onSelect={(item) => {
-                  if (onQrColumnFieldsChange) onQrColumnFieldsChange(item);
-                  if (onRecompute) onRecompute();
-                }}
-              />
-            </div>
-          )}
-          {kind === 'qrPayload' && (
-            <div className="__config-control-subsection-row">
-              <button
-                type="button"
-                className="label-content-builder__advanced-toggle"
-                disabled={disabled}
-                onClick={() => setAdvancedOpen(!advancedOpen)}
-                aria-expanded={advancedOpen}
-              >
-                {advancedOpen ? 'Hide advanced QR options' : 'Advanced QR options'}
-              </button>
-            </div>
-          )}
-        </>
+      {activeGoal === 'one_field' && kind === 'qrPayload' && (
+        <div className="__config-control-subsection-row">
+          <Dropdown
+            disabled={disabled}
+            multiSelect={false}
+            items={fieldItems}
+            label="Which field?"
+            placeholder="Select column"
+            selectedItems={qrColumnField ? [qrColumnField] : []}
+            onSelect={(item) => {
+              if (onQrColumnFieldChange) onQrColumnFieldChange(item);
+              if (onRecompute) onRecompute();
+            }}
+          />
+        </div>
       )}
 
-      {mode === 'template' && (
+      {activeGoal === 'structured' && kind === 'qrPayload' && (
+        <div className="__config-control-subsection-row">
+          <Dropdown
+            disabled={disabled}
+            multiSelect={true}
+            items={columnOptions}
+            label="Columns for JSON"
+            placeholder="Select columns"
+            selectedItems={qrColumnFields}
+            onSelect={(item) => {
+              if (onQrColumnFieldsChange) onQrColumnFieldsChange(item);
+              if (onRecompute) onRecompute();
+            }}
+          />
+        </div>
+      )}
+
+      {showFilenameWarning && (
+        <div className="__config-control-subsection-note-description">
+          Output filename uses a system file ID — the QR encodes the UUID, not a readable name.
+        </div>
+      )}
+
+      {activeGoal === 'custom_pattern' && (
         <div className="__config-control-subsection-row">
           <InputText
             disabled={disabled}
-            label="Template"
+            label="Pattern"
             value={assemblyConfig?.template || ''}
             onChange={(v) => patch({ template: v })}
             placeholder={
               kind === 'qrPayload'
-                ? 'e.g. https://example.org?uuid={uuid}'
-                : 'e.g. {deidToken}_{field:BlockId}'
+                ? 'e.g. https://example.org?id={uuid}'
+                : 'e.g. {deidToken}_{field:BlockId}_{field:StainId}'
             }
           />
           <div className="__config-control-subsection-note-description">
@@ -224,7 +230,7 @@ export default function LabelContentBuilder({
         </div>
       )}
 
-      {mode === 'fields' && (
+      {activeGoal === 'combine_fields' && (
         <>
           <div className="__config-control-subsection-row">
             <InputText

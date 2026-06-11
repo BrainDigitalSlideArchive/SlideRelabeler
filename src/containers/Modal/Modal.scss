@@ -832,6 +832,308 @@
               opacity: 1;
             }
           }
+
+          .config-guided-section {
+            background: $surface-elevated;
+            color: $on-surface;
+            border-radius: 0.5em;
+            padding: 1em;
+            box-shadow: 0 2px 8px rgba($black, 0.15);
+            margin-bottom: 0.5em;
+
+            .__config-control-section-title,
+            .__config-control-subsection-title {
+              color: $on-surface;
+            }
+
+            .__config-control-section-description,
+            .__config-control-subsection-description,
+            .__config-control-subsection-note-description {
+              color: $on-surface-muted;
+            }
+          }
+
+          .config-sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35em;
+            padding: 0.5em 0 0.75em;
+            margin-bottom: 0.5em;
+            background: $dark-blue;
+            border-bottom: 1px solid rgba($beige, 0.2);
+
+            &__link {
+              background: rgba($beige, 0.12);
+              color: $beige;
+              border: 1px solid rgba($beige, 0.25);
+              border-radius: 0.35em;
+              padding: 0.35em 0.65em;
+              font-size: 0.85em;
+              cursor: pointer;
+
+              &:hover {
+                background: rgba($beige, 0.22);
+              }
+            }
+          }
+
+          .config-overview {
+            &__hint {
+              font-size: 0.9em;
+              font-style: italic;
+              color: $on-surface-muted;
+              margin-bottom: 1em;
+            }
+
+            &__cards {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
+              gap: 0.75em;
+              margin-bottom: 1em;
+            }
+
+            &__card {
+              background: rgba($black, 0.04);
+              border: 1px solid $border-surface;
+              border-radius: 0.4em;
+              padding: 0.75em;
+            }
+
+            &__card-title {
+              font-weight: bold;
+              margin: 0 0 0.35em;
+              font-size: 0.95em;
+            }
+
+            &__card-desc {
+              font-size: 0.85em;
+              color: $on-surface-muted;
+              margin: 0 0 0.5em;
+            }
+
+            &__card-example {
+              display: block;
+              font-size: 0.8em;
+              word-break: break-all;
+            }
+
+            &__glossary-toggle {
+              background: none;
+              border: none;
+              color: $accent-label;
+              cursor: pointer;
+              font-size: 0.9em;
+              padding: 0;
+              text-decoration: underline;
+            }
+
+            &__glossary {
+              margin-top: 0.75em;
+              font-size: 0.85em;
+
+              dt {
+                font-weight: bold;
+                margin-top: 0.5em;
+              }
+
+              dd {
+                margin: 0.15em 0 0.5em 0;
+                color: $on-surface-muted;
+              }
+            }
+          }
+
+          .config-step-header {
+            font-weight: bold;
+            font-size: 0.95em;
+            color: $accent-label;
+            margin-bottom: 0.75em;
+          }
+
+          .config-guided-step {
+            margin-bottom: 1.5em;
+          }
+
+          .config-filename-style {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75em;
+            margin-bottom: 1em;
+
+            &__option {
+              display: grid;
+              grid-template-columns: auto 1fr;
+              gap: 0.25em 0.5em;
+              align-items: start;
+              cursor: pointer;
+            }
+
+            &__label {
+              font-weight: 600;
+              color: $on-surface;
+            }
+
+            &__helper {
+              grid-column: 2;
+              font-size: 0.85em;
+              color: $on-surface-muted;
+              font-style: italic;
+            }
+
+            &__assembly {
+              margin: 0.75em 0 1em;
+              padding: 0.75em;
+              border: 1px solid $border-surface;
+              border-radius: 0.4em;
+            }
+          }
+
+          .assembled-name-section {
+            &__toggle {
+              display: flex;
+              flex-wrap: wrap;
+              align-items: center;
+              gap: 0.5em;
+              width: 100%;
+              background: none;
+              border: none;
+              padding: 0;
+              cursor: pointer;
+              text-align: left;
+            }
+
+            &__summary {
+              flex: 1;
+              display: flex;
+              flex-wrap: wrap;
+              align-items: center;
+              gap: 0.5em;
+              font-size: 0.9em;
+
+              code {
+                color: $on-surface;
+              }
+            }
+
+            &__chips {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 0.25em;
+            }
+
+            &__chip {
+              background: rgba($accent-label, 0.15);
+              color: $on-surface;
+              border-radius: 0.25em;
+              padding: 0.1em 0.45em;
+              font-size: 0.75em;
+              text-transform: uppercase;
+            }
+
+            &__chevron {
+              color: $on-surface-muted;
+            }
+
+            &__body {
+              margin-top: 0.75em;
+            }
+
+            &__field-checks {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 0.75em 1.25em;
+              margin: 0.5em 0 1em;
+            }
+
+            &__check {
+              display: flex;
+              align-items: center;
+              gap: 0.35em;
+              color: $on-surface;
+              font-size: 0.9em;
+            }
+          }
+
+          .config-advanced {
+            &__toggle {
+              display: flex;
+              align-items: center;
+              gap: 0.5em;
+              width: 100%;
+              background: none;
+              border: none;
+              padding: 0;
+              cursor: pointer;
+              text-align: left;
+            }
+
+            &__chevron {
+              color: $on-surface-muted;
+            }
+
+            &__body {
+              margin-top: 0.75em;
+            }
+          }
+
+          .label-content-builder {
+            &__goals {
+              display: flex;
+              flex-direction: column;
+              gap: 0.65em;
+              margin-bottom: 1em;
+            }
+
+            &__goal {
+              display: grid;
+              grid-template-columns: auto 1fr;
+              gap: 0.2em 0.5em;
+              cursor: pointer;
+            }
+
+            &__goal-label {
+              font-weight: 600;
+              color: $on-surface;
+            }
+
+            &__goal-helper {
+              grid-column: 2;
+              font-size: 0.85em;
+              color: $on-surface-muted;
+              font-style: italic;
+            }
+          }
+
+          .label-review-panel {
+            &__table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0.75em 0;
+              font-size: 0.9em;
+
+              th {
+                text-align: left;
+                padding: 0.35em 0.5em 0.35em 0;
+                color: $on-surface-muted;
+                font-weight: 600;
+                vertical-align: top;
+                width: 8em;
+              }
+
+              td {
+                padding: 0.35em 0;
+                word-break: break-word;
+                color: $on-surface;
+              }
+            }
+          }
+
+          .label-guided-steps__shortcut {
+            margin-bottom: 0.75em;
+          }
         }
       }
     }
