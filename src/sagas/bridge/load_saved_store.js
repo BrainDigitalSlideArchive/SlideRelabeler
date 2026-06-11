@@ -12,7 +12,6 @@ import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
 import { migrateUploadRoutingFromLegacy } from '../../helpers/uploadRouting_migration';
 import { migrateConfigV2 } from '../../helpers/config_v2_migration.js';
-import * as modal_actions from '../../actions/modal';
 
 let lastPersistedSnapshotJson = null;
 
