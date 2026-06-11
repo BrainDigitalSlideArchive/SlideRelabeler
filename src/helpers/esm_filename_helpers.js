@@ -1,4 +1,4 @@
-// helpers/esm_filename_helpers.js — re-exports from slide_naming.js for eSM staging compatibility.
+// helpers/esm_filename_helpers.js — re-exports for eSM staging compatibility.
 
 export {
   safeToken,
@@ -8,3 +8,9 @@ export {
   buildBaseFilename,
   applyDuplicateStrategy,
 } from './slide_naming.js';
+
+export {
+  buildAssembledName,
+  getAssemblyColumnName,
+  computeSpecimenId,
+} from './assembly_routing.js';

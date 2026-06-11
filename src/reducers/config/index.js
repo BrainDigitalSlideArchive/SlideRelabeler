@@ -57,9 +57,11 @@ const config_reducer  = createReducer(default_state, (builder) => {
         draft.csv.file_destination_directory_column = action.payload;
       })
     })
-    .addCase(config_actions.TOGGLE_UUID, (state, action) => {
+    .addCase(config_actions.TOGGLE_UUID, (state) => {
       return produce(state, draft => {
         draft.filename.use_uuid = !state.filename.use_uuid;
+        draft.filename.style = draft.filename.use_uuid ? 'uuid' : 'readable';
+        draft.routing.outputFilename.enabled = !draft.filename.use_uuid;
       })
     })
     .addCase(config_actions.TOGGLE_PREFIX, (state, action) => {
@@ -72,9 +74,11 @@ const config_reducer  = createReducer(default_state, (builder) => {
         draft.filename.use_suffix = !state.filename.use_suffix;
       })
     })
-    .addCase(config_actions.TOGGLE_NON_RANDOM, (state, action) => {
+    .addCase(config_actions.TOGGLE_NON_RANDOM, (state) => {
       return produce(state, draft => {
         draft.filename.use_uuid = !state.filename.use_uuid;
+        draft.filename.style = draft.filename.use_uuid ? 'uuid' : 'readable';
+        draft.routing.outputFilename.enabled = !draft.filename.use_uuid;
       })
     })
     .addCase(config_actions.TOGGLE_SAVE_CSV, (state, action) => {
@@ -137,9 +141,11 @@ const config_reducer  = createReducer(default_state, (builder) => {
         draft.debug.enable_debug = !state.debug.enable_debug;
       })
     })
-    .addCase(config_actions.TURN_ON_RENAME_MODE, (state, action) => {
+    .addCase(config_actions.TURN_ON_RENAME_MODE, (state) => {
       return produce(state, draft => {
         draft.filename.use_uuid = false;
+        draft.filename.style = 'readable';
+        draft.routing.outputFilename.enabled = true;
       })
     })
     .addCase(app_actions.RESET_STORE, (state, action) => {
@@ -152,7 +158,18 @@ const config_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(config_actions.SET_NAMING_CONFIG, (state, action) => {
       return produce(state, draft => {
-        Object.assign(draft.naming, action.payload || {});
+        const p = action.payload || {};
+        Object.assign(draft.naming, p);
+        if (p.accessionMode !== undefined) {
+          draft.assembly.specimenId.source =
+            p.accessionMode === 'manual' ? 'fixed' : p.accessionMode === 'auto' ? 'generated' : 'from_metadata';
+        }
+        if (p.accessionToken !== undefined) draft.assembly.specimenId.fixedValue = p.accessionToken;
+        if (p.tokenIdColumn !== undefined) draft.assembly.specimenId.column = p.tokenIdColumn;
+        if (Array.isArray(p.fieldsOrder)) {
+          draft.assembly.fieldsOrder = p.fieldsOrder.map((f) => (f === 'Accession' ? 'specimenId' : f));
+        }
+        if (p.duplicateStrategy !== undefined) draft.assembly.duplicateStrategy = p.duplicateStrategy;
       })
     })
     .addCase(config_actions.SET_LABEL_TEXT_ASSEMBLY, (state, action) => {
@@ -175,6 +192,60 @@ const config_reducer  = createReducer(default_state, (builder) => {
         } else {
           Object.assign(draft.dsa_upload, p);
         }
+        if (p.rename_item_after_upload !== undefined) {
+          draft.routing.dsaItemName.enabled = Boolean(p.rename_item_after_upload);
+        }
+      })
+    })
+    .addCase(config_actions.SET_ASSEMBLY_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        if (p.specimenId) {
+          Object.assign(draft.assembly.specimenId, p.specimenId);
+          const { specimenId, ...rest } = p;
+          Object.assign(draft.assembly, rest);
+        } else {
+          Object.assign(draft.assembly, p);
+        }
+        if (p.specimenId || p.fieldsOrder || p.duplicateStrategy) {
+          const spec = draft.assembly.specimenId;
+          draft.naming.accessionMode =
+            spec.source === 'fixed' ? 'manual' : spec.source === 'generated' ? 'auto' : 'original';
+          draft.naming.accessionToken = spec.fixedValue ?? draft.naming.accessionToken;
+          draft.naming.tokenIdColumn = spec.column ?? draft.naming.tokenIdColumn;
+          if (Array.isArray(p.fieldsOrder)) {
+            draft.naming.fieldsOrder = p.fieldsOrder.map((f) => (f === 'specimenId' ? 'Accession' : f));
+          }
+          if (p.duplicateStrategy) draft.naming.duplicateStrategy = p.duplicateStrategy;
+        }
+      })
+    })
+    .addCase(config_actions.SET_ROUTING_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        Object.keys(p).forEach((key) => {
+          if (draft.routing[key] && typeof p[key] === 'object') {
+            Object.assign(draft.routing[key], p[key]);
+          } else {
+            draft.routing[key] = p[key];
+          }
+        });
+        if (p.outputFilename?.enabled !== undefined) {
+          draft.filename.use_uuid = !p.outputFilename.enabled;
+          draft.filename.style = p.outputFilename.enabled ? 'readable' : 'uuid';
+        }
+        if (p.dsaItemName?.enabled !== undefined) {
+          draft.dsa_upload.rename_item_after_upload = Boolean(p.dsaItemName.enabled);
+        }
+      })
+    })
+    .addCase(config_actions.USE_ASSEMBLED_NAME_FOR_LABEL, (state) => {
+      return produce(state, draft => {
+        const col = draft.assembly.columnName || 'AssembledName';
+        draft.routing.labelText.enabled = true;
+        draft.routing.labelText.column = col;
+        draft.label.text_column_field = { value: col, label: 'Assembled name' };
+        draft.label.label_text_assembly.mode = 'legacy';
       })
     })
     // .addCase(files_actions.CLEAR_FILES, (state, aciton) => {

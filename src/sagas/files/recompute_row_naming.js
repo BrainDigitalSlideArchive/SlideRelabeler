@@ -2,12 +2,12 @@ import { put, select, take, call } from 'redux-saga/effects';
 
 import * as files_actions from '../../actions/files';
 import * as config_actions from '../../actions/config';
-import { applyTemplatesToRowWithStore } from '../../helpers/slide_naming.js';
+import { applyAssemblyAndRoutingWithStore } from '../../helpers/assembly_routing.js';
 
 export function* recompute_row_naming(file_row, file_row_idx) {
   const config = yield select((state) => state.config);
   const esm = yield select((state) => state.esm);
-  const updated = applyTemplatesToRowWithStore(file_row, config, esm);
+  const updated = applyAssemblyAndRoutingWithStore(file_row, config, esm);
   yield put({
     type: files_actions.UPDATE_FILE_ROW_NAMING,
     payload: { row_idx: file_row_idx, file_row: updated },

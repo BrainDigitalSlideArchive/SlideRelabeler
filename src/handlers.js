@@ -255,7 +255,11 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
   try {
     if (opts.renameItem) {
       const stem =
-        reserved.assembledItemName || reserved.labelText || reserved.rename || '';
+        fileRow.AssembledName ||
+        reserved.assembledItemName ||
+        reserved.labelText ||
+        reserved.rename ||
+        '';
       const fileName = opts.fileName || '';
       const ext = extname(fileName) || reserved.source?.parsed?.ext || '';
       if (stem && ext) {

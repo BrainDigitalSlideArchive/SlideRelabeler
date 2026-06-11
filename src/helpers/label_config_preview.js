@@ -2,18 +2,20 @@
 
 import { getRowFieldValue, resolveAssembly } from './template_engine.js';
 import { computeDeidToken } from './slide_naming.js';
+import { getAssemblyColumnName, computeSpecimenId } from './assembly_routing.js';
 
 function getRename(config, fileRow) {
   const filenameConfig = config?.filename ?? {};
   const reserved = fileRow?.__reserved ?? {};
   const useUuid = filenameConfig.use_uuid !== false;
   const uuid = reserved.uuid;
-  const rename = reserved.rename;
+  const colName = getAssemblyColumnName(config);
+  const assembled = fileRow[colName] ?? reserved.assembledName ?? reserved.rename;
 
   if (useUuid && uuid) return String(uuid);
-  if (!useUuid && rename) return String(rename);
+  if (!useUuid && assembled) return String(assembled);
   if (uuid) return String(uuid);
-  if (rename) return String(rename);
+  if (assembled) return String(assembled);
   if (reserved.source?.filename) {
     const name = String(reserved.source.filename);
     const dot = name.lastIndexOf('.');
@@ -22,7 +24,14 @@ function getRename(config, fileRow) {
   return '';
 }
 
-function previewLegacyLabelText(labelConfig, fileRow) {
+function previewLegacyLabelText(labelConfig, config, fileRow) {
+  const routing = config?.routing ?? {};
+  const colName = getAssemblyColumnName(config);
+  if (routing.labelText?.enabled) {
+    const col = routing.labelText.column || colName;
+    const val = getRowFieldValue(fileRow, col);
+    if (val) return String(val);
+  }
   const field = labelConfig?.text_column_field?.value;
   if (!field) return '';
   const val = getRowFieldValue(fileRow, field);
@@ -30,6 +39,12 @@ function previewLegacyLabelText(labelConfig, fileRow) {
 }
 
 function previewLegacyQrPayload(labelConfig, config, fileRow) {
+  const routing = config?.routing ?? {};
+  const colName = getAssemblyColumnName(config);
+  if (routing.qr?.enabled && routing.qr.mode === 'same_column') {
+    return String(getRowFieldValue(fileRow, colName) ?? '');
+  }
+
   const qrMode = labelConfig?.qr_mode?.value;
   if (!qrMode || qrMode === 'none') return '';
 
@@ -72,21 +87,17 @@ function usesDeidTokenInAssembly(assemblyConfig) {
 
 /**
  * Resolve label text and QR payload for Configuration preview.
- * @param {object} config full app config slice
- * @param {object} fileRow preview row
- * @param {{ usingSample?: boolean }} options
- * @returns {{ labelText: string, qrPayload: string, deidToken: string, warnings: string[] }}
  */
 export function previewLabelStrings(config, fileRow, options = {}) {
   const warnings = [];
   const labelConfig = config?.label ?? {};
-  const namingConfig = config?.naming ?? {};
+  const assembly = config?.assembly ?? {};
 
   if (options.usingSample) {
     warnings.push('No files loaded — using sample row.');
   }
 
-  const deidToken = computeDeidToken(fileRow, namingConfig);
+  const deidToken = computeSpecimenId(fileRow, assembly) || computeDeidToken(fileRow, config?.naming ?? {});
   const context = { deidToken };
 
   let labelText = '';
@@ -98,7 +109,7 @@ export function previewLabelStrings(config, fileRow, options = {}) {
   } else if (fileRow?.__reserved?.labelText) {
     labelText = String(fileRow.__reserved.labelText);
   } else {
-    labelText = previewLegacyLabelText(labelConfig, fileRow);
+    labelText = previewLegacyLabelText(labelConfig, config, fileRow);
   }
 
   const qrAsm = labelConfig?.qr_assembly;

@@ -38,7 +38,11 @@ export function buildDeidUploadMetadata(fileRow) {
   if (deidToken) meta.TokenID = String(deidToken);
 
   const imageId =
-    reserved.assembledItemName || reserved.labelText || reserved.rename || '';
+    fileRow.AssembledName ||
+    reserved.assembledItemName ||
+    reserved.labelText ||
+    reserved.rename ||
+    '';
   if (imageId) meta.ImageID = String(imageId);
 
   if (reserved.labelText) meta.labelText = String(reserved.labelText);

@@ -1,11 +1,11 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, { useMemo } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from "ag-grid-community";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-import { computeAccessionToken, buildBaseFilename } from "../../helpers/esm_filename_helpers";
+import { buildAssembledName } from "../../helpers/esm_filename_helpers";
 
 import { applyRules, getSelectedTransformRules } from "../../helpers/esm_transform_rules";
 import { buildStagingSlides } from "../../helpers/esm_results_filter";
@@ -18,7 +18,7 @@ import * as esm_actions from "../../actions/esm";
 
 export default function ESMAgGrid(props) {
   const dispatch = useDispatch();
-  const gridRef = useRef(null);
+  const gridRef = React.useRef(null);
 
   const searchRows = useSelector((state) => state.esm.searchRows);
   const slidesByAccession = useSelector((state) => state.esm.slidesByAccession);
@@ -26,6 +26,7 @@ export default function ESMAgGrid(props) {
   const mappingConfig = useSelector((state) => state.esm.mappingConfig);
   const transformRules = useSelector((state) => state.esm.transformRules) || [];
   const selectedTransformRuleIds = useSelector((state) => state.esm.selectedTransformRuleIds) || [];
+  const assembly = useSelector((state) => state.config.assembly);
 
   const selectedRules = useMemo(
     () => getSelectedTransformRules(transformRules, selectedTransformRuleIds),
@@ -66,17 +67,15 @@ export default function ESMAgGrid(props) {
       { headerName: "ScanDate", field: "ScanDate", sortable: true, filter: true },
       { headerName: "CompressedFileLocation", field: "CompressedFileLocation", sortable: true, filter: true, flex: 1 },
       {
-        headerName: "TargetFilename",
+        headerName: "Assembled name",
         valueGetter: (params) => {
           const slide = params?.data?.__raw;
           const criteriaRow = params?.data?.__esm?.criteriaRow;
-          const accessionToken = computeAccessionToken(slide, mappingConfig, criteriaRow);
-          const base = buildBaseFilename(
-            slide,
-            accessionToken,
-            mappingConfig,
-            (value) => applyRules(value, selectedRules),
-          );
+          const slideForAsm = { ...slide, deid: criteriaRow?.deid || '' };
+          const base = buildAssembledName(slideForAsm, assembly, {
+            criteriaDeid: criteriaRow?.deid,
+            transformValue: (value) => applyRules(value, selectedRules),
+          });
           const p = slide?.CompressedFileLocation || "";
           const idx = p.lastIndexOf(".");
           const ext = idx !== -1 ? p.slice(idx) : "";
@@ -86,9 +85,9 @@ export default function ESMAgGrid(props) {
         filter: true,
       },
     ];
-  }, [mappingConfig, selectedRules]);
+  }, [assembly, selectedRules]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const api = gridRef.current?.api;
     if (!api) return;
     api.forEachNode((node) => {

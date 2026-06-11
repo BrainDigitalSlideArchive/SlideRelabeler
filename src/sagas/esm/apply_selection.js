@@ -8,8 +8,7 @@ import { return_filename_dir_from_path, return_separator } from "../../helpers/r
 import get_uuid from "../files/get_uuid";
 
 import {
-  computeAccessionToken,
-  buildBaseFilename,
+  buildAssembledName,
   applyDuplicateStrategy,
   getAccessionFromBarcodeId,
   getEsmStagingSlideId,
@@ -17,7 +16,7 @@ import {
 
 import { applyRules, getSelectedTransformRules } from "../../helpers/esm_transform_rules";
 import { buildStagingSlides } from "../../helpers/esm_results_filter";
-import { applyTemplatesToRowWithStore } from "../../helpers/slide_naming.js";
+import { applyAssemblyAndRoutingWithStore } from "../../helpers/assembly_routing.js";
 
 function getFileExtFromPath(p) {
   const s = (p ?? "").toString();
@@ -26,7 +25,7 @@ function getFileExtFromPath(p) {
   return s.slice(idx);
 }
 
-function* slideToFileRow(slide, output_dir, mappedRename) {
+function* slideToFileRow(slide, output_dir, mappedRename, criteriaDeid) {
   const accession = getAccessionFromBarcodeId(slide?.BarcodeId);
   const file_path = slide?.CompressedFileLocation || "";
   if (!file_path) return null;
@@ -63,6 +62,7 @@ function* slideToFileRow(slide, output_dir, mappedRename) {
     ImageId: slide?.ImageId || "",
     SlideId: slide?.SlideId || "",
     ScanDate: slide?.ScanDate || "",
+    deid: criteriaDeid || "",
     __reserved: {
       source: source,
       uuid: file_uuid,
@@ -88,6 +88,7 @@ export function* watch_apply_selection() {
     const output_dir = yield select((state) => state.files.output_dir);
     const config = yield select((state) => state.config);
     const esmState = yield select((state) => state.esm);
+    const assembly = config?.assembly ?? {};
 
     const selectedRules = getSelectedTransformRules(transformRules, selectedTransformRuleIds);
     const stagingRows = buildStagingSlides({
@@ -106,24 +107,27 @@ export function* watch_apply_selection() {
 
     if (selectedStaging.length === 0) continue;
 
+    const duplicateStrategy = assembly.duplicateStrategy || mappingConfig?.duplicateStrategy || 'suffix-index';
+
     const filenameItems = selectedStaging.map((row) => {
       const slide = row.__raw;
       const criteriaRow = row.__esm?.criteriaRow;
-      const accessionToken = computeAccessionToken(slide, mappingConfig, criteriaRow);
-      const baseName = buildBaseFilename(
-        slide,
-        accessionToken,
-        mappingConfig,
-        (value) => applyRules(value, selectedRules),
-      );
+      const slideForAsm = {
+        ...slide,
+        deid: criteriaRow?.deid || '',
+      };
+      const baseName = buildAssembledName(slideForAsm, assembly, {
+        criteriaDeid: criteriaRow?.deid,
+        transformValue: (value) => applyRules(value, selectedRules),
+      });
       const ext = getFileExtFromPath(slide?.CompressedFileLocation);
       const id = getEsmStagingSlideId(slide);
-      return { id, slide, baseName, ext };
+      return { id, slide, baseName, ext, criteriaDeid: criteriaRow?.deid || '' };
     });
 
     const deduped = applyDuplicateStrategy(
       filenameItems.map((it) => ({ id: it.id, baseName: it.baseName, ext: it.ext })),
-      mappingConfig?.duplicateStrategy,
+      duplicateStrategy,
     );
 
     const renameById = new Map();
@@ -135,12 +139,12 @@ export function* watch_apply_selection() {
     const file_rows = [];
     for (const it of filenameItems) {
       const rename = renameById.get(it.id) || "";
-      if (!renameById.has(it.id) && mappingConfig?.duplicateStrategy === "skip-duplicates") {
+      if (!renameById.has(it.id) && duplicateStrategy === "skip-duplicates") {
         continue;
       }
-      let row = yield call(slideToFileRow, it.slide, output_dir, rename);
+      let row = yield call(slideToFileRow, it.slide, output_dir, rename, it.criteriaDeid);
       if (row) {
-        row = applyTemplatesToRowWithStore(row, config, esmState);
+        row = applyAssemblyAndRoutingWithStore(row, config, esmState);
         file_rows.push(row);
       }
     }

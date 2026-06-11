@@ -113,10 +113,9 @@ function ModalESlideManager() {
             <>
               <div className={'__divider'} />
               <div className={'__config-control-section'}>
-                <div className={'__config-control-section-title'}>Output naming</div>
+                <div className={'__config-control-section-title'}>Import settings</div>
                 <div className={'__config-control-section-description'}>
-                  Configure filenames and normalization before running a search. The same settings apply to the staging
-                  table after results load.
+                  Transform rules and stain filters apply before search. Assembled names use Configuration → Assembled name.
                 </div>
                 <ESMOutputSettingsPanel disabled={disable_changes} />
               </div>

@@ -116,16 +116,19 @@ function render_network_config_dsa_content(dispatch, dsa, dsa_upload) {
             <div className={"__divider"} />
             <div className={"__config-control-section-title"}>After upload (optional)</div>
             <div className={"__config-control-section-description"}>
-              Uploaded files keep their UUID filename. These options only affect the Girder item name and metadata.
+              Uploaded files keep their system file ID name on the server. These options affect the Girder item display name and metadata.
             </div>
             <Checkbox
-              label="Rename DSA item to human-readable name"
+              label="Set catalog display name to assembled name"
               checked={!!uploadOpts.rename_item_after_upload}
               onClick={() => dispatch({
                 type: config_actions.SET_DSA_UPLOAD_CONFIG,
                 payload: { rename_item_after_upload: !uploadOpts.rename_item_after_upload },
               })}
             />
+            <div className="__config-control-subsection-note-description">
+              Uses the Assembled name column (+ file extension). Enable in Configuration → Assembled name if unavailable.
+            </div>
             <Checkbox
               label="Attach deidUpload metadata to DSA item"
               checked={!!uploadOpts.set_item_metadata}
@@ -207,6 +210,9 @@ function render_network_config_globus_content(dispatch, globus, globusUi) {
             <div className={"__config-control-section-title"}>Globus</div>
             <div className={"__config-control-section-description"}>
               Configure Globus for transferring deidentified files. Requires globus-cli to be available.
+            </div>
+            <div className="__config-control-subsection-note-description">
+              Uploaded files keep the output filename on disk. Globus does not receive separate metadata or catalog titles in this version.
             </div>
             {cli_available === false && (
               <div style={{ padding: '0.5em', backgroundColor: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: '4px', marginBottom: '1em' }}>

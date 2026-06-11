@@ -58,10 +58,9 @@ export default function LabelContentBuilder({
     const fromCols = (columnOptions || [])
       .filter((c) => c?.value && !String(c.value).startsWith('__reserved.'))
       .map((c) => ({ label: c.label || c.value, value: c.value }));
-    const reserved = (columnOptions || [])
-      .filter((c) => c?.value === 'rename' || c?.value === '__reserved.rename')
-      .map((c) => ({ label: 'Renamed as', value: 'rename' }));
-    return [...PSEUDO_FIELDS, ...reserved, ...fromCols];
+    const assembled = { label: 'Assembled name', value: 'AssembledName' };
+    const hasAssembled = fromCols.some((c) => c.value === 'AssembledName');
+    return [...PSEUDO_FIELDS, ...(hasAssembled ? [] : [assembled]), ...fromCols.filter((c) => c.value !== 'rename')];
   }, [columnOptions]);
 
   const preview = useMemo(() => {

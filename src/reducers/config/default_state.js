@@ -1,6 +1,12 @@
+import { DEFAULT_ASSEMBLY, DEFAULT_ROUTING } from '../../helpers/assembly_routing.js';
+
 export const default_state = {
+  configVersion: 2,
+  assembly: { ...DEFAULT_ASSEMBLY },
+  routing: { ...DEFAULT_ROUTING },
   filename: {
     use_uuid: true,
+    style: 'uuid',
     use_suffix: false,
     use_prefix: false,
     prefix: 'deid',
@@ -28,7 +34,7 @@ export const default_state = {
     add_icon: false,
     icon_file: null,
     qr_mode: {label: 'Encode Filename', value: 'user_defined', description: 'Use rename column featuring output filename'},
-    text_column_field: {value: 'rename', label: 'Renamed as'},
+    text_column_field: {value: 'AssembledName', label: 'Assembled name'},
     qr_column_fields: [],
     qr_column_field: null,
     label_text_assembly: {

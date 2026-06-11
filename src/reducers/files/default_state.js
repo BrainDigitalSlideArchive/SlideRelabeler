@@ -93,9 +93,9 @@ export const default_state = {
           // onCellClicked:({data})=>data.progress === 100 && electronAPI.openViewer(data.rename)
         },
         {
-          field: '__reserved.rename',
-          headerName: 'Renamed as',
-          singleClickEdit: true,
+          field: 'AssembledName',
+          headerName: 'Assembled name',
+          cellClass: 'cell-container __cell',
         },
         {
           field: '__reserved.labelText',

@@ -25,8 +25,11 @@ export function getRowFieldValue(fileRow, fieldPath) {
     }
     return toStr(cur);
   }
-  if (fieldPath === 'rename') {
-    return toStr(fileRow.__reserved?.rename);
+  if (fieldPath === 'rename' || fieldPath === '__reserved.rename') {
+    return toStr(fileRow.__reserved?.rename ?? fileRow.AssembledName);
+  }
+  if (fieldPath === 'AssembledName') {
+    return toStr(fileRow.AssembledName ?? fileRow.__reserved?.assembledName);
   }
   if (fieldPath in fileRow) return toStr(fileRow[fieldPath]);
   return '';

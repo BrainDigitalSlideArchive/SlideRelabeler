@@ -16,6 +16,8 @@ import LabelContentBuilder from '../../components/config/LabelContentBuilder';
 import DeIdTokenCard from '../../components/config/DeIdTokenCard';
 import LabelConfigPreview from '../../components/config/LabelConfigPreview';
 import LabelThumbnailPreview from '../../components/config/LabelThumbnailPreview';
+import AssembledNameSection from '../../components/config/AssembledNameSection';
+import { buildAssembledName } from '../../helpers/assembly_routing';
 
 function ModalConfig(props) {
 
@@ -32,6 +34,8 @@ function ModalConfig(props) {
   const disable_changes = useSelector(state => state.files.disable_changes);
   const file_rows = useSelector(state => state.files.file_rows);
   const config = useSelector(state => state.config);
+  const assembly_config = useSelector(state => state.config.assembly);
+  const routing_config = useSelector(state => state.config.routing);
   const dsa = useSelector(state => state.dsa);
 
   const { api_auth } = dsa;
@@ -56,6 +60,7 @@ function ModalConfig(props) {
     StainId: 'HE',
     SlideNum: '1',
     Accession: 'DEMO_ACC',
+    AssembledName: rename,
     __reserved: { uuid: example_uuid, rename: rename },
   }), [rename, example_uuid]);
 
@@ -63,6 +68,11 @@ function ModalConfig(props) {
     if (previewRowSource === 'first' && firstFileRow) return firstFileRow;
     return sampleRow;
   }, [previewRowSource, firstFileRow, sampleRow]);
+
+  const assembledPreview = useMemo(
+    () => buildAssembledName(activePreviewRow, assembly_config) || rename,
+    [activePreviewRow, assembly_config, rename],
+  );
 
   const resolvedPreview = useMemo(
     () => previewLabelStrings(config, activePreviewRow, {
@@ -99,7 +109,7 @@ function ModalConfig(props) {
     if (filename_config.use_uuid) {
       output_filename += example_uuid;
     } else {
-      output_filename += rename;
+      output_filename += (routing_config?.outputFilename?.enabled ? assembledPreview : example_basename);
     }
     if (filename_config.use_prefix) {
       output_filename = filename_config.prefix + output_filename;
@@ -122,15 +132,37 @@ function ModalConfig(props) {
       <div className={"__content"}>
         <div className={"__divider"} />
         <div className={"__config-controls"}>
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Filename</div>
+          <AssembledNameSection
+            assembly={assembly_config}
+            routing={routing_config}
+            disabled={controlsDisabled}
+            columnOptions={column_options}
+            sampleRow={activePreviewRow}
+            onScrollToLabel={() => {
+              const el = document.getElementById('config-slide-label');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+          <div className={"__divider"} />
+          <div className={"__config-control-section"} id="config-output-filename">
+            <div className={"__config-control-section-title"}>Output filename</div>
             <div className={"__config-control-section-description"}>
-              Configure output filenames for deidentified files.
+              Controls the file on disk (and Globus upload name). Independent from the label image.
             </div>
             <div className={"__config-control-section-group"}>
-              <Checkbox disabled={processing || disable_changes} label={"Randomize"} checked={filename_config.use_uuid} onClick={() => dispatch({ type: config_actions.TOGGLE_UUID })} />
-              <Checkbox disabled={processing || disable_changes} label={"Use rename"} checked={!filename_config.use_uuid} onClick={() => dispatch({ type: config_actions.TOGGLE_NON_RANDOM })} />
+              <Checkbox disabled={processing || disable_changes} label={"System file ID (recommended for sharing)"} checked={filename_config.use_uuid} onClick={() => dispatch({ type: config_actions.TOGGLE_UUID })} />
+              <Checkbox
+                disabled={processing || disable_changes || !routing_config?.outputFilename?.enabled}
+                label={"Assembled name"}
+                checked={!filename_config.use_uuid}
+                onClick={() => dispatch({ type: config_actions.TOGGLE_NON_RANDOM })}
+              />
             </div>
+            {!routing_config?.outputFilename?.enabled && (
+              <div className="__config-control-subsection-note-description">
+                Enable <strong>Use for output filename</strong> in Assembled name to use readable filenames.
+              </div>
+            )}
             <div className={"__config-control-section-group"}>
               <Checkbox disabled={processing || disable_changes} label={"Add prefix"} checked={filename_config.use_prefix} onClick={() => dispatch({ type: config_actions.TOGGLE_PREFIX })} />
               <InputText disabled={processing || disable_changes || !filename_config.use_prefix} label={"Prefix"} value={filename_config.prefix} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_PREFIX, payload: new_value })} />
@@ -148,7 +180,7 @@ function ModalConfig(props) {
                   Filename:
                 </div>
                 <div className={"__infobox-label"}>
-                  Rename column:
+                  Assembled name:
                 </div>
                 <div className={"__infobox-label"}>
                   Output filename:
@@ -160,14 +192,17 @@ function ModalConfig(props) {
                 </div>
                 <div className={"__infobox-item"}>
                   {filename_config.use_prefix && <span>{filename_config.prefix}</span>}
-                  <input className={processing || disable_changes ? "__input-text _disabled" : "__input-text"} disabled={processing || disable_changes || filename_config.use_uuid} value={filename_config.use_uuid ? example_uuid : rename} onChange={(e) => set_rename(e.target.value)} />
+                  <input className={processing || disable_changes ? "__input-text _disabled" : "__input-text"} disabled={processing || disable_changes || filename_config.use_uuid} value={filename_config.use_uuid ? example_uuid : assembledPreview} onChange={(e) => set_rename(e.target.value)} />
                   {filename_config.use_suffix && <span>{filename_config.suffix}</span>}
                   <span>.{example_ext}</span>
                 </div>
                 <div className={"__infobox-item"}>
-                  {create_filename_example(rename) + '.' + example_ext}
+                  {create_filename_example(assembledPreview) + '.' + example_ext}
                 </div>
               </div>
+            </div>
+            <div className="__config-control-subsection-note-description">
+              Globus uploads use the same filename as the file on disk. There is no separate Globus display name.
             </div>
           </div>
           <div className={"__divider"} />
@@ -179,8 +214,8 @@ function ModalConfig(props) {
             <Checkbox disabled={processing || disable_changes} label={"Keep macro image"} checked={wsi_config.save_macro_image} onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_MACRO })} />
           </div>
           <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>Label</div>
+          <div className={"__config-control-section"} id="config-slide-label">
+            <div className={"__config-control-section-title"}>Slide label</div>
             <div className={"__config-control-section-description"}>
               Configure the generated label for deidentified files.
             </div>
@@ -208,6 +243,27 @@ function ModalConfig(props) {
                 onNamingChange={(partial) => dispatch({ type: config_actions.SET_NAMING_CONFIG, payload: partial })}
                 onRecompute={triggerRecompute}
               />
+            )}
+
+            {label_config.add_text && !routing_config?.labelText?.enabled && (
+              <div className="__config-control-subsection-note-description">
+                <Button
+                  disabled={controlsDisabled}
+                  text="Use assembled name column"
+                  onClick={() => {
+                    dispatch({ type: config_actions.USE_ASSEMBLED_NAME_FOR_LABEL });
+                    triggerRecompute();
+                  }}
+                />
+              </div>
+            )}
+            {label_config.add_text &&
+              (label_config.label_text_assembly?.mode !== 'legacy' ||
+                (routing_config?.labelText?.enabled &&
+                  label_config.text_column_field?.value !== (assembly_config?.columnName || 'AssembledName'))) && (
+              <div className="__config-control-subsection-note-description">
+                Label uses custom pattern (not assembled name).
+              </div>
             )}
 
             {label_config.add_text && (
@@ -281,10 +337,10 @@ function ModalConfig(props) {
             </div>
           </div>
           <div className={"__divider"} />
-          <div className={"__config-control-section"}>
-            <div className={"__config-control-section-title"}>CSV</div>
+          <div className={"__config-control-section"} id="config-export-csv">
+            <div className={"__config-control-section-title"}>Export CSV</div>
             <div className={"__config-control-section-description"}>
-              CSV input and output settings.
+              Settings for import spreadsheets and the processing log. Assembled name export is controlled in Assembled name → Include in exported CSV.
             </div>
             <div className={"__config-control-section-container"}>
 

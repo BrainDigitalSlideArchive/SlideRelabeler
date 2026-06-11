@@ -145,9 +145,10 @@ const files_reducer = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         const { row_idx, file_row } = action.payload;
         if (!draft.file_rows[row_idx] || !file_row?.__reserved) return;
-        const r = draft.file_rows[row_idx].__reserved;
+        const row = draft.file_rows[row_idx];
+        const r = row.__reserved;
         const u = file_row.__reserved;
-        const keys = ['deidToken', 'labelText', 'qrPayload', 'assembledItemName', 'dsa_enrich_error', 'dsa_item_id'];
+        const keys = ['deidToken', 'labelText', 'qrPayload', 'assembledItemName', 'assembledName', 'rename', 'dsa_enrich_error', 'dsa_item_id'];
         for (const k of keys) {
           if (u[k] !== undefined) {
             if (u[k] === '' || u[k] == null) {
@@ -156,6 +157,9 @@ const files_reducer = createReducer(default_state, (builder) => {
               r[k] = u[k];
             }
           }
+        }
+        if (file_row.AssembledName !== undefined) {
+          row.AssembledName = file_row.AssembledName;
         }
       })
     })

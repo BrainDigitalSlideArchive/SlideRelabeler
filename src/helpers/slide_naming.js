@@ -1,7 +1,6 @@
 // helpers/slide_naming.js — de-id token and optional template assembly for file rows.
 
-import { resolveAssembly } from './template_engine.js';
-import { getSelectedTransformRules } from './esm_transform_rules.js';
+import { applyAssemblyAndRouting, applyAssemblyAndRoutingWithStore } from './assembly_routing.js';
 
 export function safeToken(value) {
   const s = (value ?? '').toString().trim();
@@ -122,79 +121,16 @@ export function applyDuplicateStrategy(items, duplicateStrategy) {
   return out;
 }
 
-function shouldComputeDeidToken(namingConfig) {
-  const mode = namingConfig?.accessionMode || 'original';
-  return (
-    mode !== 'original' ||
-    Boolean((namingConfig?.accessionToken ?? '').trim()) ||
-    Boolean((namingConfig?.tokenIdColumn ?? '').trim())
-  );
-}
-
-function resolveItemName(config, fileRow, context, labelText) {
-  const itemAsm = config?.dsa_upload?.item_name_assembly;
-  const mode = itemAsm?.mode || 'same_as_label';
-  if (mode === 'off') return '';
-  if (mode === 'same_as_label') return labelText || '';
-  return resolveAssembly(itemAsm, fileRow, context);
-}
-
 /**
- * Apply optional template assembly to a file row copy.
- * @param {object} fileRow
- * @param {object} config full config slice
- * @param {{ transformRules?, selectedTransformRuleIds?, criteriaRow? }} options
+ * Apply assembly + routing to a file row (config v2).
  */
 export function applyTemplatesToRow(fileRow, config, options = {}) {
-  if (!fileRow) return fileRow;
-
-  const namingConfig = config?.naming ?? {};
-  const labelConfig = config?.label ?? {};
-  const reserved = { ...(fileRow.__reserved || {}) };
-
-  let deidToken = '';
-  if (shouldComputeDeidToken(namingConfig) || fileRow.deid || fileRow.TokenID) {
-    deidToken = computeDeidToken(fileRow, namingConfig);
-    if (deidToken) reserved.deidToken = deidToken;
-  }
-
-  const context = { deidToken };
-  let labelText = '';
-  let qrPayload = '';
-  let assembledItemName = '';
-
-  const labelAsm = labelConfig?.label_text_assembly;
-  if (labelAsm?.mode && labelAsm.mode !== 'legacy') {
-    labelText = resolveAssembly(labelAsm, fileRow, context);
-  }
-
-  const qrAsm = labelConfig?.qr_assembly;
-  if (qrAsm?.mode && qrAsm.mode !== 'legacy') {
-    qrPayload = resolveAssembly(qrAsm, fileRow, context);
-  }
-
-  assembledItemName = resolveItemName(config, fileRow, context, labelText);
-
-  const nextReserved = { ...reserved };
-  if (deidToken) nextReserved.deidToken = deidToken;
-  else delete nextReserved.deidToken;
-  if (labelText) nextReserved.labelText = labelText;
-  else delete nextReserved.labelText;
-  if (qrPayload) nextReserved.qrPayload = qrPayload;
-  else delete nextReserved.qrPayload;
-  if (assembledItemName) nextReserved.assembledItemName = assembledItemName;
-  else delete nextReserved.assembledItemName;
-
-  return { ...fileRow, __reserved: nextReserved };
+  return applyAssemblyAndRouting(fileRow, config, options);
 }
 
 /**
  * Convenience for sagas: pull transform rules from store slices.
  */
 export function applyTemplatesToRowWithStore(fileRow, config, esmState) {
-  const selectedRules = getSelectedTransformRules(
-    esmState?.transformRules,
-    esmState?.selectedTransformRuleIds,
-  );
-  return applyTemplatesToRow(fileRow, config, { transformRules: selectedRules });
+  return applyAssemblyAndRoutingWithStore(fileRow, config, esmState);
 }

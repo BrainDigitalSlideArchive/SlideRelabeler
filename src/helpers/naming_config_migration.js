@@ -1,5 +1,7 @@
 // helpers/naming_config_migration.js
 
+import { migrateConfigV2 } from './config_v2_migration.js';
+
 const DEFAULT_NAMING = {
   accessionMode: 'original',
   accessionToken: '',
@@ -39,7 +41,8 @@ const DEFAULT_DSA_UPLOAD = {
  * @param {object} [loadedEsm]
  */
 export function migrateNamingConfig(loadedConfig, loadedEsm) {
-  const config = loadedConfig && typeof loadedConfig === 'object' ? { ...loadedConfig } : {};
+  const { config: v2Config } = migrateConfigV2(loadedConfig, loadedEsm);
+  const config = v2Config && typeof v2Config === 'object' ? { ...v2Config } : {};
 
   if (!config.naming || typeof config.naming !== 'object') {
     config.naming = { ...DEFAULT_NAMING };

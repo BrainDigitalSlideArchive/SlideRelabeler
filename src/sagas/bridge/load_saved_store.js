@@ -11,6 +11,8 @@ import * as dsa_actions from '../../actions/dsa';
 import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
 import { migrateUploadRoutingFromLegacy } from '../../helpers/uploadRouting_migration';
+import { migrateConfigV2 } from '../../helpers/config_v2_migration.js';
+import * as modal_actions from '../../actions/modal';
 
 let lastPersistedSnapshotJson = null;
 
@@ -37,7 +39,14 @@ function* load_saved_store() {
       // yield put({type: modal_actions.UPDATE_MODAL, payload: store.modal});
     }
     if (store.config) {
-      yield put({type: config_actions.UPDATE_CONFIG, payload: store.config});
+      const { config: migratedConfig, wasReset } = migrateConfigV2(store.config, store.esm);
+      yield put({ type: config_actions.UPDATE_CONFIG, payload: migratedConfig });
+      if (wasReset) {
+        yield put({
+          type: modal_actions.DISPLAY_WARNING_MESSAGE,
+          payload: 'Configuration upgraded to v2. Assembly and routing settings were migrated from your previous config.',
+        });
+      }
     }
     if (store.esm) {
       yield put({type: esm_actions.UPDATE_ESM, payload: store.esm});

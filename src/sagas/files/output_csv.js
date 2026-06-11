@@ -2,6 +2,11 @@ import { select } from "redux-saga/effects";
 
 export default function* output_csv(file) {
   const file_rows = yield select(state => state.files.file_rows);
+  const config = yield select(state => state.config);
+  const exportAsm = config?.routing?.exportCsv?.enabled !== false;
+  const asmHeader = config?.routing?.exportCsv?.columnHeader
+    || config?.assembly?.columnName
+    || 'AssembledName';
 
   let output_data = {
     "header": [],
@@ -13,18 +18,21 @@ export default function* output_csv(file) {
     "deidToken", "labelText", "qrPayload", "assembledItemName", "status"
   );
 
+  if (exportAsm && !output_data.header.includes(asmHeader)) {
+    output_data.header.push(asmHeader);
+  }
+
   for (let file_row_idx in file_rows) {
     let file_row = file_rows[file_row_idx];
 
-    // Add any column names that are not already in the header
     let column_names = get_column_names(file_row);
     for (let column_name of column_names) {
+      if (column_name === 'AssembledName' && !exportAsm) continue;
       if (!output_data.header.includes(column_name) && !column_name.startsWith('__reserved')) {
         output_data.header.push(column_name);
       }
     }
 
-    // Add row data
     let column_data = get_column_data(file_row, column_names);
 
     column_data.path = file_row.__reserved.source.path;
@@ -38,6 +46,10 @@ export default function* output_csv(file) {
     column_data.labelText = file_row.__reserved.labelText ?? '';
     column_data.qrPayload = file_row.__reserved.qrPayload ?? '';
     column_data.assembledItemName = file_row.__reserved.assembledItemName ?? '';
+
+    if (exportAsm) {
+      column_data[asmHeader] = file_row.AssembledName ?? file_row.__reserved?.assembledName ?? '';
+    }
 
     if (file_row.__reserved.processed === 1) {
       column_data.status = "success";

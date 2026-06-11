@@ -10,7 +10,19 @@ const baseRow = {
 };
 
 const baseConfig = {
+  configVersion: 2,
   filename: { use_uuid: true },
+  assembly: {
+    specimenId: { source: 'fixed', fixedValue: 'CASE42', column: '' },
+    fieldsOrder: ['specimenId', 'BlockId', 'StainId', 'SlideNum'],
+    separator: '_',
+    duplicateStrategy: 'suffix-index',
+    columnName: 'AssembledName',
+  },
+  routing: {
+    labelText: { enabled: false },
+    outputFilename: { enabled: false },
+  },
   naming: { accessionMode: 'manual', accessionToken: 'CASE42' },
   label: {
     add_text: true,
