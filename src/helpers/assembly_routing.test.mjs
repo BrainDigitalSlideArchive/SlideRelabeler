@@ -27,7 +27,8 @@ describe('applyAssemblyAndRouting', () => {
   it('sets AssembledName column and routing fields', () => {
     const config = {
       assembly: DEFAULT_ASSEMBLY,
-      routing: { ...DEFAULT_ROUTING, outputFilename: { enabled: true }, labelText: { enabled: true, column: 'AssembledName' } },
+      filename: { source: 'computed' },
+      routing: { ...DEFAULT_ROUTING, labelText: { enabled: true, column: 'AssembledName' } },
       label: { text_column_field: { value: 'AssembledName' }, label_text_assembly: { mode: 'legacy' } },
     };
     const row = {
@@ -43,6 +44,23 @@ describe('applyAssemblyAndRouting', () => {
     assert.equal(out.__reserved.labelText, 'A1_B2_HE_3');
     assert.equal(out.__reserved.assembledName, 'A1_B2_HE_3');
   });
+
+  it('does not overwrite rename when filename source is column', () => {
+    const config = {
+      assembly: DEFAULT_ASSEMBLY,
+      filename: { source: 'column', column: 'output_name' },
+      routing: DEFAULT_ROUTING,
+    };
+    const row = {
+      output_name: 'CSV_NAME',
+      Accession: 'A1',
+      BlockId: 'B2',
+      __reserved: { uuid: 'u1', rename: 'KEEP_ME' },
+    };
+    const out = applyAssemblyAndRouting(row, config);
+    assert.equal(out.__reserved.rename, 'KEEP_ME');
+    assert.equal(out.AssembledName, 'A1_B2');
+  });
 });
 
 describe('migrateConfigV2', () => {
@@ -56,6 +74,15 @@ describe('migrateConfigV2', () => {
     assert.equal(config.assembly.specimenId.source, 'fixed');
     assert.equal(config.assembly.specimenId.fixedValue, 'TOK');
     assert.deepEqual(config.assembly.fieldsOrder, ['specimenId', 'BlockId']);
-    assert.equal(config.routing.outputFilename.enabled, true);
+    assert.equal(config.filename.source, 'computed');
+  });
+
+  it('maps csv rename column to column filename source', () => {
+    const { config } = migrateConfigV2(
+      { filename: { use_uuid: false }, csv: { file_rename_column: 'output_name' } },
+      {},
+    );
+    assert.equal(config.filename.source, 'column');
+    assert.equal(config.filename.column, 'output_name');
   });
 });

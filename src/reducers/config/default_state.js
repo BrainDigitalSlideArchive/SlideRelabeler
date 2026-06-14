@@ -5,12 +5,14 @@ export const default_state = {
   assembly: { ...DEFAULT_ASSEMBLY },
   routing: { ...DEFAULT_ROUTING },
   filename: {
+    source: 'uuid',
+    column: '',
     use_uuid: true,
     style: 'uuid',
     use_suffix: false,
     use_prefix: false,
-    prefix: 'deid',
-    suffix: 'deid',
+  prefix: 'deid_',
+  suffix: '_deid',
   },
   csv: {
     save_csv: true,

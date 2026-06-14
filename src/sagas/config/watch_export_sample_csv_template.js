@@ -1,10 +1,12 @@
 import { take, call, select } from 'redux-saga/effects';
 
 import * as config_actions from '../../actions/config';
+import { resolveOutputBasename } from '../../helpers/output_filename.js';
 
 function* export_sample_csv_template(file) {
   const file_rows = yield select(state => state.files.file_rows);
   const csv_config = yield select(state => state.config.csv);
+  const config = yield select(state => state.config);
 
   let output_data = {
     header: [],
@@ -26,7 +28,7 @@ function* export_sample_csv_template(file) {
       [csv_config.file_path_column]: file_row.__reserved.source.path,
     }
     if (csv_config.file_rename_column) {
-      row[csv_config.file_rename_column] = file_row.__reserved.rename;
+      row[csv_config.file_rename_column] = resolveOutputBasename(file_row, config);
     }
     if (csv_config.file_destination_directory_column) {
       row[csv_config.file_destination_directory_column] = file_row.__reserved.destinationDirectory;

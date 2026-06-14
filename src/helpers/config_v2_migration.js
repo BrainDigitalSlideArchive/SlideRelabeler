@@ -2,6 +2,7 @@
 
 import default_state from '../reducers/config/default_state.js';
 import { DEFAULT_ASSEMBLY, DEFAULT_ROUTING } from './assembly_routing.js';
+import { migrateFilenameConfig } from './output_filename.js';
 
 const CONFIG_VERSION = 2;
 
@@ -20,6 +21,8 @@ export function migrateConfigV2(loadedConfig, loadedEsm) {
   const version = base.configVersion ?? 0;
 
   if (version >= CONFIG_VERSION && base.assembly && base.routing) {
+    const migratedFilename = migrateFilenameConfig(base);
+    const csv = base.csv || {};
     return {
       config: {
         ...default_state,
@@ -27,6 +30,12 @@ export function migrateConfigV2(loadedConfig, loadedEsm) {
         configVersion: CONFIG_VERSION,
         assembly: { ...DEFAULT_ASSEMBLY, ...base.assembly },
         routing: { ...DEFAULT_ROUTING, ...base.routing },
+        filename: migratedFilename,
+        csv: {
+          ...default_state.csv,
+          ...csv,
+          file_rename_column: migratedFilename.column || csv.file_rename_column || '',
+        },
       },
       wasReset: false,
     };
@@ -54,9 +63,13 @@ export function migrateConfigV2(loadedConfig, loadedEsm) {
   };
 
   const useUuid = base.filename?.use_uuid !== false;
+  const migratedFilename = migrateFilenameConfig({
+    ...base,
+    filename: { ...(base.filename || {}), use_uuid: useUuid },
+  });
   const routing = {
     ...DEFAULT_ROUTING,
-    outputFilename: { enabled: !useUuid },
+    outputFilename: { enabled: migratedFilename.source === 'computed' },
     labelText: {
       enabled: true,
       column: 'AssembledName',
@@ -78,10 +91,11 @@ export function migrateConfigV2(loadedConfig, loadedEsm) {
       assembly,
       routing,
       label,
-      filename: {
-        ...default_state.filename,
-        ...(base.filename || {}),
-        style: useUuid ? 'uuid' : 'readable',
+      filename: migratedFilename,
+      csv: {
+        ...default_state.csv,
+        ...(base.csv || {}),
+        file_rename_column: migratedFilename.column || base.csv?.file_rename_column || '',
       },
       naming: {
         ...default_state.naming,

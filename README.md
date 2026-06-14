@@ -11,15 +11,25 @@ incorporates modified code from https://github.com/DigitalSlideArchive/DSA-WSI-D
 ## Getting started
 1) Clone the repo: `git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git`.
 2) Switch to the new directory: `cd SlideRelabeler`.
-3) Create a working anaconda environment: `conda env create -f environment.yml`
+3) Create a working anaconda environment:
+   - macOS: `conda env create -f environment-macos.yml`
+   - Windows: `conda env create -f environment-windows.yml`
 4) Activate the conda environment: `conda activate sliderelabeler`.
-6) Install npm dependencies: `npm install`;
-7) Launch the dev app: `npm start`;
+5) Install npm dependencies: `npm install`;
+6) Launch the dev app: `npm run dev`;
+
+`npm run dev` resolves the `sliderelabeler` conda environment and sets `PYTHON` to that env’s interpreter directly (bypassing pyenv or other shims on PATH). Use `npm start` only if your shell already points `python` at the correct interpreter.
+
+If the Python backend fails to start, verify dependencies in the conda env:
+
+```bash
+conda run -n sliderelabeler python -c "import grpc; import large_image"
+```
 
 > Note about `pip install large-image[common]`: on Macbook Pro MacOS Ventura 13.3 Apple M1 Max, `large-image` failed to install due to `rawpy` not being found on `pypi` - this is because of the M1 architecture. See https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513 and the rest of the thread for info. I ended up being able to clone the `rawpy` repo and install directly (after `brew install cmake`), and then `large-image` could be installed.
 
 ## Building the distributable application
-Running `npm start` will open up the app, but won't create a bundle for distribution - no `SlideRelabeler.app` or `SlideRelabeler.exe` file will be generated. This option will use your local python installation to run the python script in a shell.
+Running `npm run dev` (or `npm start`) will open up the app, but won't create a bundle for distribution - no `SlideRelabeler.app` or `SlideRelabeler.exe` file will be generated. Development mode uses your local Python installation to run the backend script in a shell; prefer `npm run dev` so the conda env is used reliably.
 
 Running `npm run startpib` (start **P**y**I**nstaller **B**uild) will package your python code into a stand-alone application using `pyinstaller`, and will launch the application
 with a flag to use this python app rather than the system python. This is useful for testing the `pyinstaller` process.

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { encodeURLParameters } from '../../helpers/url_helpers';
 
-const PLACEHOLDER_FILE = 'preview-sample.tiff';
 const DEBOUNCE_MS = 300;
 
 export default function LabelThumbnailPreview({
@@ -13,9 +12,8 @@ export default function LabelThumbnailPreview({
   const [debouncedUrl, setDebouncedUrl] = useState(null);
 
   const previewUrl = useMemo(() => {
-    if (!enabled || !fileRow) return null;
+    if (!enabled || !fileRow || !filePath) return null;
 
-    const path = filePath || PLACEHOLDER_FILE;
     const outputDict = {
       ...fileRow,
       config,
@@ -23,16 +21,15 @@ export default function LabelThumbnailPreview({
         ...(fileRow.__reserved || {}),
         source: {
           ...(fileRow.__reserved?.source || {}),
-          path,
-          filename: path.split(/[/\\]/).pop(),
+          path: filePath,
+          filename: filePath.split(/[/\\]/).pop(),
         },
         associatedImages: ['label', 'thumbnail'],
       },
     };
 
-    const fileEncoded = encodeURIComponent(path);
     const params = encodeURLParameters(outputDict);
-    return `preview-label://${fileEncoded}?${params}`;
+    return `preview-label://preview?${params}`;
   }, [config, fileRow, filePath, enabled]);
 
   useEffect(() => {

@@ -3,25 +3,10 @@
 import { getRowFieldValue, resolveAssembly } from './template_engine.js';
 import { computeDeidToken } from './slide_naming.js';
 import { getAssemblyColumnName, computeSpecimenId } from './assembly_routing.js';
+import { resolveOutputBasename } from './output_filename.js';
 
 function getRename(config, fileRow) {
-  const filenameConfig = config?.filename ?? {};
-  const reserved = fileRow?.__reserved ?? {};
-  const useUuid = filenameConfig.use_uuid !== false;
-  const uuid = reserved.uuid;
-  const colName = getAssemblyColumnName(config);
-  const assembled = fileRow[colName] ?? reserved.assembledName ?? reserved.rename;
-
-  if (useUuid && uuid) return String(uuid);
-  if (!useUuid && assembled) return String(assembled);
-  if (uuid) return String(uuid);
-  if (assembled) return String(assembled);
-  if (reserved.source?.filename) {
-    const name = String(reserved.source.filename);
-    const dot = name.lastIndexOf('.');
-    return dot >= 0 ? name.slice(0, dot) : name;
-  }
-  return '';
+  return resolveOutputBasename(fileRow, config);
 }
 
 function previewLegacyLabelText(labelConfig, config, fileRow) {

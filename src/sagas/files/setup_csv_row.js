@@ -1,5 +1,5 @@
 import {select} from 'redux-saga/effects';
-import {return_filename_basename_from_filename, return_filename_dir_from_path, join_paths, return_separator} from "../../helpers/renderer_path_helpers";
+import {return_filename_dir_from_path, join_paths, return_separator} from "../../helpers/renderer_path_helpers";
 import get_uuid from "./get_uuid";
 // import path from "path";
 
@@ -16,7 +16,7 @@ export default function* setup_csv_row(headers, row) {
   }
 
   // console.log("Row in setup_csv_row", output_row);
-  const {reserved_path_column, reserved_rename_column, reserved_destination_directory_column, csv_file_path} = yield select(state => state.files.csv);
+  const {reserved_path_column, reserved_destination_directory_column, csv_file_path} = yield select(state => state.files.csv);
 
   if (reserved_path_column &&Object.keys(output_row).includes(reserved_path_column.header)) {
     const csv = yield select(state => state.files.csv);
@@ -56,19 +56,10 @@ export default function* setup_csv_row(headers, row) {
     const file_uuid = yield get_uuid(file_path);
     console.log("File UUID", file_uuid);
     output_row.__reserved.uuid = file_uuid;
-    output_row.__reserved.rename = filename;
   }
 
-  if (output_row.__reserved && output_row.__reserved.source && (reserved_rename_column || reserved_destination_directory_column)) {
-    const basename = return_filename_basename_from_filename(output_row.__reserved.source.filename);
-    
+  if (output_row.__reserved && output_row.__reserved.source) {
     const output_dir = yield select(state => state.files.output_dir);
-
-    if (reserved_rename_column) {
-      output_row.__reserved.rename = row[reserved_rename_column.header_idx];
-    } else {
-      output_row.__reserved.rename = basename;
-    }
 
     if (reserved_destination_directory_column) {
       output_row.__reserved.destinationDirectory = row[reserved_destination_directory_column.header_idx];

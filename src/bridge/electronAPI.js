@@ -72,6 +72,7 @@ function ensureGlobusUploadIpcSubscribed(dispatch) {
 const API = {
   // sendButtonClick: (text) => ipcRenderer.send('button-click', text),
   openFileIconDialog: () => ipcRenderer.invoke('open-icon-single-dialog'),
+  readLocalImagePreview: (filePath) => ipcRenderer.invoke('read-local-image-preview', filePath),
   openFileMultiDialog: () => ipcRenderer.invoke('open-file-multi-dialog'),
   openFileSingleDialog: () => ipcRenderer.invoke('open-file-single-dialog'),
   openFolderDialog: () => { return ipcRenderer.invoke('open-folder-dialog') },

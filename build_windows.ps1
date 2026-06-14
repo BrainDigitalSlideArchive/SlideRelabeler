@@ -12,8 +12,8 @@ if (!(conda env list | Select-String -Pattern $envName)) {
     # default and conda-forge channels
     conda tos accept
     conda tos accept --override-channels --channel conda-forge
-    # This will create the environment using the project's environment.yml file
-    conda env create -f environment.yml
+    # This will create the environment using the Windows environment file
+    conda env create -f environment-windows.yml
 
     if (!(conda env list | Select-String -Pattern $envName)) {
         Write-Host "Conda environment $envName was not created"

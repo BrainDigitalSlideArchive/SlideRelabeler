@@ -37,7 +37,7 @@ const AppAgGrid = (props) => {
   const file_rows = useSelector(state => state.files.file_rows);
   const reserved_cols = useSelector(state => state.files.reserved_columns);
   const file_cols = useSelector(state => state.files.file_columns);
-  const filename_config = useSelector(state => state.config.filename);
+  const config = useSelector(state => state.config);
   const processing = useSelector(state => state.files.processing);
   const disable_changes = useSelector(state => state.files.disable_changes);
   const gridRef = useRef(null);
@@ -96,15 +96,15 @@ const AppAgGrid = (props) => {
     column_defs = setupDestinationDirectoryColumn(column_defs);
     // column_defs = setupDestinationDirectoryColSpan(column_defs);
     column_defs = setupDestinationDirectoryOnCellClicked(column_defs);
-    column_defs = setupRenameCellEditable(column_defs, filename_config);
+    column_defs = setupRenameCellEditable(column_defs);
     column_defs = setupRenameCellClass(column_defs);
     column_defs = setupRenameCellOnCellClicked(column_defs);
     column_defs = setupRenameCellValueSetter(column_defs, dispatch);
-    column_defs = setupRenameEditorColumn(column_defs, filename_config);
-    column_defs = setupRenameCellRenderer(column_defs, filename_config);
+    column_defs = setupRenameEditorColumn(column_defs, config);
+    column_defs = setupRenameCellRenderer(column_defs, config);
     column_defs = setupTooltipValueGetter(column_defs);
     set_column_defs(column_defs);
-  }, [file_cols, filename_config, reserved_cols]);
+  }, [file_cols, config, reserved_cols]);
 
   function getRowStyle(params) {
     if (params.data.__reserved && params.data.__reserved.progress === 100) {

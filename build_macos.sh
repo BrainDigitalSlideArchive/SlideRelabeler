@@ -79,8 +79,8 @@ if ! conda env list | grep -q "^${ENV_NAME}\s"; then
     conda tos accept 2>/dev/null || true
     conda tos accept --override-channels --channel conda-forge 2>/dev/null || true
     
-    # Create the environment using the project's environment.yml file
-    conda env create -f environment.yml
+    # Create the environment using the macOS environment file
+    conda env create -f environment-macos.yml
     
     if ! conda env list | grep -q "^${ENV_NAME}\s"; then
         echo "ERROR: Conda environment '$ENV_NAME' was not created"

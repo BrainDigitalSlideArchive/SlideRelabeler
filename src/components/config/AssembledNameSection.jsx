@@ -7,9 +7,9 @@ import Button from '../controls/button/Button';
 import AssemblyBuildControls from './AssemblyBuildControls';
 import { buildAssembledName } from '../../helpers/assembly_routing';
 
-function routingChips(routing) {
+function routingChips(routing, filenameSource) {
   const chips = [];
-  if (routing?.outputFilename?.enabled) chips.push('filename');
+  if (filenameSource === 'computed') chips.push('filename');
   if (routing?.labelText?.enabled) chips.push('label');
   if (routing?.dsaItemName?.enabled) chips.push('DSA');
   if (routing?.exportCsv?.enabled) chips.push('CSV');
@@ -20,6 +20,7 @@ function routingChips(routing) {
 export default function AssembledNameSection({
   assembly,
   routing,
+  filenameSource = 'uuid',
   disabled = false,
   columnOptions = [],
   sampleRow = null,
@@ -35,10 +36,15 @@ export default function AssembledNameSection({
     return buildAssembledName(sampleRow, assembly);
   }, [sampleRow, assembly]);
 
-  const chips = routingChips(routing);
+  const chips = routingChips(routing, filenameSource);
 
   function setAssembly(partial) {
     dispatch({ type: config_actions.SET_ASSEMBLY_CONFIG, payload: partial });
+    dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING });
+  }
+
+  function setFilenameSource(source) {
+    dispatch({ type: config_actions.SET_FILENAME_CONFIG, payload: { source } });
     dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING });
   }
 
@@ -111,8 +117,8 @@ export default function AssembledNameSection({
             <Checkbox
               disabled={disabled}
               label="Use for output filename"
-              checked={!!routing?.outputFilename?.enabled}
-              onClick={() => setRouting({ outputFilename: { enabled: !routing?.outputFilename?.enabled } })}
+              checked={filenameSource === 'computed'}
+              onClick={() => setFilenameSource(filenameSource === 'computed' ? 'uuid' : 'computed')}
             />
             <Checkbox
               disabled={disabled}

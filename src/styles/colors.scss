@@ -17,3 +17,14 @@ $border-surface: rgba($black, 0.22);
 $border-surface-strong: $darker-blue;
 $accent-label: $darker-blue;
 $surface-warning-text: #8B3A3A;
+
+// Configuration dialog light panel (dark text on neutral surface)
+$config-panel-bg: #FFFFFF;
+$config-panel-surface: #F8F9FA;
+$config-text-primary: #212529;
+$config-text-secondary: #495057;
+$config-text-tertiary: #6C757D;
+$config-border: #DEE2E6;
+$config-accent: #495057;
+$config-callout-bg: #EFF6FF;
+$config-callout-border: #BFDBFE;

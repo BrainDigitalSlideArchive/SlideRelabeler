@@ -861,8 +861,13 @@ ipcMain.handle('open-file-single-dialog', async () => {
 });
 
 ipcMain.handle('cancel-restart-bridge', async () => {
-  bridge._shell.kill();
-  bridge = new PythonBridge();
+  try {
+    await bridge.stop();
+  } catch (err) {
+    console.error('[py grpc] cancel-restart-bridge stop failed', err);
+  }
+  bridge = new GrpcPythonBridge();
+  await bridge.start();
 });
 
 ipcMain.handle('delete-file', async (event, file_path) => {
@@ -892,6 +897,30 @@ ipcMain.handle('open-icon-single-dialog', async () => {
     }
   });
   // ipcMain.emit('store-changes-finalized')
+});
+
+const LOCAL_IMAGE_PREVIEW_MIME = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+};
+
+ipcMain.handle('read-local-image-preview', async (_event, filePath) => {
+  if (!filePath || typeof filePath !== 'string') return null;
+  if (!existsSync(filePath)) return null;
+
+  const mime = LOCAL_IMAGE_PREVIEW_MIME[extname(filePath).toLowerCase()];
+  if (!mime) return null;
+
+  try {
+    const data = readFileSync(filePath);
+    return `data:${mime};base64,${data.toString('base64')}`;
+  } catch {
+    return null;
+  }
 });
 
 ipcMain.handle('get-store', async () => {
@@ -1067,6 +1096,7 @@ ipcMain.handle('metadata', async (event, file) => {
 });
 
 ipcMain.handle('open-viewer', async (event, file, row_idx) => {
+  console.info('[viewer] open-viewer', { file, row_idx, row_idx_type: typeof row_idx });
   console.log(`******* Creating Viewer Window for ${file} at ${row_idx} ************`)
   const encoded_file_uri = encodeURIComponent(file);
 
@@ -1087,7 +1117,7 @@ ipcMain.handle('open-viewer', async (event, file, row_idx) => {
       id: 'viewer',
       browserWindow: window,
       htmlFile: path.join(__dirname, '..', 'renderer', 'viewer', 'index.html'),
-      query: { file: file, row_idx: row_idx }
+      query: { file: file, row_idx: String(row_idx ?? '') },
     })
   }
 

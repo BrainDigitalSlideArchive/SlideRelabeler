@@ -6,6 +6,14 @@ import * as config_actions from '../../actions/config';
 import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
 import { migrateNamingConfig } from '../../helpers/naming_config_migration.js';
+import { normalizeFilenameConfig } from '../../helpers/output_filename.js';
+
+function syncFilenameLegacyFields(draft) {
+  const normalized = normalizeFilenameConfig(draft.filename);
+  draft.filename.source = normalized.source;
+  draft.filename.use_uuid = normalized.use_uuid;
+  draft.filename.style = normalized.style;
+}
 
 // Helper function to deep merge config with defaults
 function mergeConfigWithDefaults(loadedConfig, defaults) {
@@ -50,6 +58,11 @@ const config_reducer  = createReducer(default_state, (builder) => {
     .addCase(config_actions.CHANGE_FILE_RENAME_COLUMN, (state, action) => {
       return produce(state, draft => {
         draft.csv.file_rename_column = action.payload;
+        draft.filename.column = action.payload;
+        if (action.payload) {
+          draft.filename.source = 'column';
+          syncFilenameLegacyFields(draft);
+        }
       })
     })
     .addCase(config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, (state, action) => {
@@ -59,9 +72,8 @@ const config_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(config_actions.TOGGLE_UUID, (state) => {
       return produce(state, draft => {
-        draft.filename.use_uuid = !state.filename.use_uuid;
-        draft.filename.style = draft.filename.use_uuid ? 'uuid' : 'readable';
-        draft.routing.outputFilename.enabled = !draft.filename.use_uuid;
+        draft.filename.source = draft.filename.source === 'uuid' ? 'computed' : 'uuid';
+        syncFilenameLegacyFields(draft);
       })
     })
     .addCase(config_actions.TOGGLE_PREFIX, (state, action) => {
@@ -76,9 +88,8 @@ const config_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(config_actions.TOGGLE_NON_RANDOM, (state) => {
       return produce(state, draft => {
-        draft.filename.use_uuid = !state.filename.use_uuid;
-        draft.filename.style = draft.filename.use_uuid ? 'uuid' : 'readable';
-        draft.routing.outputFilename.enabled = !draft.filename.use_uuid;
+        draft.filename.source = draft.filename.source === 'uuid' ? 'computed' : 'uuid';
+        syncFilenameLegacyFields(draft);
       })
     })
     .addCase(config_actions.TOGGLE_SAVE_CSV, (state, action) => {
@@ -143,9 +154,24 @@ const config_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(config_actions.TURN_ON_RENAME_MODE, (state) => {
       return produce(state, draft => {
-        draft.filename.use_uuid = false;
-        draft.filename.style = 'readable';
+        draft.filename.source = 'computed';
+        syncFilenameLegacyFields(draft);
         draft.routing.outputFilename.enabled = true;
+      })
+    })
+    .addCase(config_actions.SET_FILENAME_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        Object.assign(draft.filename, p);
+        syncFilenameLegacyFields(draft);
+        if (p.column !== undefined) {
+          draft.csv.file_rename_column = p.column;
+        } else if (draft.filename.source === 'column' && draft.filename.column) {
+          draft.csv.file_rename_column = draft.filename.column;
+        }
+        if (draft.filename.source === 'computed') {
+          draft.routing.outputFilename.enabled = true;
+        }
       })
     })
     .addCase(app_actions.RESET_STORE, (state, action) => {
@@ -230,9 +256,9 @@ const config_reducer  = createReducer(default_state, (builder) => {
             draft.routing[key] = p[key];
           }
         });
-        if (p.outputFilename?.enabled !== undefined) {
-          draft.filename.use_uuid = !p.outputFilename.enabled;
-          draft.filename.style = p.outputFilename.enabled ? 'readable' : 'uuid';
+        if (p.outputFilename?.enabled !== undefined && p.outputFilename.enabled) {
+          draft.filename.source = 'computed';
+          syncFilenameLegacyFields(draft);
         }
         if (p.dsaItemName?.enabled !== undefined) {
           draft.dsa_upload.rename_item_after_upload = Boolean(p.dsaItemName.enabled);

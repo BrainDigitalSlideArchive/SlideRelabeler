@@ -3,6 +3,7 @@
 import { safeToken, getAccessionFromBarcodeId } from './slide_naming.js';
 import { resolveAssembly } from './template_engine.js';
 import { applyRules } from './esm_transform_rules.js';
+import { getFilenameSource } from './output_filename.js';
 
 export const DEFAULT_ASSEMBLY = {
   specimenId: { source: 'from_metadata', fixedValue: '', column: '' },
@@ -176,7 +177,7 @@ export function applyAssemblyAndRouting(fileRow, config, options = {}) {
 
   const context = { deidToken: specimenId };
 
-  if (routing.outputFilename?.enabled) {
+  if (getFilenameSource(config) === 'computed') {
     reserved.rename = assembled;
   }
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { displayBytes } from "./fe_helpers";
 import * as files_actions from "../actions/files";
+import { resolveOutputBasename, applyFilenameAffixes } from './output_filename.js';
 
 export function addFieldToColumn(file_cols, match_field_header_class, field, field_value) {
   let outputFileCols = [...file_cols];
@@ -72,17 +73,16 @@ export function setupThumbnailColumnOnCellClicked(file_cols) {
   )
 }
 
-export function setupRenameCellRenderer(file_cols, filename_config) {
+export function setupRenameCellRenderer(file_cols, config) {
   return addCellRenderer(
     file_cols,
     '__reserved.rename',
     params => {
       if (params.data && params.data.__reserved && params.data.__reserved.processed === 1) {
         return <span>{params.data.__reserved.output_path}</span>
-      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1 && filename_config.use_uuid) {
-        return <span>{filename_config.use_prefix && filename_config.prefix}{params.data.__reserved.uuid}{filename_config.use_suffix && filename_config.suffix}</span>
-      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1 && !filename_config.use_uuid) {
-        return <span>{filename_config.use_prefix && filename_config.prefix}{params.data.__reserved.rename}{filename_config.use_suffix && filename_config.suffix}</span>
+      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1) {
+        const stem = applyFilenameAffixes(resolveOutputBasename(params.data, config), config);
+        return <span>{stem}</span>
       }
     }
   )
@@ -207,36 +207,22 @@ export function setupProgressColumn(file_cols) {
   )
 }
 
-export function setupRenameEditorColumn(file_cols, filename_config) {
+export function setupRenameEditorColumn(file_cols, config) {
   return addCellRenderer(
     file_cols,
     '__reserved.rename',
     (params) => {
       if (params && params.data && params.data.__reserved && params.data.__reserved.processed === 0) {
+        const stem = applyFilenameAffixes(resolveOutputBasename(params.data, config), config);
+        const ext = params.data.__reserved?.source?.parsed?.ext ?? '';
         return (
-          <>
-            <div style={{ display: 'flex', overflow: 'hidden' }} className='center-horizontally'>
-              <span>
-                {filename_config.use_prefix && filename_config.prefix}
-              </span>
-              {
-                filename_config.use_uuid ? <span>{params.data.__reserved.uuid}</span> :
-                  <span>
-                    <input className={"__input-text"} value={params.value} onChange={() => null} />
-                  </span>
-              }
-              <span>
-                {filename_config.use_suffix && filename_config.suffix}
-              </span>
-              <span>
-                {params.data.__reserved && params.data.__reserved.source && params.data.__reserved.source.parsed && params.data.__reserved.source.parsed.ext}
-              </span>
-            </div>
-          </>
+          <div style={{ display: 'flex', overflow: 'hidden' }} className='center-horizontally'>
+            <span>{stem}</span>
+            <span>{ext}</span>
+          </div>
         );
-      } else {
-        return '';
       }
+      return '';
     }
   )
 
@@ -337,11 +323,11 @@ export function setupDestinationDirectoryOnCellClicked(file_cols) {
   )
 }
 
-export function setupRenameCellEditable(file_cols, filename_config) {
+export function setupRenameCellEditable(file_cols) {
   return addEditable(
     file_cols,
     '__reserved.rename',
-    params => params.data.__reserved.processed === 0 && !filename_config.use_uuid
+    () => false
   )
 }
 

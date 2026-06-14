@@ -31,7 +31,7 @@ export function render_select(allow_select_csv_path_column, allow_select_csv_ren
       {
         allow_select_csv_rename_column &&
         <div className="__control-item">
-          <Dropdown disabled={processing || disable_changes} items={column_options} label={"Rename (optional)"} placeholder={"Select column"} selectedItems={csv_config.file_rename_column? column_options.filter(option => option.value === csv_config.file_rename_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: item.value})}/>
+          <Dropdown disabled={processing || disable_changes} items={column_options} label={"Output name column (optional)"} placeholder={"Select column"} selectedItems={csv_config.file_rename_column? column_options.filter(option => option.value === csv_config.file_rename_column) : []} onSelect={(item) => dispatch({type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: item.value})}/>
         </div>
       }
       {

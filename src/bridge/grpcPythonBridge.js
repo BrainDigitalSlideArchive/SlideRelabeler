@@ -253,14 +253,53 @@ export class GrpcPythonBridge {
     this._idCounter = 0;
   }
 
+  _isProcessAlive() {
+    return this._shell != null && this._shell.exitCode === null;
+  }
+
+  _resetProcessState() {
+    this._shell = null;
+    this._client = null;
+    this._address = null;
+    this._starting = null;
+  }
+
+  _attachProcessExitHandler(proc) {
+    proc.on("exit", (code, signal) => {
+      console.warn(`[py grpc] process exited code=${code} signal=${signal}`);
+      if (this._shell === proc) {
+        this._resetProcessState();
+      }
+    });
+  }
+
   async start() {
+    if (this._isProcessAlive()) return;
     if (this._starting) return this._starting;
-    this._starting = this._startImpl();
-    return this._starting;
+    if (this._shell && !this._isProcessAlive()) {
+      this._resetProcessState();
+    }
+    const startPromise = this._startImpl().catch((err) => {
+      if (!this._client) {
+        if (this._shell && this._isProcessAlive()) {
+          try {
+            this._shell.kill("SIGTERM");
+          } catch {}
+        }
+        this._resetProcessState();
+      }
+      throw err;
+    }).finally(() => {
+      if (this._starting === startPromise) {
+        this._starting = null;
+      }
+    });
+    this._starting = startPromise;
+    return startPromise;
   }
 
   async _startImpl() {
-    if (this._shell) return;
+    if (this._isProcessAlive()) return;
 
     this._shell = spawn(this._launchCommand, this._launchArgs, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -347,10 +386,7 @@ export class GrpcPythonBridge {
     if (!this._shell) return;
 
     const proc = this._shell;
-    this._shell = null;
-    this._client = null;
-    this._address = null;
-    this._starting = null;
+    this._resetProcessState();
 
     const exited = new Promise((resolve) => proc.once("exit", resolve));
 

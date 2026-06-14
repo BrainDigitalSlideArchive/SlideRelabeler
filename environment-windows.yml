@@ -1,0 +1,46 @@
+name: sliderelabeler
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - bzip2
+  - ca-certificates
+  - libjpeg-turbo
+  - lerc
+  - libdeflate
+  - libexpat
+  - libffi
+  - libtiff
+  - libzlib
+  - lz4
+  - nomkl
+  - openssl
+  - python=3.12
+  - setuptools
+  - vc
+  - vc14_runtime
+  - vs2015_runtime
+  - xz
+  - zlib
+  - zstd
+  - imagecodecs
+  - large-image
+  - large-image-source-tiff
+  - large-image-source-gdal
+  - pip:
+      - openslide-bin
+      - openslide-python
+      - pyinstaller
+      - lxml
+      # Required by the new gRPC-based Python engine (`src/python/engine.py`)
+      # so Electron can complete the READY <port> handshake.
+      - grpcio>=1.78.0
+      - grpcio-health-checking
+      # Keep protobuf new enough for generated stubs; engine_pb2.py indicates protoc 6.31.1.
+      - protobuf>=6.31.1
+      - large-image[common]
+      - large-image-source-ometiff
+      - pyproj
+      - qrcode
+      - pyvips[all]

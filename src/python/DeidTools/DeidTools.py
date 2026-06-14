@@ -604,11 +604,8 @@ class DeidTools:
             output_path = self.get_final_output_path(output_path)
         return output_path
 
-    def add_icon_to_image(self, image, output_dict, output_height=0):
+    def _load_icon_image(self, output_dict):
         label_config = output_dict['config']['label']
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
-
         image_path = label_config['icon_file']['source']['path']
         if os.path.exists(image_path):
             icon_image = PIL.Image.open(image_path)
@@ -617,40 +614,13 @@ class DeidTools:
             icon_image = PIL.Image.open(io.BytesIO(image_data))
 
         if icon_image.size[0] > 740:
-            new_width  = 740
+            new_width = 740
             new_height = new_width * icon_image.size[1] // icon_image.size[0]
-            resize_dim = (new_width, new_height)
+            icon_image = icon_image.resize((new_width, new_height), PIL.Image.LANCZOS)
 
-            icon_image = icon_image.resize(resize_dim, PIL.Image.LANCZOS)
+        return icon_image.convert(self.pil_image_mode)
 
-        position = (image.size[0] // 2 - icon_image.size[0] // 2, output_height + self.sep_height)
-
-        image.paste(icon_image, position)
-
-        output_height = output_height + self.sep_height*2 + icon_image.size[1]
-
-        return image, output_height
-
-    def get_field_data(self, output_dict, field):
-        if field == 'rename' or field == '__reserved.rename':
-            reserved = output_dict.get('__reserved', {})
-            return reserved.get('rename', '')
-        else:
-            field_split = field.split('.')
-            data = output_dict
-            for subfield in field_split:
-                if subfield in data:
-                    data = data.get(subfield)
-                elif isinstance(data, dict) and '__reserved' in data and subfield in data.get('__reserved', {}):
-                    data = data['__reserved'][subfield]
-                else:
-                    return None
-            return data
-
-    def add_qr_code_to_image(self, image, output_dict, desired_title, output_height=0):
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
-
+    def _resolve_qr_code_string(self, output_dict, desired_title):
         qr_data = {}
         qr_code_string = None
 
@@ -681,12 +651,54 @@ class DeidTools:
                 case _:
                     qr_code_string = ''
 
+        return qr_code_string
+
+    def _make_qr_image(self, qr_code_string):
+        if qr_code_string is None:
+            return None
+
+        qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+        qr.add_data(qr_code_string)
+        qr.make(fit=True)
+        return qr.make_image(fill_color='black', back_color='white').convert('RGB')
+
+    def add_icon_to_image(self, image, output_dict, output_height=0):
+        if image is None:
+            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+
+        icon_image = self._load_icon_image(output_dict)
+
+        position = (image.size[0] // 2 - icon_image.size[0] // 2, output_height + self.sep_height)
+
+        image.paste(icon_image, position)
+
+        output_height = output_height + self.sep_height*2 + icon_image.size[1]
+
+        return image, output_height
+
+    def get_field_data(self, output_dict, field):
+        if field == 'rename' or field == '__reserved.rename':
+            reserved = output_dict.get('__reserved', {})
+            return reserved.get('rename', '')
+        else:
+            field_split = field.split('.')
+            data = output_dict
+            for subfield in field_split:
+                if subfield in data:
+                    data = data.get(subfield)
+                elif isinstance(data, dict) and '__reserved' in data and subfield in data.get('__reserved', {}):
+                    data = data['__reserved'][subfield]
+                else:
+                    return None
+            return data
+
+    def add_qr_code_to_image(self, image, output_dict, desired_title, output_height=0):
+        if image is None:
+            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+
+        qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
         if qr_code_string is not None:
-            qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
-            qr.add_data(qr_code_string)
-            qr.make(fit=True)
-            qr_code = qr.make_image(fill_color='black', back_color='white').convert('RGB')
-            # qr_code.save('test_qr_code.png')
+            qr_code = self._make_qr_image(qr_code_string)
             image_cropped = image.crop((0, 0, image.size[0], output_height))
             width = max(qr_code.size[0], image_cropped.size[0])
 
@@ -706,6 +718,40 @@ class DeidTools:
             output_height = qr_code.size[1] + output_height + self.sep_height + self.sep_height
 
         return image, output_height
+
+    def add_icon_and_qr_row(self, image, output_dict, desired_title, output_height=0):
+        if image is None:
+            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+
+        icon_image = self._load_icon_image(output_dict)
+        qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
+        if qr_code_string is None:
+            return self.add_icon_to_image(image, output_dict, output_height)
+
+        qr_code = self._make_qr_image(qr_code_string)
+
+        gap = self.sep_height
+        row_top = output_height + self.sep_height
+        row_height = max(icon_image.size[1], qr_code.size[1])
+        content_width = icon_image.size[0] + gap + qr_code.size[0]
+
+        image_cropped = image.crop((0, 0, image.size[0], output_height))
+        width = max(content_width, image_cropped.size[0])
+
+        pair_left = (width - content_width) // 2
+        icon_left = pair_left
+        icon_top = row_top + (row_height - icon_image.size[1]) // 2
+        qr_left = pair_left + icon_image.size[0] + gap
+        qr_top = row_top + (row_height - qr_code.size[1]) // 2
+
+        new_height = output_height + self.sep_height + row_height + self.sep_height
+
+        image = PIL.Image.new(self.pil_image_mode, (width, new_height))
+        image.paste(image_cropped, (0, 0))
+        image.paste(icon_image, (icon_left, icon_top))
+        image.paste(qr_code, (qr_left, qr_top))
+
+        return image, new_height
 
     def get_deid_label(self, output_dict):
         label_config = output_dict['config']['label']
@@ -750,9 +796,11 @@ class DeidTools:
                 text = str(text)
             if len(text) > 0:
                 labelImage, output_height = self.add_text_to_image(labelImage, text, False, item=curItem)
-        if label_config['add_icon']:
+        if label_config['add_icon'] and label_config['add_qr']:
+            labelImage, output_height = self.add_icon_and_qr_row(labelImage, output_dict, desired_title, output_height)
+        elif label_config['add_icon']:
             labelImage, output_height = self.add_icon_to_image(labelImage, output_dict, output_height)
-        if label_config['add_qr']:
+        elif label_config['add_qr']:
             labelImage, output_height = self.add_qr_code_to_image(labelImage, output_dict, desired_title, output_height)
 
         if labelImage is not None:
@@ -791,33 +839,74 @@ class DeidTools:
         base64_str = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
         return 'image/png', base64_str
 
-    def get_rename(self, output_dict):
+    def _resolve_filename_source(self, filename_config):
+        valid = ('original', 'uuid', 'column', 'computed')
+        source = filename_config.get('source')
+        if source in valid:
+            return source
+        use_uuid = filename_config.get('use_uuid', True)
+        if isinstance(use_uuid, str):
+            use_uuid = use_uuid.strip().lower() in ('1', 'true', 'yes', 'on')
+        if use_uuid is False:
+            column = (filename_config.get('column') or '').strip()
+            return 'column' if column else 'computed'
+        return 'uuid'
+
+    def _resolve_output_basename(self, output_dict):
+        config = output_dict.get('config', {})
+        filename_config = config.get('filename', {})
+        reserved = output_dict.get('__reserved', {})
+        source_meta = reserved.get('source', {})
+        mode = self._resolve_filename_source(filename_config)
+
         temp = ''
+        if mode == 'original':
+            if source_meta.get('filename'):
+                temp = os.path.splitext(source_meta.get('filename'))[0]
+        elif mode == 'uuid':
+            uuid_value = reserved.get('uuid')
+            if uuid_value:
+                temp = str(uuid_value)
+        elif mode == 'column':
+            col = (filename_config.get('column') or '').strip()
+            if col:
+                if col in output_dict and output_dict[col] is not None:
+                    temp = str(output_dict[col])
+                elif col.startswith('__reserved.'):
+                    key = col.replace('__reserved.', '')
+                    if key in reserved and reserved[key] is not None:
+                        temp = str(reserved[key])
+        elif mode == 'computed':
+            assembly_col = config.get('assembly', {}).get('columnName', 'AssembledName')
+            val = output_dict.get(assembly_col) or reserved.get('assembledName') or reserved.get('rename')
+            if val:
+                temp = str(val)
+
+        if not temp:
+            assembly_col = config.get('assembly', {}).get('columnName', 'AssembledName')
+            for candidate in (
+                output_dict.get(assembly_col),
+                reserved.get('assembledName'),
+                reserved.get('rename'),
+                reserved.get('uuid'),
+            ):
+                if candidate:
+                    temp = str(candidate)
+                    break
+            if not temp and source_meta.get('filename'):
+                temp = os.path.splitext(source_meta.get('filename'))[0]
+            if not temp:
+                temp = 'None'
+
+        return temp
+
+    def get_rename(self, output_dict):
         config = output_dict.get('config', {})
         filename_config = config.get('filename', {})
         reserved = output_dict.get('__reserved', {})
         source = reserved.get('source', {})
 
-        use_uuid = filename_config.get('use_uuid', True)
-        if isinstance(use_uuid, str):
-            use_uuid = use_uuid.strip().lower() in ('1', 'true', 'yes', 'on')
-
-        uuid_value = reserved.get('uuid')
-        rename_value = reserved.get('rename')
-
-        # Prefer configured mode, but keep deterministic fallbacks.
-        if use_uuid and uuid_value:
-            temp = str(uuid_value)
-        elif (not use_uuid) and rename_value:
-            temp = str(rename_value)
-        elif uuid_value:
-            temp = str(uuid_value)
-        elif rename_value:
-            temp = str(rename_value)
-        elif source.get('filename'):
-            temp = os.path.splitext(source.get('filename'))[0]
-        else:
-            temp = 'None'
+        temp = self._resolve_output_basename(output_dict)
 
         if filename_config.get('use_prefix') and ('prefix' in filename_config):
             temp = str(filename_config.get('prefix', '')) + temp
@@ -843,10 +932,7 @@ class DeidTools:
     def return_deid_setup(self, output_dict):
         filename = output_dict['__reserved']['source']['path']
 
-        if output_dict['config']['filename']['use_uuid']:
-            desired_title = output_dict['__reserved']['uuid']
-        else:
-            desired_title = output_dict['__reserved']['rename']
+        desired_title = self._resolve_output_basename(output_dict)
 
         if desired_title is not None:
             curItem = ImageItem(filename, {"name": desired_title})

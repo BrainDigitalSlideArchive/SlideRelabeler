@@ -1,5 +1,6 @@
 @import '../../styles/colors.scss';
 @import '../../styles/variables.scss';
+@import '../../components/config/SlideLabelLayout.scss';
 
 .Modal {
   position: absolute;
@@ -133,6 +134,302 @@
       top: 5em;
       overflow-y: auto;
       height: calc($modal_height - 5em);
+
+      &--config {
+        padding: 0.75em 1em 1em;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .config-panel {
+        background: $config-panel-bg;
+        color: $config-text-primary;
+        border-radius: 0.5em;
+        box-shadow: 0 2px 12px rgba($black, 0.12);
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        &__body {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding: 0 1.25em 1.25em;
+
+          .__config-controls {
+            .__divider {
+              margin: 2rem 0 0;
+              padding: 0 0 1.5rem;
+              height: 0;
+              min-height: 0;
+              border: none;
+              border-top: 1px solid $config-border;
+              box-shadow: inset 0 1px 0 rgba($black, 0.04);
+              background: transparent;
+            }
+
+            .__config-control-section {
+              margin-bottom: 0;
+            }
+
+            .__config-control-section-title {
+              margin-top: 0;
+              margin-bottom: 0.5em;
+            }
+          }
+        }
+
+        [id^="config-"] {
+          scroll-margin-top: 3rem;
+        }
+
+        .config-sticky-nav {
+          flex-shrink: 0;
+          position: relative;
+          z-index: 1;
+          display: flex;
+          flex-wrap: nowrap;
+          gap: 0;
+          overflow-x: auto;
+          padding: 0 1.25em;
+          margin: 0;
+          background: $config-panel-bg;
+          border-bottom: 1px solid $config-border;
+          box-shadow: 0 1px 4px rgba($black, 0.06);
+
+          &__link {
+            flex-shrink: 0;
+            background: none;
+            color: $config-text-secondary;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            padding: 0.75rem 1rem;
+            min-height: 2.75rem;
+            font-size: 0.875rem;
+            line-height: 1.4;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+            &:hover {
+              background: $config-panel-surface;
+              color: $config-text-primary;
+            }
+
+            &:focus-visible {
+              outline: 2px solid $config-accent;
+              outline-offset: -2px;
+            }
+
+            &--active {
+              color: $config-text-primary;
+              font-weight: 600;
+              border-bottom-color: $config-text-primary;
+            }
+          }
+        }
+
+        .config-overview {
+          padding-top: 1.25em;
+          padding-bottom: 0.25em;
+
+          &__title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 0.5em;
+            color: $config-text-primary;
+          }
+
+          &__lead {
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            max-width: 65ch;
+            margin: 0 0 1.25em;
+            color: $config-text-primary;
+          }
+
+          &__callout {
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            margin-bottom: 1.25em;
+            padding: 0.75em 1em;
+            background: $config-callout-bg;
+            border: 1px solid $config-callout-border;
+            border-radius: 0.375em;
+            color: $config-text-primary;
+          }
+
+          &__cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
+            gap: 0.75em;
+            margin-bottom: 1.25em;
+          }
+
+          &__card {
+            display: flex;
+            flex-direction: column;
+            background: $config-panel-bg;
+            border: 1px solid $config-border;
+            border-radius: 0.375em;
+            padding: 0.875em;
+          }
+
+          &__card-title {
+            font-weight: 600;
+            margin: 0 0 0.35em;
+            font-size: 0.9375rem;
+            color: $config-text-primary;
+          }
+
+          &__card-desc {
+            font-size: 0.875rem;
+            line-height: 1.45;
+            color: $config-text-secondary;
+            margin: 0 0 0.625em;
+            flex: 1;
+          }
+
+          &__card-aside {
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            margin: 0 0 0.625em;
+            padding: 0.5em 0.625em;
+            background: $config-panel-surface;
+            border: 1px solid $config-border;
+            border-left: 3px solid $config-text-tertiary;
+            border-radius: 0.25em;
+            color: $config-text-secondary;
+
+            strong {
+              color: $config-text-primary;
+            }
+          }
+
+          &__card--label {
+            min-width: 0;
+          }
+
+          &__card-example {
+            display: block;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.4;
+            word-break: break-all;
+            padding: 0.5em 0.625em;
+            background: $config-panel-surface;
+            border: 1px solid $config-border;
+            border-radius: 0.25em;
+            color: $config-text-primary;
+          }
+
+          &__card-note {
+            margin: 0.35em 0 0;
+            font-size: 0.75rem;
+            color: $config-text-tertiary;
+          }
+
+          &__glossary-disclosure {
+            margin-top: 0.25em;
+            border: 1px solid $config-border;
+            border-radius: 0.375em;
+            background: $config-panel-surface;
+            overflow: hidden;
+          }
+
+          &__glossary-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75em;
+            width: 100%;
+            background: $config-panel-bg;
+            border: none;
+            border-bottom: 1px solid transparent;
+            cursor: pointer;
+            font: inherit;
+            text-align: left;
+            padding: 0.75em 1em;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+
+            &:hover {
+              background: $config-panel-surface;
+            }
+
+            &:focus-visible {
+              outline: 2px solid $config-accent;
+              outline-offset: -2px;
+            }
+
+            &[aria-expanded='true'] {
+              border-bottom-color: $config-border;
+            }
+          }
+
+          &__glossary-toggle-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2em;
+            min-width: 0;
+          }
+
+          &__glossary-toggle-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: $config-text-primary;
+          }
+
+          &__glossary-toggle-hint {
+            font-size: 0.8125rem;
+            line-height: 1.4;
+            color: $config-text-secondary;
+          }
+
+          &__glossary-chevron {
+            flex-shrink: 0;
+            font-size: 1rem;
+            line-height: 1;
+            color: $config-text-tertiary;
+          }
+
+          &__glossary-panel {
+            padding: 0.75em 1em 1em;
+          }
+
+          &__glossary-intro {
+            margin: 0 0 0.75em;
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            color: $config-text-secondary;
+          }
+
+          &__glossary {
+            margin: 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+
+            dt {
+              font-weight: 600;
+              margin-top: 0.625em;
+              color: $config-text-primary;
+
+              &:first-child {
+                margin-top: 0;
+              }
+            }
+
+            dd {
+              margin: 0.15em 0 0.5em 0;
+              color: $config-text-secondary;
+            }
+          }
+        }
+      }
 
       .__control {
         display: flex;
@@ -489,11 +786,12 @@
           }
 
           .label-config-section {
-            background: $surface-elevated;
-            color: $on-surface;
+            background: $config-panel-bg;
+            color: $config-text-primary;
+            border: 1px solid $config-border;
             border-radius: 0.5em;
             padding: 1em;
-            box-shadow: 0 2px 8px rgba($black, 0.15);
+            box-shadow: 0 1px 3px rgba($black, 0.08);
 
             .__config-control-section-title,
             .__config-control-section-description,
@@ -501,36 +799,42 @@
             .label-composition-mockup__title,
             .__config-control-subsection-title,
             .__config-control-subsection-description {
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             .__config-control-section-description,
             .label-composition-controls__helper,
             .__config-control-subsection-description {
-              color: $on-surface-muted;
+              color: $config-text-secondary;
             }
 
             .Checkbox label {
-              color: $on-surface;
+              color: $config-text-primary;
+            }
+
+            .Button .__button-result {
+              color: $config-text-secondary;
+              font-size: 0.85em;
+              word-break: break-all;
             }
 
             .label-content-builder__advanced-toggle {
-              color: $accent-label;
+              color: $config-accent;
             }
 
             .label-thumbnail-preview .__config-control-subsection-title,
             .label-thumbnail-preview__placeholder {
-              color: $on-surface-muted;
+              color: $config-text-secondary;
             }
 
             .label-composition-mockup {
               @media (min-width: 721px) {
-                border-left-color: $border-surface;
+                border-left-color: $config-border;
               }
             }
 
             .label-composition-controls__row:has(.Checkbox:focus-within) {
-              border-left-color: $accent-label;
+              border-left-color: $config-text-primary;
             }
           }
 
@@ -569,7 +873,7 @@
               transition: border-color 0.2s ease;
 
               &:has(.Checkbox:focus-within) {
-                border-left-color: rgba($beige, 0.5);
+                border-left-color: $config-text-tertiary;
               }
             }
 
@@ -583,33 +887,75 @@
           }
 
           .label-config-section .label-composition-controls__helper {
-            color: $on-surface-muted;
+            color: $config-text-secondary;
           }
 
           .label-composition-mockup {
             @media (min-width: 721px) {
               padding-left: 1em;
-              border-left: 1px solid rgba($beige, 0.25);
+              border-left: 1px solid $config-border;
+            }
+
+            &--compact {
+              padding-left: 0;
+              border-left: none;
+
+              .label-composition-mockup__card {
+                min-height: 7.5em;
+                padding: 0.5em;
+                gap: 0.35em;
+              }
+
+              .label-composition-mockup__zone {
+                font-size: 0.8125rem;
+                padding: 0.35em 0.5em;
+              }
+
+              .label-composition-mockup__zone--text.label-composition-mockup__zone--on {
+                font-weight: 600;
+                font-size: 0.875rem;
+              }
+
+              .label-composition-mockup__qr-svg {
+                width: 2.25em;
+                height: 2.25em;
+              }
+
+              .label-composition-mockup__icon-svg {
+                width: 2em;
+                height: 2em;
+              }
             }
 
             &__title {
               font-size: 0.9em;
               font-weight: bold;
               margin-bottom: 0.5em;
-              color: $on-modal-muted;
+              color: $config-text-secondary;
             }
 
             &__card {
-              border: 2px solid $border-surface-strong;
+              border: 1px solid $config-border;
               border-radius: 0.5em;
               padding: 0.75em;
-              background-color: $surface-elevated;
-              color: $on-surface;
-              box-shadow: 0 1px 4px rgba($black, 0.12);
+              background-color: $config-panel-surface;
+              color: $config-text-primary;
+              box-shadow: none;
               min-height: 10em;
-              display: flex;
-              flex-direction: column;
-              gap: 0.5em;
+            }
+
+            &__row {
+              @include slide-label-layout-bottom-row;
+
+              &--single {
+                justify-content: center;
+
+                .label-composition-mockup__zone--icon,
+                .label-composition-mockup__zone--qr {
+                  flex: 0 1 auto;
+                  width: min(50%, 12em);
+                }
+              }
             }
 
             &__zone {
@@ -621,89 +967,103 @@
 
               &--off {
                 opacity: 1;
-                border: 1.5px dashed $on-surface-muted;
+                border: 1.5px dashed $config-text-tertiary;
                 background: transparent;
-                color: $on-surface-muted;
+                color: $config-text-tertiary;
                 font-style: italic;
               }
 
               &--on {
-                border: 2px solid $accent-label;
-                background: #FFFFFF;
-                color: $on-surface;
+                border: 2px solid $config-text-primary;
+                background: $config-panel-bg;
+                color: $config-text-primary;
                 font-style: normal;
               }
 
               &--text {
+                @include slide-label-layout-text-band;
                 min-height: 2em;
+                margin-bottom: 0.5em;
+                padding-bottom: 0.45em;
+                border-bottom: 1px dashed $config-text-tertiary;
 
                 &.label-composition-mockup__zone--on {
                   font-weight: 700;
+                  border-bottom-color: $config-text-primary;
+                }
+
+                &.label-composition-mockup__zone--off {
+                  border-bottom-style: dashed;
                 }
               }
 
-              &--icon {
-                min-height: 2.5em;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              }
-
+              &--icon,
               &--qr {
-                display: flex;
-                justify-content: center;
+                @include slide-label-layout-region-cell;
               }
             }
 
-            &__qr-box {
-              width: 4em;
-              height: 4em;
-              border: 1px solid $on-surface-muted;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 0.75em;
+            &__qr-svg {
+              width: 2.5em;
+              height: 2.5em;
+
+              rect {
+                fill: $config-text-primary;
+              }
+            }
+
+            &__icon-svg {
+              width: 2.25em;
+              height: 2.25em;
+            }
+
+            &__icon-preview {
+              max-width: 100%;
+              max-height: 3.5em;
+              object-fit: contain;
+            }
+
+            &__region-label {
+              @include slide-label-layout-region-label;
+              color: $config-text-tertiary;
+            }
+
+            &__zone--on &__region-label {
+              color: $config-text-tertiary;
+            }
+
+            &__icon-caption {
+              font-size: 0.625rem;
+              font-weight: 500;
+              line-height: 1.3;
+              color: $config-text-secondary;
               word-break: break-all;
-              padding: 0.25em;
-              color: inherit;
             }
 
-            &__zone--on &__qr-box {
-              border: 2px solid $on-surface;
-              background-image:
-                linear-gradient(45deg, rgba($black, 0.04) 25%, transparent 25%),
-                linear-gradient(-45deg, rgba($black, 0.04) 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, rgba($black, 0.04) 75%),
-                linear-gradient(-45deg, transparent 75%, rgba($black, 0.04) 75%);
-              background-size: 8px 8px;
-              background-position: 0 0, 0 4px, 4px -4px, -4px 0;
-            }
-
-            &__icon-name {
-              font-size: 0.85em;
-              color: inherit;
+            &__zone--on &__icon-caption {
+              color: $config-text-secondary;
             }
           }
 
           .label-content-builder {
             margin-bottom: 1em;
-            background: $surface-elevated;
+            background: $config-panel-surface;
             padding: 0.75em;
             border-radius: 0.5em;
-            color: $on-surface;
-            border: 1px solid $border-surface;
-            box-shadow: 0 1px 3px rgba($black, 0.08);
+            color: $config-text-primary;
+            border: 1px solid $config-border;
+            box-shadow: none;
 
             .__config-control-subsection-title,
             .__config-control-subsection-description,
             .__config-control-subsection-row-label,
             .__config-control-subsection-note-description {
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             .__config-control-subsection-description,
             .__config-control-subsection-note-description {
-              color: $on-surface-muted;
+              color: $config-text-secondary;
             }
 
             &__field-list {
@@ -716,7 +1076,7 @@
               display: flex;
               align-items: center;
               gap: 4px;
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             &__advanced-toggle {
@@ -726,7 +1086,7 @@
               cursor: pointer;
               font-size: 0.9em;
               padding: 0;
-              color: $accent-label;
+              color: $config-accent;
 
               &:disabled {
                 opacity: 0.5;
@@ -737,43 +1097,43 @@
 
           .de-id-token-card {
             margin-bottom: 1em;
-            background: $surface-elevated;
+            background: $config-panel-surface;
             padding: 0.75em;
             border-radius: 0.5em;
-            color: $on-surface;
-            border: 1px solid $border-surface;
-            box-shadow: 0 1px 3px rgba($black, 0.08);
+            color: $config-text-primary;
+            border: 1px solid $config-border;
+            box-shadow: none;
 
             .__config-control-subsection-title,
             .__config-control-subsection-description,
             .__config-control-subsection-note-description {
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             .__config-control-subsection-description,
             .__config-control-subsection-note-description {
-              color: $on-surface-muted;
+              color: $config-text-secondary;
             }
           }
 
           .label-config-preview {
             margin-top: 1em;
-            background: $surface-elevated;
+            background: $config-panel-surface;
             padding: 0.75em;
             border-radius: 0.5em;
-            color: $on-surface;
-            border: 1px solid $border-surface;
-            box-shadow: 0 1px 3px rgba($black, 0.08);
+            color: $config-text-primary;
+            border: 1px solid $config-border;
+            box-shadow: none;
 
             .__config-control-subsection-title {
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             &__banner {
-              background-color: $surface-elevated;
-              color: $on-surface;
-              border: 1px solid $border-surface;
-              border-left: 4px solid $accent-label;
+              background-color: $config-callout-bg;
+              color: $config-text-primary;
+              border: 1px solid $config-callout-border;
+              border-left: 4px solid $config-accent;
               padding: 0.5em 0.75em;
               border-radius: 0.25em;
               margin-bottom: 0.75em;
@@ -790,13 +1150,13 @@
             &__label {
               font-weight: bold;
               min-width: 7em;
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             &__value {
               word-break: break-all;
               font-weight: 600;
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             &__warnings {
@@ -804,8 +1164,8 @@
               padding: 0.5em 0.75em;
               list-style: none;
               font-size: 0.9em;
-              background: $surface-elevated;
-              border: 1px solid $border-surface;
+              background: $config-panel-bg;
+              border: 1px solid $config-border;
               border-radius: 0.25em;
               color: $surface-warning-text;
             }
@@ -815,146 +1175,70 @@
             margin-top: 1em;
 
             .__config-control-subsection-title {
-              color: $on-modal-muted;
+              color: $config-text-primary;
             }
 
             &__image {
               max-width: 100%;
               max-height: 12em;
-              border: 2px solid $border-surface-strong;
+              border: 1px solid $config-border;
               border-radius: 0.25em;
             }
 
             &__placeholder {
               font-style: italic;
               font-size: 0.9em;
-              color: $on-modal-muted;
+              color: $config-text-secondary;
               opacity: 1;
             }
           }
 
           .config-guided-section {
-            background: $surface-elevated;
-            color: $on-surface;
+            background: $config-panel-surface;
+            color: $config-text-primary;
+            border: 1px solid $config-border;
             border-radius: 0.5em;
             padding: 1em;
-            box-shadow: 0 2px 8px rgba($black, 0.15);
+            box-shadow: none;
             margin-bottom: 0.5em;
 
             .__config-control-section-title,
             .__config-control-subsection-title {
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             .__config-control-section-description,
             .__config-control-subsection-description,
             .__config-control-subsection-note-description {
-              color: $on-surface-muted;
-            }
-          }
-
-          .config-sticky-nav {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35em;
-            padding: 0.5em 0 0.75em;
-            margin-bottom: 0.5em;
-            background: $dark-blue;
-            border-bottom: 1px solid rgba($beige, 0.2);
-
-            &__link {
-              background: rgba($beige, 0.12);
-              color: $beige;
-              border: 1px solid rgba($beige, 0.25);
-              border-radius: 0.35em;
-              padding: 0.35em 0.65em;
-              font-size: 0.85em;
-              cursor: pointer;
-
-              &:hover {
-                background: rgba($beige, 0.22);
-              }
-            }
-          }
-
-          .config-overview {
-            &__hint {
-              font-size: 0.9em;
-              font-style: italic;
-              color: $on-surface-muted;
-              margin-bottom: 1em;
-            }
-
-            &__cards {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
-              gap: 0.75em;
-              margin-bottom: 1em;
-            }
-
-            &__card {
-              background: rgba($black, 0.04);
-              border: 1px solid $border-surface;
-              border-radius: 0.4em;
-              padding: 0.75em;
-            }
-
-            &__card-title {
-              font-weight: bold;
-              margin: 0 0 0.35em;
-              font-size: 0.95em;
-            }
-
-            &__card-desc {
-              font-size: 0.85em;
-              color: $on-surface-muted;
-              margin: 0 0 0.5em;
-            }
-
-            &__card-example {
-              display: block;
-              font-size: 0.8em;
-              word-break: break-all;
-            }
-
-            &__glossary-toggle {
-              background: none;
-              border: none;
-              color: $accent-label;
-              cursor: pointer;
-              font-size: 0.9em;
-              padding: 0;
-              text-decoration: underline;
-            }
-
-            &__glossary {
-              margin-top: 0.75em;
-              font-size: 0.85em;
-
-              dt {
-                font-weight: bold;
-                margin-top: 0.5em;
-              }
-
-              dd {
-                margin: 0.15em 0 0.5em 0;
-                color: $on-surface-muted;
-              }
+              color: $config-text-secondary;
             }
           }
 
           .config-step-header {
             font-weight: bold;
             font-size: 0.95em;
-            color: $accent-label;
+            color: $config-text-primary;
             margin-bottom: 0.75em;
           }
 
           .config-guided-step {
             margin-bottom: 1.5em;
+          }
+
+          .config-filename-sources {
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            margin: 0 0 1em;
+            padding: 0.5em 0.625em;
+            background: $config-panel-surface;
+            border: 1px solid $config-border;
+            border-left: 3px solid $config-text-tertiary;
+            border-radius: 0.25em;
+            color: $config-text-secondary;
+
+            strong {
+              color: $config-text-primary;
+            }
           }
 
           .config-filename-style {
@@ -963,31 +1247,247 @@
             gap: 0.75em;
             margin-bottom: 1em;
 
-            &__option {
+            &__modes {
               display: grid;
-              grid-template-columns: auto 1fr;
-              gap: 0.25em 0.5em;
-              align-items: start;
+              grid-template-columns: repeat(4, minmax(0, 1fr));
+              gap: 0.65em;
+            }
+
+            &__option {
+              display: flex;
+              flex-direction: column;
+              gap: 0.35em;
+              align-items: flex-start;
               cursor: pointer;
+              padding: 0.5em 0.6em;
+              border: 1px solid $config-border;
+              border-radius: 0.35em;
+              background: $config-panel-bg;
+              min-height: 100%;
+
+              input[type='radio'] {
+                margin: 0;
+                flex-shrink: 0;
+              }
+
+              &:has(input:checked) {
+                border-color: $config-text-primary;
+                background: $config-panel-surface;
+                box-shadow: inset 0 0 0 1px $config-text-primary;
+              }
+
+              &:has(input:focus-visible) {
+                outline: 2px solid $config-accent;
+                outline-offset: 2px;
+              }
             }
 
             &__label {
               font-weight: 600;
-              color: $on-surface;
+              font-size: 0.8125rem;
+              line-height: 1.35;
+              color: $config-text-primary;
             }
 
             &__helper {
-              grid-column: 2;
-              font-size: 0.85em;
-              color: $on-surface-muted;
+              font-size: 0.75rem;
+              line-height: 1.4;
+              color: $config-text-secondary;
               font-style: italic;
             }
 
-            &__assembly {
-              margin: 0.75em 0 1em;
+            &__panel {
+              margin-top: 0.25em;
               padding: 0.75em;
-              border: 1px solid $border-surface;
+              border: 1px solid $config-border;
               border-radius: 0.4em;
+              background: $config-panel-surface;
+            }
+
+            &__column-fields {
+              display: flex;
+              flex-direction: column;
+              gap: 1em;
+              width: min(28em, 100%);
+              max-width: 100%;
+            }
+
+            &__affixes {
+              display: flex;
+              flex-direction: column;
+              gap: 0.65em;
+              margin-top: 0.25em;
+              padding: 0.75em;
+              border: 1px solid $config-border;
+              border-radius: 0.4em;
+              background: $config-panel-surface;
+            }
+
+            &__affix-row {
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              gap: 0.5em;
+              width: fit-content;
+              max-width: 100%;
+
+              .Checkbox {
+                flex: 0 0 auto;
+                width: auto;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 0.35em;
+
+                label {
+                  width: auto;
+                  white-space: nowrap;
+                  color: $config-text-primary;
+                }
+
+                .__checkbox {
+                  margin-left: 0;
+                  flex-shrink: 0;
+                  background: $config-panel-bg;
+                  border: 1px solid $config-border;
+                  color: $config-text-primary;
+                  border-radius: 0.2em;
+                }
+              }
+
+              .InputText.InputText--controlOnly.InputText--onLight {
+                flex: 0 0 9em;
+                width: 9em;
+                max-width: 9em;
+                margin-bottom: 0;
+
+                .InputText__control-row {
+                  display: block;
+                  width: 100%;
+                }
+
+                .__input-text {
+                  margin-left: 0;
+                  width: 100%;
+                  min-height: 2.25em;
+                  box-sizing: border-box;
+                }
+              }
+            }
+          }
+
+          .config-filename-preview {
+            margin-top: 0.75em;
+            padding: 0.75em 1em;
+            border: 1px solid $config-border;
+            border-radius: 0.4em;
+            background: $config-panel-surface;
+
+            &__title {
+              font-weight: 600;
+              font-size: 0.875rem;
+              color: $config-text-primary;
+              margin-bottom: 0.65em;
+            }
+
+            &__grid {
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 0.75em 1em;
+              margin: 0;
+            }
+
+            &__cell {
+              margin: 0;
+              min-width: 0;
+            }
+
+            &__label {
+              font-size: 0.75rem;
+              font-weight: 600;
+              color: $config-text-secondary;
+              margin: 0 0 0.25em;
+            }
+
+            &__value {
+              margin: 0;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              font-size: 0.8125rem;
+              line-height: 1.4;
+              color: $config-text-primary;
+              word-break: break-all;
+            }
+          }
+
+          .config-filename-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35em;
+            width: 100%;
+
+            &__label {
+              font-size: 0.875rem;
+              font-weight: 600;
+              line-height: 1.3;
+              color: $config-text-primary;
+            }
+
+            .Dropdown.Dropdown--controlOnly {
+              display: flex;
+              flex-direction: column;
+              align-items: stretch;
+              width: 100%;
+              max-width: 100%;
+              margin-right: 0;
+              margin-bottom: 0;
+
+              .__trigger {
+                width: 100%;
+                box-sizing: border-box;
+                background: $config-panel-bg;
+                color: $config-text-primary;
+                border: 1px solid $config-border;
+                min-height: 2.25em;
+                padding: 0.4em 0.75em;
+
+                .__selected-items {
+                  color: $config-text-primary;
+                }
+              }
+
+              .__menu {
+                background: $config-panel-bg;
+                border-color: $config-border;
+              }
+
+              .__item {
+                color: $config-text-primary;
+
+                &:hover,
+                &.focused {
+                  background: $config-panel-surface;
+                }
+              }
+            }
+
+            .InputText.InputText--controlOnly.InputText--onLight {
+              width: 100%;
+              max-width: 100%;
+              margin-bottom: 0;
+              align-self: stretch;
+
+              .InputText__control-row {
+                display: block;
+                width: 100%;
+              }
+
+              .__input-text {
+                display: block;
+                margin-left: 0;
+                width: 100%;
+                min-height: 2.25em;
+                box-sizing: border-box;
+              }
             }
           }
 
@@ -1096,18 +1596,40 @@
 
             &__goal-label {
               font-weight: 600;
-              color: $on-surface;
+              color: $config-text-primary;
             }
 
             &__goal-helper {
               grid-column: 2;
               font-size: 0.85em;
-              color: $on-surface-muted;
+              color: $config-text-secondary;
               font-style: italic;
             }
           }
 
           .label-review-panel {
+            .label-config-preview__banner {
+              background-color: $config-callout-bg;
+              color: $config-text-primary;
+              border: 1px solid $config-callout-border;
+              border-left: 4px solid $config-accent;
+              padding: 0.5em 0.75em;
+              border-radius: 0.25em;
+              margin-bottom: 0.75em;
+              font-size: 0.9em;
+            }
+
+            .label-config-preview__warnings {
+              margin: 0.5em 0 0 0;
+              padding: 0.5em 0.75em;
+              list-style: none;
+              font-size: 0.9em;
+              background: $config-panel-bg;
+              border: 1px solid $config-border;
+              border-radius: 0.25em;
+              color: $surface-warning-text;
+            }
+
             &__table {
               width: 100%;
               border-collapse: collapse;
@@ -1117,7 +1639,7 @@
               th {
                 text-align: left;
                 padding: 0.35em 0.5em 0.35em 0;
-                color: $on-surface-muted;
+                color: $config-text-secondary;
                 font-weight: 600;
                 vertical-align: top;
                 width: 8em;
@@ -1126,7 +1648,7 @@
               td {
                 padding: 0.35em 0;
                 word-break: break-word;
-                color: $on-surface;
+                color: $config-text-primary;
               }
             }
           }

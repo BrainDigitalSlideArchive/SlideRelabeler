@@ -61,7 +61,7 @@ export default function* link_headers_to_reserved(headers) {
       yield put({type: modal_actions.DISPLAY_ERROR_MESSAGE, payload: message});
     }
     if (csv_config.file_rename_column && csv_config.file_rename_column.length > 0) {
-      let link_result = yield create_link(headers, csv_config.file_rename_column, files_actions.LINK_HEADER_TO_RENAME_COLUMN, 'rename', false, modal_actions.ALLOW_SELECT_CSV_RENAME_COLUMN);
+      let link_result = yield create_link(headers, csv_config.file_rename_column, files_actions.LINK_HEADER_TO_RENAME_COLUMN, 'output name', false, modal_actions.ALLOW_SELECT_CSV_RENAME_COLUMN);
     }
     if (csv_config.file_destination_directory_column && csv_config.file_destination_directory_column.length > 0) {  
       let link_result = yield create_link(headers, csv_config.file_destination_directory_column, files_actions.LINK_HEADER_TO_DESTINATION_DIRECTORY_COLUMN, 'destination directory', false, modal_actions.ALLOW_SELECT_CSV_DESTINATION_DIRECTORY_COLUMN);
