@@ -3,6 +3,7 @@ import {take, put, call, select} from 'redux-saga/effects'
 import * as preview_actions from '../../actions/preview';
 
 import { structToObject } from '../../helpers/grpc_helpers';
+import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
 
 function are_values_diff(prior, after) {
     let max_length = 0;
@@ -26,6 +27,9 @@ function are_values_diff(prior, after) {
 }
 
 function convert_json_ifds(ifds) {
+    if (!Array.isArray(ifds)) {
+        return;
+    }
     for (let ifd of ifds) {
         for (let tag in ifd['tags']) {
             if (ifd['tags'][tag]['data'] && ifd['tags'][tag]['datatype'] == 7) {
@@ -98,6 +102,23 @@ function setup_table(tiff_tags, ifds_for_row) {
     return final_table;
 }
 
+function extractPreviewMetadataArrays(response) {
+    if (!response) {
+        return { prior_ifds: null, new_ifds: null };
+    }
+    if (Array.isArray(response.prior_ifds) || Array.isArray(response.new_ifds)) {
+        return {
+            prior_ifds: response.prior_ifds,
+            new_ifds: response.new_ifds,
+        };
+    }
+    const response_object = structToObject(response);
+    return {
+        prior_ifds: response_object.prior_ifds ?? response_object.priorIfds,
+        new_ifds: response_object.new_ifds ?? response_object.newIfds,
+    };
+}
+
 function* watch_preview_metadata() {
     while (true) {
         const {payload} = yield take(preview_actions.GET_METADATA_PREVIEW);
@@ -107,8 +128,11 @@ function* watch_preview_metadata() {
         const tiff_tags = yield select(state => state.viewer.tiff_tags);
 
         if (!file_row || !file_row.__reserved) {
+            logMetadataPreview('saga-skip', { reason: 'missing_file_row' });
             continue;
         }
+
+        const sourcePath = file_row.__reserved.source?.path;
 
         let info = {
             config: config,
@@ -116,18 +140,49 @@ function* watch_preview_metadata() {
             __reserved: file_row.__reserved,
         };
 
-        const response = yield call(electronAPI.previewMetadata, info);
-        const response_object = structToObject(response);
+        try {
+            logMetadataPreview('saga-start', {
+                path: sourcePath,
+                row_idx,
+                processed: file_row.__reserved.processed,
+            });
 
-        // gRPC preview-metadata returns an object:
-        let {prior_ifds, new_ifds, redactList} = response_object;
+            const response = yield call(electronAPI.previewMetadata, info);
+            const { prior_ifds, new_ifds } = extractPreviewMetadataArrays(response);
 
-        convert_json_ifds(prior_ifds);
-        convert_json_ifds(new_ifds);
+            if (!Array.isArray(prior_ifds) || !Array.isArray(new_ifds)) {
+                logMetadataPreview('saga-fail', {
+                    path: sourcePath,
+                    reason: 'missing_ifds',
+                    priorType: typeof prior_ifds,
+                    newType: typeof new_ifds,
+                    responseKeys: response && typeof response === 'object' ? Object.keys(response) : [],
+                });
+                continue;
+            }
 
-        const table = setup_table(tiff_tags, {prior: prior_ifds, after: new_ifds});
+            convert_json_ifds(prior_ifds);
+            convert_json_ifds(new_ifds);
 
-        yield put({type: preview_actions.SET_METADATA_PREVIEW, payload: {path: file_row.__reserved.source.path, row_idx: row_idx, table: table}});
+            const table = setup_table(tiff_tags, {prior: prior_ifds, after: new_ifds});
+
+            logMetadataPreview('saga-ok', {
+                path: sourcePath,
+                priorLen: prior_ifds.length,
+                newLen: new_ifds.length,
+                tableRowCount: Array.isArray(table) ? table.length : 0,
+            });
+
+            yield put({
+                type: preview_actions.SET_METADATA_PREVIEW,
+                payload: { path: sourcePath, row_idx: row_idx, table: table },
+            });
+        } catch (error) {
+            logMetadataPreview('saga-catch', {
+                path: sourcePath,
+                message: error?.message ?? String(error),
+            });
+        }
     }
 }
 

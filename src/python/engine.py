@@ -391,47 +391,6 @@ def preview_metadata(output_dict: Dict[str, Any]) -> Dict[str, Any]:
   }
 
 
-def _preview_metadata_worker(output_dict: Dict[str, Any], result_queue: Any) -> None:
-  try:
-    out = preview_metadata(output_dict)
-    result_queue.put(("ok", out))
-  except Exception:
-    result_queue.put(("err", traceback.format_exc()))
-
-
-def preview_metadata_isolated(output_dict: Dict[str, Any], timeout_s: int = 180) -> Dict[str, Any]:
-  """
-  Run preview_metadata in a child process so native crashes (e.g. SIGBUS in
-  DeidTools) cannot take down the gRPC server process.
-  """
-  import multiprocessing as mp
-
-  ctx = mp.get_context("spawn")
-  result_queue = ctx.Queue()
-  proc = ctx.Process(
-    target=_preview_metadata_worker,
-    args=(output_dict, result_queue),
-    name="preview_metadata",
-  )
-  proc.start()
-  proc.join(timeout_s)
-  if proc.is_alive():
-    proc.kill()
-    proc.join()
-    raise TimeoutError(f"preview_metadata timed out after {timeout_s}s")
-
-  if not result_queue.empty():
-    status, payload = result_queue.get()
-    if status == "ok":
-      return payload
-    raise RuntimeError(payload)
-
-  exit_code = proc.exitcode
-  if exit_code not in (0, None):
-    raise RuntimeError(f"preview_metadata crashed (exit code {exit_code})")
-  raise RuntimeError("preview_metadata produced no result")
-
-
 def deid_process(output_dict: Dict[str, Any]) -> Any:
   return deid_tools.apply_workflow_to_filename_with_output_dir(output_dict)
 
@@ -548,7 +507,12 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
   def PreviewMetadata(self, request: engine_pb2.StructRequest, context: grpc.ServicerContext) -> engine_pb2.PreviewMetadataReply:
     try:      
       d = struct_to_dict(request.data)
-      out = preview_metadata_isolated(d)
+      out = preview_metadata(d)
+      prior_ifds = out.get("prior_ifds") if isinstance(out, dict) else None
+      new_ifds = out.get("new_ifds") if isinstance(out, dict) else None
+      prior_len = len(prior_ifds) if isinstance(prior_ifds, list) else 0
+      new_len = len(new_ifds) if isinstance(new_ifds, list) else 0
+      print(f"[metadata-preview] PreviewMetadata OK prior={prior_len} new={new_len}", flush=True)
       return engine_pb2.PreviewMetadataReply(data=any_to_struct(out))
     except Exception:
       exc = traceback.format_exc()

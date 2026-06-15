@@ -23,10 +23,35 @@ import { spawn } from "child_process";
 import { app } from "electron";
 import grpc from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
+import { structToObject } from "../helpers/grpc_helpers.js";
+import {
+  logMetadataPreview,
+  summarizeMetadataPayload,
+} from "../helpers/metadata_preview_debug.js";
 // import { HealthClient } from "grpc-health-check";
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function normalizePreviewMetadataData(rawData) {
+  const decoded = structToObject(rawData ?? {});
+  const prior_ifds = decoded.prior_ifds ?? decoded.priorIfds;
+  const new_ifds = decoded.new_ifds ?? decoded.newIfds;
+  const redactList = decoded.redactList ?? decoded.redact_list ?? [];
+
+  return {
+    prior_ifds: Array.isArray(prior_ifds) ? prior_ifds : [],
+    new_ifds: Array.isArray(new_ifds) ? new_ifds : [],
+    redactList,
+    _debug: {
+      dataType: rawData === null ? "null" : typeof rawData,
+      hasFields: !!(rawData && typeof rawData === "object" && rawData.fields),
+      topLevelKeys: Object.keys(decoded || {}),
+      priorLen: Array.isArray(prior_ifds) ? prior_ifds.length : null,
+      newLen: Array.isArray(new_ifds) ? new_ifds.length : null,
+    },
+  };
 }
 
 function toProtoValue(value) {
@@ -459,6 +484,7 @@ export class GrpcPythonBridge {
         return this._unary("PreviewMacro", { data: toProtoStruct(data ?? {}) });
 
       case "preview-metadata":
+        logMetadataPreview("grpc-req", summarizeMetadataPayload(data));
         return this._unary("PreviewMetadata", { data: toProtoStruct(data ?? {}) });
 
       // workflow (returns StructReply)
@@ -510,6 +536,12 @@ export class GrpcPythonBridge {
       // For Empty requests, pass null/{} is fine; grpc-js accepts {}
       method.call(client, requestObj, (err, resp) => {
         if (err) {
+          if (methodName === "PreviewMetadata") {
+            logMetadataPreview("grpc-error", {
+              code: err.code,
+              details: err.details,
+            });
+          }
           // err.details will have python context.set_details if set
           // Best-effort: fetch buffered backend tracebacks for richer diagnostics.
           if (methodName !== "GetErrors" && typeof client.GetErrors === "function") {
@@ -571,8 +603,13 @@ export class GrpcPythonBridge {
         }
 
         if (methodName === "PreviewMetadata") {
-          // returns PreviewMetadataReply { data: Struct }
-          resolve(resp.data ?? {});
+          const normalized = normalizePreviewMetadataData(resp.data);
+          logMetadataPreview("grpc-resp", normalized._debug);
+          resolve({
+            prior_ifds: normalized.prior_ifds,
+            new_ifds: normalized.new_ifds,
+            redactList: normalized.redactList,
+          });
           return;
         }
 

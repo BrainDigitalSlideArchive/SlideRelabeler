@@ -6,6 +6,7 @@ import OpenSeadragon from '../../components/OpenSeaDragon/OpenSeadragon';
 
 import { encodeURLParameters } from '../../helpers/url_helpers';
 import { isViewerDebugEnabled, logViewerDebug } from '../../helpers/viewer_debug';
+import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
 import './Viewer.scss';
 
 import * as app_actions from '../../actions/app';
@@ -66,8 +67,6 @@ function Viewer(props) {
   const [preview_label_url, set_preview_label_url] = useState(null);
   const [macro_url, set_macro_url] = useState(null);
   const [preview_macro_url, set_preview_macro_url] = useState(null);
-  const [file_row_idx, set_file_row_idx] = useState(null);
-  const [file_processed, set_file_processed] = useState(false);
   const [debugStatus, setDebugStatus] = useState(null);
 
   const ifds = useSelector((state) => state.files.ifds);
@@ -117,6 +116,22 @@ function Viewer(props) {
     }
     dispatch({ type: app_actions.START_VIEWER });
   }, [dispatch, file]);
+
+  useEffect(() => {
+    const sourcePath = fileRow?.__reserved?.source?.path;
+    if (!sourcePath || rowIndex == null || fileRow?.__reserved?.processed === 1) {
+      return;
+    }
+    if (ifds[sourcePath]) {
+      return;
+    }
+
+    logMetadataPreview('dispatch', { path: sourcePath, rowIndex });
+    dispatch({
+      type: preview_actions.GET_METADATA_PREVIEW,
+      payload: { row_idx: rowIndex, file_row: fileRow },
+    });
+  }, [file, rowIndex, fileRow, ifds, dispatch]);
 
   function view_image(type) {
     set_image_type(type);
@@ -198,30 +213,6 @@ function Viewer(props) {
     set_preview_label_url(next_preview_label_url);
     set_macro_url(next_macro_url);
     set_preview_macro_url(next_preview_macro_url);
-
-    let metadataPreviewTimeoutId;
-    if (
-      rowIndex != null
-      && file_row_idx !== rowIndex
-      && file_row.__reserved.processed !== file_processed
-      && !ifds[file_row.__reserved.source.path]
-    ) {
-      set_file_row_idx(rowIndex);
-      set_file_processed(file_row.__reserved.processed);
-      // Defer heavy preview-metadata RPC so side-panel image fetches start first.
-      metadataPreviewTimeoutId = setTimeout(() => {
-        dispatch({
-          type: preview_actions.GET_METADATA_PREVIEW,
-          payload: { row_idx: rowIndex, file_row },
-        });
-      }, 300);
-    }
-
-    return () => {
-      if (metadataPreviewTimeoutId) {
-        clearTimeout(metadataPreviewTimeoutId);
-      }
-    };
   }, [
     file,
     fileRow,
@@ -229,10 +220,6 @@ function Viewer(props) {
     row_idx_param,
     files.file_rows,
     config,
-    file_row_idx,
-    file_processed,
-    ifds,
-    dispatch,
   ]);
 
   const showDebugStrip = isViewerDebugEnabled() && debugStatus;

@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, app, safeStorage, shell } from 'electron';
 import { GrpcPythonBridge } from './bridge/grpcPythonBridge';
+import { logMetadataPreview, summarizeMetadataPayload } from './helpers/metadata_preview_debug';
 import path, { join, extname } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
@@ -1240,6 +1241,7 @@ ipcMain.handle('process-file', async (event, info) => {
 });
 
 ipcMain.handle('preview-metadata', async (event, info) => {
+  logMetadataPreview('ipc-in', summarizeMetadataPayload(info));
   return bridge.invoke('preview-metadata', info);
 });
 
