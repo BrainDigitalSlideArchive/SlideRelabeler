@@ -1,0 +1,5 @@
+config.local.env
+results/
+*.svs
+*.tiff
+*.tif

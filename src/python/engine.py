@@ -188,14 +188,38 @@ def bootstrap_env() -> Dict[str, Any]:
   return json_setup
 
 
+def _maybe_install_patchlibtiff_guard() -> None:
+  """Opt-in Mac metadata preview workaround (SLIDERELABELER_PATCH_LIBTIFF=1)."""
+  if os.environ.get("SLIDERELABELER_PATCH_LIBTIFF", "").strip() != "1":
+    return
+  from libtiff_guard import install_patchlibtiff_guard, is_guard_active
+
+  install_patchlibtiff_guard()
+  print(
+    "[engine] SLIDERELABELER_PATCH_LIBTIFF=1: tiff_reader patches registered "
+    "(patchLibtiff + _getJpegTables)",
+    file=sys.stderr,
+    flush=True,
+  )
+
+
 # -----------------------------
 # Heavy imports after bootstrap
 # -----------------------------
 bootstrap_env()
+_maybe_install_patchlibtiff_guard()
 
 import base64  # noqa: E402 (still used internally if needed)
 import large_image  # noqa: E402
 from DeidTools import DeidTools  # noqa: E402
+
+if os.environ.get("SLIDERELABELER_PATCH_LIBTIFF", "").strip() == "1":
+  from libtiff_guard import is_guard_active
+  print(
+    f"[engine] SLIDERELABELER_PATCH_LIBTIFF=1: guard_executed={is_guard_active()}",
+    file=sys.stderr,
+    flush=True,
+  )
 
 large_image.config.setConfig('cache_sources', False)
 
