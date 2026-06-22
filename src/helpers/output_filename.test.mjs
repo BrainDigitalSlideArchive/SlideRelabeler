@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   resolveOutputBasename,
-  applyFilenameAffixes,
+  resolveOutputFilenameStem,
   migrateFilenameConfig,
   normalizeFilenameConfig,
   getFilenameSource,
@@ -80,14 +80,45 @@ describe('resolveOutputBasename', () => {
       'CASE42_B12',
     );
   });
+  it('pattern mode evaluates placeholders', () => {
+    assert.equal(
+      resolveOutputBasename(row, { filename: { source: 'pattern', pattern: 'deid_{uuid}' } }),
+      'deid_uuid-123',
+    );
+  });
 });
 
-describe('applyFilenameAffixes', () => {
-  it('applies prefix and suffix', () => {
-    const out = applyFilenameAffixes('abc', {
-      filename: { use_prefix: true, prefix: 'p_', use_suffix: true, suffix: '_s' },
-    });
-    assert.equal(out, 'p_abc_s');
+describe('resolveOutputFilenameStem', () => {
+  const row = {
+    __reserved: {
+      uuid: 'uuid-123',
+      rename: 'my_custom_name',
+      renameSource: 'user',
+      source: { filename: 'slide.svs', parsed: { ext: '.svs' } },
+    },
+  };
+
+  it('uses stored rename verbatim for user-edited rows', () => {
+    assert.equal(
+      resolveOutputFilenameStem(row, { filename: { source: 'pattern', pattern: 'deid_{uuid}' } }),
+      'my_custom_name',
+    );
+  });
+
+  it('resolves pattern when rename is not stored', () => {
+    const noRename = {
+      __reserved: {
+        uuid: 'uuid-123',
+        renameSource: 'default',
+        source: { filename: 'slide.svs' },
+      },
+    };
+    assert.equal(
+      resolveOutputFilenameStem(noRename, {
+        filename: { source: 'pattern', pattern: 'deid_{uuid}' },
+      }),
+      'deid_uuid-123',
+    );
   });
 });
 

@@ -42,7 +42,27 @@ describe('applyAssemblyAndRouting', () => {
     assert.equal(out.AssembledName, 'A1_B2_HE_3');
     assert.equal(out.__reserved.rename, 'A1_B2_HE_3');
     assert.equal(out.__reserved.labelText, 'A1_B2_HE_3');
-    assert.equal(out.__reserved.assembledName, 'A1_B2_HE_3');
+    assert.equal(out.__reserved.deidToken, undefined);
+    assert.equal(out.__reserved.dsaAlias, undefined);
+  });
+
+  it('sets dsaAlias when DSA rename is enabled', () => {
+    const config = {
+      assembly: DEFAULT_ASSEMBLY,
+      filename: { source: 'computed' },
+      routing: DEFAULT_ROUTING,
+      dsa_upload: { rename_item_after_upload: true },
+    };
+    const row = {
+      Accession: 'A1',
+      BlockId: 'B2',
+      StainId: 'HE',
+      SlideNum: '3',
+      __reserved: { uuid: 'u1' },
+    };
+    const out = applyAssemblyAndRouting(row, config);
+    assert.equal(out.__reserved.dsaAlias, 'A1_B2_HE_3');
+    assert.equal(out.__reserved.assembledItemName, undefined);
   });
 
   it('does not overwrite rename when filename source is column', () => {

@@ -11,8 +11,8 @@ const exampleRow = {
 test('evaluateTemplate substitutes placeholders', () => {
   const out = evaluateTemplate(
     exampleRow,
-    '{deidToken}_{field:BlockId}',
-    { deidToken: 'CASE42' },
+    '{specimenId}_{field:BlockId}',
+    { specimenId: 'CASE42' },
   );
   assert.equal(out, 'CASE42_B12');
 });
@@ -24,9 +24,19 @@ test('evaluateTemplate empty template returns empty', () => {
 test('assembleFromFields joins ordered fields', () => {
   const out = assembleFromFields(
     exampleRow,
-    ['deidToken', 'BlockId', 'StainId'],
+    ['specimenId', 'BlockId', 'StainId'],
     '_',
-    { deidToken: 'T1' },
+    { specimenId: 'T1' },
   );
   assert.equal(out, 'T1_B12_HE');
+});
+
+test('assembleFromFields maps legacy deidToken field name', () => {
+  const out = assembleFromFields(
+    exampleRow,
+    ['deidToken', 'BlockId'],
+    '_',
+    { specimenId: 'T1' },
+  );
+  assert.equal(out, 'T1_B12');
 });

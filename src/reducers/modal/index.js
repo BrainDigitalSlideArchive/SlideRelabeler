@@ -1,10 +1,10 @@
 import { createReducer}  from "@reduxjs/toolkit";
 
-import default_state from './default_state';
+import default_state from './default_state.js';
 import {produce} from "immer";
 
-import * as app_actions from '../../actions/app';
-import * as modal_actions from '../../actions/modal';
+import * as app_actions from '../../actions/app.js';
+import * as modal_actions from '../../actions/modal.js';
 
 const modal_reducer  = createReducer(default_state, (builder) => {
   builder
@@ -12,10 +12,15 @@ const modal_reducer  = createReducer(default_state, (builder) => {
       return action.payload
     })
     .addCase(modal_actions.TOGGLE_MODAL, (state, action) => {
-      return produce(state, draft => {
-        draft.type = action.payload.type;
-        draft.active = !state.active;
-      })
+      return produce(state, (draft) => {
+        const nextType = action.payload.type;
+        if (state.active && state.type === nextType) {
+          draft.active = false;
+        } else {
+          draft.type = nextType;
+          draft.active = true;
+        }
+      });
     })
     .addCase(modal_actions.DISPLAY_ERROR_MESSAGE, (state, action) => {
       return produce(state, draft => {

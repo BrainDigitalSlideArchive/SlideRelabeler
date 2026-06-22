@@ -6,6 +6,7 @@ import * as config_actions from '../../actions/config';
 import * as app_actions from '../../actions/app';
 import * as files_actions from '../../actions/files';
 import { migrateNamingConfig } from '../../helpers/naming_config_migration.js';
+import { migrateConfigV3 } from '../../helpers/computed_field_config.js';
 import { normalizeFilenameConfig } from '../../helpers/output_filename.js';
 
 function syncFilenameLegacyFields(draft) {
@@ -38,17 +39,7 @@ const config_reducer  = createReducer(default_state, (builder) => {
   builder
     .addCase(config_actions.UPDATE_CONFIG, (state, action) => {
       const merged = mergeConfigWithDefaults(action.payload, default_state);
-      return migrateNamingConfig(merged);
-    })
-    .addCase(config_actions.CHANGE_PREFIX, (state, action) => {
-      return produce(state, draft => {
-        draft.filename.prefix = action.payload;
-      })
-    })
-    .addCase(config_actions.CHANGE_SUFFIX, (state, action) => {
-      return produce(state, draft => {
-        draft.filename.suffix = action.payload;
-      })
+      return migrateConfigV3(migrateNamingConfig(merged));
     })
     .addCase(config_actions.CHANGE_FILE_PATH_COLUMN, (state, action) => {
       return produce(state, draft => {
@@ -74,16 +65,6 @@ const config_reducer  = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         draft.filename.source = draft.filename.source === 'uuid' ? 'computed' : 'uuid';
         syncFilenameLegacyFields(draft);
-      })
-    })
-    .addCase(config_actions.TOGGLE_PREFIX, (state, action) => {
-      return produce(state, draft => {
-        draft.filename.use_prefix = !state.filename.use_prefix;
-      })
-    })
-    .addCase(config_actions.TOGGLE_SUFFIX, (state, action) => {
-      return produce(state, draft => {
-        draft.filename.use_suffix = !state.filename.use_suffix;
       })
     })
     .addCase(config_actions.TOGGLE_NON_RANDOM, (state) => {
@@ -218,6 +199,10 @@ const config_reducer  = createReducer(default_state, (builder) => {
         } else {
           Object.assign(draft.dsa_upload, p);
         }
+        if (p.dsaAlias !== undefined) {
+          if (!draft.dsa_upload.dsaAlias) draft.dsa_upload.dsaAlias = { mode: 'output_name', pattern: '' };
+          Object.assign(draft.dsa_upload.dsaAlias, p.dsaAlias);
+        }
         if (p.rename_item_after_upload !== undefined) {
           draft.routing.dsaItemName.enabled = Boolean(p.rename_item_after_upload);
         }
@@ -272,7 +257,38 @@ const config_reducer  = createReducer(default_state, (builder) => {
         draft.routing.labelText.column = col;
         draft.label.text_column_field = { value: col, label: 'Assembled name' };
         draft.label.label_text_assembly.mode = 'legacy';
+        draft.label.textDefault = 'output_name';
       })
+    })
+    .addCase(config_actions.SET_LABEL_DEFAULTS, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        if (p.textDefault !== undefined) {
+          draft.label.textDefault = p.textDefault;
+          if (!draft.label.labelText) draft.label.labelText = { mode: 'output_name', pattern: '' };
+          draft.label.labelText.mode = p.textDefault;
+        }
+        if (p.labelText !== undefined) {
+          Object.assign(draft.label.labelText, p.labelText);
+          if (p.labelText.mode !== undefined) draft.label.textDefault = p.labelText.mode;
+          if (p.labelText.pattern !== undefined) { /* synced */ }
+        }
+        if (p.qrDefault !== undefined) {
+          draft.label.qrDefault = p.qrDefault;
+          if (!draft.label.qrContent) draft.label.qrContent = { mode: 'output_name', pattern: '' };
+          draft.label.qrContent.mode = p.qrDefault;
+        }
+        if (p.qrPattern !== undefined) {
+          draft.label.qrPattern = p.qrPattern;
+          if (!draft.label.qrContent) draft.label.qrContent = { mode: 'output_name', pattern: '' };
+          draft.label.qrContent.pattern = p.qrPattern;
+        }
+        if (p.qrContent !== undefined) {
+          Object.assign(draft.label.qrContent, p.qrContent);
+          if (p.qrContent.mode !== undefined) draft.label.qrDefault = p.qrContent.mode;
+          if (p.qrContent.pattern !== undefined) draft.label.qrPattern = p.qrContent.pattern;
+        }
+      });
     })
     // .addCase(files_actions.CLEAR_FILES, (state, aciton) => {
     //   return produce(state, draft => {

@@ -10,6 +10,25 @@ export function displayBytes(bytes = null, places = 2) {
   return output.toFixed(places) + ' ' + units[numDivisions]
 }
 
+/** Compact size for narrow grid columns: integer B/KB, 1 decimal for MB+. */
+export function displayBytesCompact(bytes = null) {
+  if (bytes === null) return '?';
+  if (bytes < 1024) {
+    return `${Math.round(bytes)} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  const units = ['MB', 'GB', 'TB', 'PB'];
+  let output = bytes / (1024 * 1024);
+  let unitIdx = 0;
+  while (output >= 1024 && unitIdx < units.length - 1) {
+    output /= 1024;
+    unitIdx += 1;
+  }
+  return `${output.toFixed(1)} ${units[unitIdx]}`;
+}
+
 export function displayUploadRate(upload_transfer_rate_bytes_per_ms, places = 2) {
   if (upload_transfer_rate_bytes_per_ms === null) return '?';
   const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s'];

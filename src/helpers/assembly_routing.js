@@ -100,6 +100,13 @@ export function getAssemblyColumnName(config) {
   return config?.assembly?.columnName || DEFAULT_ASSEMBLY.columnName;
 }
 
+function reservedAssembledFallback(fileRow, colName) {
+  return fileRow[colName]
+    ?? fileRow.__reserved?.dsaAlias
+    ?? fileRow.__reserved?.assembledName
+    ?? '';
+}
+
 function resolveLabelTextFromRouting(fileRow, config, context) {
   const routing = config?.routing ?? {};
   const labelConfig = config?.label ?? {};
@@ -107,7 +114,7 @@ function resolveLabelTextFromRouting(fileRow, config, context) {
 
   if (routing.labelText?.enabled) {
     const col = routing.labelText.column || colName;
-    const fromCol = fileRow[col] ?? fileRow.__reserved?.assembledName;
+    const fromCol = fileRow[col] ?? fileRow.__reserved?.dsaAlias ?? fileRow.__reserved?.assembledName;
     if (fromCol != null && String(fromCol).trim()) {
       return String(fromCol);
     }
@@ -121,7 +128,7 @@ function resolveLabelTextFromRouting(fileRow, config, context) {
   if (labelConfig.text_column_field?.value) {
     const field = labelConfig.text_column_field.value;
     if (field === 'AssembledName' || field === colName) {
-      return fileRow[colName] ?? fileRow.__reserved?.assembledName ?? '';
+      return reservedAssembledFallback(fileRow, colName);
     }
     if (field === 'rename' || field === '__reserved.rename') {
       return fileRow.__reserved?.rename ?? fileRow[colName] ?? '';
@@ -141,7 +148,7 @@ function resolveQrFromRouting(fileRow, config, context) {
   const colName = getAssemblyColumnName(config);
 
   if (routing.qr?.enabled && routing.qr.mode === 'same_column') {
-    return String(fileRow[colName] ?? fileRow.__reserved?.assembledName ?? '');
+    return String(reservedAssembledFallback(fileRow, colName));
   }
 
   const qrAsm = config?.label?.qr_assembly;
@@ -169,13 +176,9 @@ export function applyAssemblyAndRouting(fileRow, config, options = {}) {
   });
 
   const next = { ...fileRow, [colName]: assembled };
-  reserved.assembledName = assembled;
 
   const specimenId = computeSpecimenId(fileRow, assembly, options);
-  if (specimenId) reserved.deidToken = specimenId;
-  else delete reserved.deidToken;
-
-  const context = { deidToken: specimenId };
+  const context = { specimenId };
 
   if (getFilenameSource(config) === 'computed') {
     reserved.rename = assembled;
@@ -190,11 +193,9 @@ export function applyAssemblyAndRouting(fileRow, config, options = {}) {
   else delete reserved.qrPayload;
 
   if (routing.dsaItemName?.enabled && assembled) {
-    reserved.assembledItemName = assembled;
+    reserved.dsaAlias = assembled;
   } else if (config?.dsa_upload?.rename_item_after_upload && assembled) {
-    reserved.assembledItemName = assembled;
-  } else {
-    delete reserved.assembledItemName;
+    reserved.dsaAlias = assembled;
   }
 
   next.__reserved = reserved;

@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 
 const NAV_ITEMS = [
   { id: 'config-overview', label: 'Overview' },
-  { id: 'config-output-filename', label: 'Output filename' },
+  { id: 'config-output-filename', label: 'Output name' },
   { id: 'config-slide-label', label: 'Slide label' },
-  { id: 'config-import-csv', label: 'Import CSV' },
-  { id: 'config-assembled-name', label: 'Assembled name' },
+  { id: 'config-audit-logging', label: 'Audit logging' },
+  { id: 'config-data-loading', label: 'Data loading' },
   { id: 'config-advanced', label: 'Advanced' },
 ];
 

@@ -12,6 +12,7 @@ import * as esm_actions from '../../actions/esm';
 import * as dsa_actions from '../../actions/dsa';
 import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
+import * as auditLog_actions from '../../actions/auditLog';
 import { initialSessionMetrics } from '../../reducers/files/default_state';
 
 const globus_actions_for_save = Object.values(globus_actions).filter(
@@ -25,6 +26,7 @@ let actions_to_save = [
   ...Object.values(dsa_actions),
   ...globus_actions_for_save,
   ...Object.values(upload_routing_actions),
+  ...Object.values(auditLog_actions),
 ]
 
 function* watch_save_store() {
@@ -111,6 +113,7 @@ function* watch_save_store() {
       files: store.files
         ? { ...store.files, session_metrics: { ...initialSessionMetrics } }
         : store.files,
+      auditLog: store.auditLog ?? undefined,
     };
     
     const response = yield set_store(storeToSave);

@@ -2,18 +2,17 @@
 
 import { getRowFieldValue } from './template_engine.js';
 import { buildAssembledName } from './assembly_routing.js';
+import { getOutputNameFieldSpec } from './computed_field_config.js';
+import { buildColumnAliasMap, evaluateFieldPattern } from './pattern_engine.js';
 
-export const OUTPUT_FILENAME_SOURCES = ['original', 'uuid', 'column', 'computed'];
+export const OUTPUT_FILENAME_SOURCES = ['original', 'uuid', 'column', 'computed', 'pattern'];
 
 export const DEFAULT_FILENAME_CONFIG = {
   source: 'uuid',
   column: '',
+  pattern: '',
   use_uuid: true,
   style: 'uuid',
-  use_prefix: false,
-  use_suffix: false,
-  prefix: 'deid_',
-  suffix: '_deid',
 };
 
 const OUTPUT_FILENAME_COLUMN_DENYLIST = new Set([
@@ -27,7 +26,7 @@ const OUTPUT_FILENAME_COLUMN_DENYLIST = new Set([
   '__reserved.progress',
   '__reserved.labelText',
   '__reserved.qrPayload',
-  '__reserved.deidToken',
+  '__reserved.dsaAlias',
   '__reserved.uuid',
   'path',
   'CompressedFileLocation',
@@ -125,6 +124,18 @@ export function getFilenameSource(config) {
  */
 export function resolveOutputBasename(fileRow, config, options = {}) {
   if (!fileRow) return '';
+  const reserved = fileRow.__reserved ?? {};
+  const renameSource = reserved.renameSource;
+
+  if (renameSource === 'user' || renameSource === 'csv' || renameSource === 'esm') {
+    if (reserved.rename != null && String(reserved.rename).trim()) {
+      return String(reserved.rename);
+    }
+  }
+  if (renameSource === 'default' && reserved.rename != null && String(reserved.rename).trim()) {
+    return String(reserved.rename);
+  }
+
   const filenameConfig = normalizeFilenameConfig(config?.filename);
   const source = filenameConfig.source;
 
@@ -134,6 +145,14 @@ export function resolveOutputBasename(fileRow, config, options = {}) {
     base = basenameFromSourcePath(fileRow);
   } else if (source === 'uuid') {
     base = fileRow.__reserved?.uuid != null ? String(fileRow.__reserved.uuid) : '';
+  } else if (source === 'pattern') {
+    const spec = getOutputNameFieldSpec(config);
+    const aliasMap = buildColumnAliasMap({
+      fileRows: [fileRow],
+      fileCols: config?.fileCols ?? [],
+      csvConfig: config?.csv,
+    });
+    base = evaluateFieldPattern(fileRow, spec.pattern, {}, aliasMap);
   } else if (source === 'column') {
     const col = (filenameConfig.column ?? '').trim();
     base = col ? getRowFieldValue(fileRow, col) : '';
@@ -142,7 +161,7 @@ export function resolveOutputBasename(fileRow, config, options = {}) {
   }
 
   if (!base && options.allowFallback !== false) {
-    const assembled = fileRow.AssembledName ?? fileRow.__reserved?.assembledName;
+    const assembled = fileRow.AssembledName ?? fileRow.__reserved?.dsaAlias ?? fileRow.__reserved?.assembledName;
     if (assembled) base = String(assembled);
     else if (fileRow.__reserved?.rename) base = String(fileRow.__reserved.rename);
     else if (fileRow.__reserved?.uuid) base = String(fileRow.__reserved.uuid);
@@ -153,25 +172,14 @@ export function resolveOutputBasename(fileRow, config, options = {}) {
 }
 
 /**
- * Apply prefix/suffix from filename config.
- */
-export function applyFilenameAffixes(basename, config) {
-  const filenameConfig = normalizeFilenameConfig(config?.filename);
-  let out = basename != null ? String(basename) : '';
-  if (filenameConfig.use_prefix && filenameConfig.prefix) {
-    out = `${filenameConfig.prefix}${out}`;
-  }
-  if (filenameConfig.use_suffix && filenameConfig.suffix) {
-    out = `${out}${filenameConfig.suffix}`;
-  }
-  return out;
-}
-
-/**
- * Full output filename stem + extension handling left to caller.
+ * Full output filename stem (no extension).
  */
 export function resolveOutputFilenameStem(fileRow, config, options = {}) {
-  return applyFilenameAffixes(resolveOutputBasename(fileRow, config, options), config);
+  const reserved = fileRow?.__reserved ?? {};
+  if (reserved.rename != null && String(reserved.rename).trim()) {
+    return String(reserved.rename);
+  }
+  return resolveOutputBasename(fileRow, config, options);
 }
 
 /**

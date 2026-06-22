@@ -3,7 +3,12 @@ import { produce } from 'immer';
 
 import default_state, { initialSessionMetrics } from './default_state';
 
+import { isHiddenFileTableColumn } from '../../helpers/file_table_columns.js';
 import { average } from '../../helpers/math';
+import {
+  normalizeSetOutputDirPayload,
+  resolveRowsAfterSetOutputDir,
+} from '../../selectors/outputReadiness.js';
 
 import * as files_actions from '../../actions/files';
 import * as app_actions from '../../actions/app';
@@ -138,7 +143,13 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.UPDATE_FILE_ROW_WITH_ERROR, (state, action) => {
       return produce(state, draft => {
-        draft.file_rows[action.payload.file_row_idx].__reserved.error = action.payload.error;
+        const reserved = draft.file_rows[action.payload.file_row_idx].__reserved;
+        reserved.error = action.payload.error;
+        if (action.payload.errorDetails != null && String(action.payload.errorDetails).trim()) {
+          reserved.errorDetails = action.payload.errorDetails;
+        } else {
+          delete reserved.errorDetails;
+        }
       })
     })
     .addCase(files_actions.UPDATE_FILE_ROW_NAMING, (state, action) => {
@@ -148,7 +159,7 @@ const files_reducer = createReducer(default_state, (builder) => {
         const row = draft.file_rows[row_idx];
         const r = row.__reserved;
         const u = file_row.__reserved;
-        const keys = ['deidToken', 'labelText', 'qrPayload', 'assembledItemName', 'assembledName', 'rename', 'dsa_enrich_error', 'dsa_item_id'];
+        const keys = ['labelText', 'qrPayload', 'dsaAlias', 'rename', 'dsa_enrich_error', 'dsa_item_id'];
         for (const k of keys) {
           if (u[k] !== undefined) {
             if (u[k] === '' || u[k] == null) {
@@ -208,11 +219,9 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.SET_OUTPUT_DIR, (state, action) => {
       return produce(state, draft => {
-        draft.output_dir = action.payload;
-
-        for (let row_idx = 0; row_idx < draft.file_rows.length; row_idx++) {
-          draft.file_rows[row_idx].__reserved.destinationDirectory = action.payload;
-        }
+        const { folder, mode } = normalizeSetOutputDirPayload(action.payload);
+        draft.output_dir = folder;
+        draft.file_rows = resolveRowsAfterSetOutputDir(draft.file_rows, folder, mode);
       })
     })
     .addCase(files_actions.SET_CSV_OUTPUT_DIR, (state, action) => {
@@ -436,9 +445,11 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.ADD_FILE_COL, (state, action) => {
       return produce(state, draft => {
-        let filtered_cols = draft.file_columns.filter(col => col.field === action.payload.field);
+        const field = action.payload?.field;
+        if (isHiddenFileTableColumn(field)) return;
+        let filtered_cols = draft.file_columns.filter(col => col.field === field);
         if (filtered_cols.length === 0) {
-          draft.file_columns.push({ field: action.payload.field });
+          draft.file_columns.push({ field, flex: 1, minWidth: 100 });
         }
       });
     })

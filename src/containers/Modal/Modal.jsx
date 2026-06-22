@@ -12,6 +12,7 @@ import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
 import ModalNetwork from './ModalNetwork';
 import ModalESlideManager from './ModalESlideManager';
+import AuditLogViewerModal from './AuditLogViewerModal';
 
 function render_modal(type, props) {
   switch(type) {
@@ -33,6 +34,8 @@ function render_modal(type, props) {
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
     case 'esm':
       return <ModalESlideManager/>;
+    case 'auditLog':
+      return <AuditLogViewerModal />;
     default:
       return <ModalHelp/>;
   }

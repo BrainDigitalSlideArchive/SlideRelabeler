@@ -13,6 +13,8 @@ import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
 import { migrateUploadRoutingFromLegacy } from '../../helpers/uploadRouting_migration';
 import { migrateConfigV2 } from '../../helpers/config_v2_migration.js';
+import { migrateAuditLogFromStore } from '../../helpers/audit_log_migration.js';
+import * as auditLog_actions from '../../actions/auditLog';
 
 let lastPersistedSnapshotJson = null;
 
@@ -96,6 +98,10 @@ function* load_saved_store() {
     store.uploadRouting
   );
   yield put({ type: upload_routing_actions.RESTORE_UPLOAD_ROUTING, payload: uploadRouting });
+
+  const auditLogState = migrateAuditLogFromStore(store.auditLog, store.config);
+  yield put({ type: auditLog_actions.RESTORE_AUDIT_LOG, payload: auditLogState });
+
   if (store.files?.file_rows?.length > 0) {
     yield put({ type: config_actions.RECOMPUTE_ALL_NAMING });
   }

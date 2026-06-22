@@ -12,23 +12,35 @@ export function goalToAssemblyMode(goal) {
   return 'legacy';
 }
 
-export function needsSpecimenId(labelConfig) {
-  if (!labelConfig) return false;
+function usesSpecimenIdPlaceholder(labelConfig) {
   const textAsm = labelConfig.label_text_assembly || {};
   const qrAsm = labelConfig.qr_assembly || {};
+  const specimenPattern = /\{(deidToken|specimenId)\}/;
+
+  if (textAsm.mode === 'template' && specimenPattern.test(textAsm.template || '')) return true;
+  if (textAsm.mode === 'fields' && (textAsm.fieldsOrder || []).some(
+    (f) => f === 'specimenId' || f === 'deidToken',
+  )) return true;
+
+  if (qrAsm.mode === 'template' && specimenPattern.test(qrAsm.template || '')) return true;
+  if (qrAsm.mode === 'fields' && (qrAsm.fieldsOrder || []).some(
+    (f) => f === 'specimenId' || f === 'deidToken',
+  )) return true;
+
+  return false;
+}
+
+export function needsSpecimenId(labelConfig) {
+  if (!labelConfig) return false;
   const textField = labelConfig.text_column_field?.value;
 
-  if (textField === 'deidToken' || textField === 'specimenId') return true;
-  if (textAsm.mode === 'template' && /\{deidToken\}/.test(textAsm.template || '')) return true;
-  if (textAsm.mode === 'fields' && (textAsm.fieldsOrder || []).includes('deidToken')) return true;
-
-  if (qrAsm.mode === 'template' && /\{deidToken\}/.test(qrAsm.template || '')) return true;
-  if (qrAsm.mode === 'fields' && (qrAsm.fieldsOrder || []).includes('deidToken')) return true;
+  if (textField === 'specimenId' || textField === 'deidToken') return true;
+  if (usesSpecimenIdPlaceholder(labelConfig)) return true;
 
   const qrMode = labelConfig.qr_mode?.value;
   if (labelConfig.qr_assembly?.mode === 'legacy' && qrMode === 'column_field') {
     const f = labelConfig.qr_column_field?.value;
-    if (f === 'deidToken') return true;
+    if (f === 'specimenId' || f === 'deidToken') return true;
   }
   return false;
 }

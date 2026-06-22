@@ -8,9 +8,9 @@ test('assemblyModeToGoal maps modes', () => {
   assert.equal(assemblyModeToGoal('template'), 'custom_pattern');
 });
 
-test('needsSpecimenId when deidToken in template', () => {
+test('needsSpecimenId when specimenId in template', () => {
   const cfg = {
-    label_text_assembly: { mode: 'template', template: '{deidToken}_{field:BlockId}' },
+    label_text_assembly: { mode: 'template', template: '{specimenId}_{field:BlockId}' },
     qr_assembly: { mode: 'legacy' },
     text_column_field: { value: 'BlockId' },
   };

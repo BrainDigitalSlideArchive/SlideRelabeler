@@ -12,6 +12,8 @@ import dsa from './dsa';
 import esm from './esm';
 import globus from './globus';
 
+import auditLogSaga from './auditLog';
+
 import watch_save_store from './bridge/save_store';
 import watch_delete_store from './bridge/delete_store';
 import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
@@ -37,6 +39,7 @@ function* sagas() {
 
     yield put({type: files_actions.NOT_PROCESSING});
 
+    yield fork(auditLogSaga);
     yield fork(watch_save_store);
     yield fork(watch_delete_store);
 };

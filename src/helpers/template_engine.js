@@ -1,6 +1,6 @@
 // helpers/template_engine.js — evaluate label/QR/item name templates from row metadata.
 
-const PLACEHOLDER_RE = /\{(uuid|deidToken|field:([^}]+))\}/g;
+const PLACEHOLDER_RE = /\{(uuid|specimenId|field:([^}]+))\}/g;
 
 function toStr(v) {
   if (v === null || v === undefined) return '';
@@ -14,7 +14,6 @@ function toStr(v) {
  */
 export function getRowFieldValue(fileRow, fieldPath) {
   if (!fileRow || !fieldPath) return '';
-  if (fieldPath === 'deidToken') return toStr(fileRow.__reserved?.deidToken);
   if (fieldPath === 'uuid') return toStr(fileRow.__reserved?.uuid);
   if (fieldPath.startsWith('__reserved.')) {
     const parts = fieldPath.split('.');
@@ -29,7 +28,7 @@ export function getRowFieldValue(fileRow, fieldPath) {
     return toStr(fileRow.__reserved?.rename ?? fileRow.AssembledName);
   }
   if (fieldPath === 'AssembledName') {
-    return toStr(fileRow.AssembledName ?? fileRow.__reserved?.assembledName);
+    return toStr(fileRow.AssembledName ?? fileRow.__reserved?.dsaAlias ?? fileRow.__reserved?.assembledName);
   }
   if (fieldPath in fileRow) return toStr(fileRow[fieldPath]);
   return '';
@@ -38,7 +37,7 @@ export function getRowFieldValue(fileRow, fieldPath) {
 /**
  * @param {object} fileRow
  * @param {string} template
- * @param {{ deidToken?: string }} context
+ * @param {{ specimenId?: string }} context
  */
 export function evaluateTemplate(fileRow, template, context = {}) {
   const tpl = toStr(template).trim();
@@ -46,7 +45,7 @@ export function evaluateTemplate(fileRow, template, context = {}) {
 
   return tpl.replace(PLACEHOLDER_RE, (_match, key, fieldName) => {
     if (key === 'uuid') return toStr(fileRow.__reserved?.uuid);
-    if (key === 'deidToken') return toStr(context.deidToken ?? fileRow.__reserved?.deidToken);
+    if (key === 'specimenId') return toStr(context.specimenId ?? '');
     if (fieldName) return getRowFieldValue(fileRow, fieldName.trim());
     return '';
   });
@@ -56,20 +55,15 @@ export function evaluateTemplate(fileRow, template, context = {}) {
  * @param {object} fileRow
  * @param {string[]} fieldsOrder
  * @param {string} separator
- * @param {{ deidToken?: string }} context
+ * @param {{ specimenId?: string }} context
  */
 export function assembleFromFields(fileRow, fieldsOrder, separator, context = {}) {
   if (!Array.isArray(fieldsOrder) || fieldsOrder.length === 0) return '';
 
   const parts = [];
   for (const field of fieldsOrder) {
-    if (field === 'deidToken') {
-      const tok = toStr(context.deidToken ?? fileRow.__reserved?.deidToken).trim();
-      if (tok) parts.push(tok);
-      continue;
-    }
-    if (field === 'Accession') {
-      const tok = toStr(context.deidToken ?? fileRow.__reserved?.deidToken).trim();
+    if (field === 'specimenId' || field === 'deidToken' || field === 'Accession') {
+      const tok = toStr(context.specimenId ?? '').trim();
       if (tok) parts.push(tok);
       continue;
     }
@@ -82,7 +76,7 @@ export function assembleFromFields(fileRow, fieldsOrder, separator, context = {}
 /**
  * @param {{ mode?: string, template?: string, fieldsOrder?: string[], separator?: string }} assemblyConfig
  * @param {object} fileRow
- * @param {{ deidToken?: string }} context
+ * @param {{ specimenId?: string }} context
  * @returns {string}
  */
 export function resolveAssembly(assemblyConfig, fileRow, context = {}) {

@@ -1,7 +1,24 @@
 import React from "react";
-import { displayBytes } from "./fe_helpers";
+import { displayBytesCompact } from "./fe_helpers";
 import * as files_actions from "../actions/files";
-import { resolveOutputBasename, applyFilenameAffixes } from './output_filename.js';
+import { resolveOutputFilenameStem } from './output_filename.js';
+import { markNamingFieldSource, NAMING_SOURCE } from './row_naming_defaults.js';
+import AssociatedImagesIcons from '../components/AgGrid/AssociatedImagesIcons.jsx';
+import RenameCellEditor from '../components/AgGrid/RenameCellEditor.jsx';
+import OverflowTitle from '../components/AgGrid/OverflowTitle.jsx';
+import OutputFilenameDisplay, { splitPathBasename } from '../components/AgGrid/OutputFilenameDisplay.jsx';
+import CollapsedPathIconCell from '../components/AgGrid/CollapsedPathIconCell.jsx';
+import SourceFileCell from '../components/AgGrid/SourceFileCell.jsx';
+import {
+  canShowEmbeddedThumbnail,
+  sourceFilenameCellValue,
+} from './thumbnail_helpers.js';
+import { isPathColumnIconMode } from './file_table_columns.js';
+import {
+  canOpenViewerForRow,
+  getRowErrorDisplay,
+  rowHasError,
+} from './file_table_row_helpers.js';
 
 export function addFieldToColumn(file_cols, match_field_header_class, field, field_value) {
   let outputFileCols = [...file_cols];
@@ -45,6 +62,10 @@ export function addValueSetter(file_cols, match_field_header_class, valueSetter)
   return addFieldToColumn(file_cols, match_field_header_class, 'valueSetter', valueSetter);
 }
 
+export function isUnprocessedRow(data) {
+  return data?.__reserved?.processed === 0;
+}
+
 export function setupRemoveColumn(file_cols, processing, disable_changes, dispatch) {
   return addCellRenderer(
     file_cols,
@@ -65,51 +86,57 @@ export function setupRemoveColumn(file_cols, processing, disable_changes, dispat
   )
 }
 
-export function setupThumbnailColumnOnCellClicked(file_cols) {
-  return addOnCellClicked(
+export function setupSourceFileColumn(file_cols) {
+  let cols = addFieldToColumn(
     file_cols,
-    '__reserved.source.path',
-    (params) => (params.data.__reserved.processed === 1 && !params.data.__reserved.deleted_after) ? electronAPI.openViewer(params.data.__reserved.output_path, params.node.rowIndex) : electronAPI.openViewer(params.data.__reserved.source.path, params.node.rowIndex)
-  )
-}
-
-export function setupRenameCellRenderer(file_cols, config) {
-  return addCellRenderer(
-    file_cols,
-    '__reserved.rename',
-    params => {
-      if (params.data && params.data.__reserved && params.data.__reserved.processed === 1) {
-        return <span>{params.data.__reserved.output_path}</span>
-      } else if (params.data && params.data.__reserved && params.data.__reserved.processed !== 1) {
-        const stem = applyFilenameAffixes(resolveOutputBasename(params.data, config), config);
-        return <span>{stem}</span>
+    '__reserved.source.filename',
+    'valueGetter',
+    (params) => sourceFilenameCellValue(params.data?.__reserved),
+  );
+  cols = addCellRenderer(
+    cols,
+    '__reserved.source.filename',
+    (params) => {
+      const reserved = params.data?.__reserved;
+      const filename = reserved?.source?.filename != null
+        ? String(reserved.source.filename)
+        : '';
+      const sourcePath = reserved?.source?.path ?? '';
+      return (
+        <SourceFileCell
+          filename={filename}
+          sourcePath={sourcePath}
+          showThumbnail={canShowEmbeddedThumbnail(reserved)}
+          hasRowError={rowHasError(params.data)}
+          errorDisplay={getRowErrorDisplay(params.data)}
+        />
+      );
+    }
+  );
+  cols = addOnCellClicked(
+    cols,
+    '__reserved.source.filename',
+    (params) => {
+      if (!canOpenViewerForRow(params.data)) return;
+      const data = params.data?.__reserved;
+      if (!data) return;
+      const path = (data.processed === 1 && !data.deleted_after)
+        ? data.output_path
+        : data.source?.path;
+      if (path) {
+        electronAPI.openViewer(path, params.node.rowIndex);
       }
     }
-  )
-}
-
-export function setupThumbnailColumnCellRenderer(file_cols) {
-  return addCellRenderer(
-    file_cols,
-    '__reserved.source.path',
-    params => {
-      try {
-        const thumbURL = window.encodeURIComponent(params.value);
-        if (params.data.__reserved && params.data.__reserved.metadata) {
-          return (
-            <div className='__thumbnail _center-horizontally' title='Open in viewer'>
-              <img src={`thumbnail://${thumbURL}`}></img>
-            </div>
-          )
-        } else {
-          return <>No thumbnail yet.</>
-        }
-      }
-      catch (err) {
-        return <>No thumbnail yet.</>
-      }
-    }
-  )
+  );
+  cols = addFieldToColumn(
+    cols,
+    '__reserved.source.filename',
+    'cellClassRules',
+    {
+      'ag-cell--row-error': (params) => rowHasError(params.data),
+    },
+  );
+  return cols;
 }
 
 export function setupAssociatedImagesColumn(file_cols) {
@@ -117,26 +144,46 @@ export function setupAssociatedImagesColumn(file_cols) {
     file_cols,
     '__reserved.associatedImages',
     (params) => {
-      // console.log('cellRenderer params', params)
       if (params.data && params.data.__reserved && params.data.__reserved.associatedImages) {
-        const images = params.data.__reserved.associatedImages;
-        return <>{images.join(', ')}</>
-      } else {
-        return <>No associated images.</>
+        return <AssociatedImagesIcons images={params.data.__reserved.associatedImages} />;
       }
+      return <AssociatedImagesIcons images={[]} />;
     }
   )
 }
 
-export function setupDestinationDirectoryColumn(file_cols, targetDirectory) {
+export function setupDestinationDirectoryColumn(file_cols) {
   return addCellRenderer(
     file_cols,
-    'reserved.destinationDirectory',
+    '__reserved.destinationDirectory',
     params => {
-      if (params.data.reserved.processed !== 0) {
-        return params.data.reserved.destinationDirectory;
+      const iconMode = isPathColumnIconMode(params.column, params.context);
+      if (params.data?.__reserved?.processed !== 0) {
+        const path = params.data.__reserved.destinationDirectory ?? '';
+        if (iconMode) {
+          return (
+            <CollapsedPathIconCell
+              path={path}
+              className="__copy-to __copy-to--collapsed"
+              glyphClassName="__copy-to__glyph"
+            />
+          );
+        }
+        return <OverflowTitle text={path} className="__copy-to" />;
       }
-      return params.value ? params.value : '[Not selected]'
+      const fullPath = params.value || '';
+      if (iconMode) {
+        return (
+          <CollapsedPathIconCell
+            path={fullPath}
+            emptyLabel="[Not selected]"
+            className="__copy-to __copy-to--collapsed"
+            glyphClassName="__copy-to__glyph"
+          />
+        );
+      }
+      const display = fullPath || '[Not selected]';
+      return <OverflowTitle text={display} className="__copy-to" />;
     }
   )
 }
@@ -207,70 +254,88 @@ export function setupProgressColumn(file_cols) {
   )
 }
 
-export function setupRenameEditorColumn(file_cols, config) {
+export function setupRenameCellRenderer(file_cols, config) {
   return addCellRenderer(
     file_cols,
     '__reserved.rename',
-    (params) => {
-      if (params && params.data && params.data.__reserved && params.data.__reserved.processed === 0) {
-        const stem = applyFilenameAffixes(resolveOutputBasename(params.data, config), config);
+    params => {
+      if (params.data && params.data.__reserved && params.data.__reserved.processed === 1) {
+        const outputPath = params.data.__reserved.output_path ?? '';
+        const { stem, ext } = splitPathBasename(outputPath);
+        return (
+          <OutputFilenameDisplay
+            stem={stem}
+            ext={ext}
+            fullText={outputPath}
+          />
+        );
+      }
+      if (params.data && params.data.__reserved) {
+        const stem = resolveOutputFilenameStem(params.data, config);
         const ext = params.data.__reserved?.source?.parsed?.ext ?? '';
         return (
-          <div style={{ display: 'flex', overflow: 'hidden' }} className='center-horizontally'>
-            <span>{stem}</span>
-            <span>{ext}</span>
-          </div>
+          <OutputFilenameDisplay
+            stem={stem}
+            ext={ext}
+          />
         );
       }
       return '';
     }
   )
-
 }
 
-export function setupTooltipValueGetter(file_cols) {
-  let output_file_cols = [];
+const OVERFLOW_TEXT_FIELDS = [
+  '__reserved.labelText',
+  '__reserved.qrPayload',
+];
 
-  function tooltipValueGetter(params) {
-    try {
-      if (params.data && params.data.__reserved && params.data.__reserved.error) {
-        return params.data.__reserved.error;
-      }
-      else if (params.data && params.data.__reserved && !params.data.__reserved.bytes) {
-        return "Loading metadata...";
-      }
-      else {
-        return null;
-      }
-    }
-    catch (err) {
-      return null;
-    }
-  }
-
-  for (let i = 0; i < file_cols.length; i++) {
-    let output_file_col = Object.assign({}, file_cols[i]);
-    output_file_col.tooltipValueGetter = tooltipValueGetter;
-    output_file_cols.push(output_file_col);
-  }
-
-  return output_file_cols;
-}
-
-export function setupSourceDirValueFormater(file_cols) {
-  return addValueFormatter(
-    file_cols,
-    '__reserved.source.directory',
-    ({ value }) => value
-  )
+export function setupOverflowTextRenderer(file_cols, fields = OVERFLOW_TEXT_FIELDS) {
+  const fieldSet = new Set(fields);
+  return file_cols.map((col) => {
+    if (!col?.field || !fieldSet.has(col.field)) return col;
+    return {
+      ...col,
+      cellRenderer: (params) => {
+        const text = params.value != null ? String(params.value) : '';
+        return <OverflowTitle text={text} />;
+      },
+    };
+  });
 }
 
 export function setup_source_directory_cell_renderer(file_cols) {
   return addCellRenderer(
     file_cols,
     '__reserved.source.directory',
-    ({ value }) => {
-      return <div className="__source-directory">{value}</div>
+    ({ value, column, context }) => {
+      const dirText = value != null ? String(value) : '';
+      if (isPathColumnIconMode(column, context)) {
+        return (
+          <CollapsedPathIconCell
+            path={dirText}
+            className="__source-directory __source-directory--collapsed"
+            glyphClassName="__source-directory__glyph"
+          />
+        );
+      }
+      return <OverflowTitle text={dirText} className="__source-directory" />;
+    }
+  )
+}
+
+export function setup_source_directory_cell_class(file_cols) {
+  return addCellClass(
+    file_cols,
+    '__reserved.source.directory',
+    (params) => {
+      const parts = ['cell-container', 'directory', 'left-ellipsis'];
+      if (isPathColumnIconMode(params.column, params.context)) {
+        parts.push('__cell-icon');
+      } else {
+        parts.push('__cell');
+      }
+      return parts.join(' ');
     }
   )
 }
@@ -279,7 +344,7 @@ export function setupSizeValueFormatter(file_cols) {
   return addValueFormatter(
     file_cols,
     '__reserved.bytes',
-    ({ value }) => displayBytes(value)
+    ({ value }) => displayBytesCompact(value)
   )
 }
 
@@ -287,7 +352,7 @@ export function setupAssociatedImagesValueFormatter(file_cols) {
   return addValueFormatter(
     file_cols,
     '__reserved.associatedImages',
-    v => 'fake'
+    () => ''
   )
 }
 
@@ -295,7 +360,7 @@ export function setupAssociatedImagesComparator(file_cols) {
   return addComparator(
     file_cols,
     '__reserved.associatedImages',
-    (valA, valB) => valA.length - valB.length
+    (valA, valB) => (valA?.length ?? 0) - (valB?.length ?? 0)
   )
 }
 
@@ -303,7 +368,18 @@ export function setupDestinationDirectoryCellClass(file_cols) {
   return addCellClass(
     file_cols,
     '__reserved.destinationDirectory',
-    params => params.data.__reserved.processed === 0 ? 'directory left-ellipsis' : 'left-ellipsis'
+    (params) => {
+      const parts = ['cell-container', 'directory', 'left-ellipsis'];
+      if (isPathColumnIconMode(params.column, params.context)) {
+        parts.push('__cell-icon');
+      } else {
+        parts.push('__cell');
+      }
+      if (isUnprocessedRow(params.data)) {
+        parts.push('editable');
+      }
+      return parts.join(' ');
+    }
   )
 }
 
@@ -315,11 +391,35 @@ export function setupDestinationDirectoryColSpan(file_cols) {
   )
 }
 
-export function setupDestinationDirectoryOnCellClicked(file_cols) {
+export function setupDestinationDirectoryOnCellClicked(file_cols, dispatch) {
   return addOnCellClicked(
     file_cols,
     '__reserved.destinationDirectory',
-    ({ data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
+    async ({ data, node }) => {
+      if (!canOpenViewerForRow(data)) return;
+      if (data.__reserved.processed === 1 && !data.__reserved.deleted_after) {
+        electronAPI.openViewer(data.__reserved.output_path, node.rowIndex);
+        return;
+      }
+      if (!isUnprocessedRow(data)) {
+        electronAPI.openViewer(data.__reserved.source.path, node.rowIndex);
+        return;
+      }
+      const folder = await electronAPI.openFolderDialog();
+      if (!folder || (typeof folder === 'object' && folder.error)) {
+        return;
+      }
+      const replace_row = { ...data };
+      const reserved = {
+        ...replace_row.__reserved,
+        destinationDirectory: folder,
+      };
+      replace_row.__reserved = reserved;
+      dispatch({
+        type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA,
+        payload: { idx: node.rowIndex, row: replace_row },
+      });
+    }
   )
 }
 
@@ -327,33 +427,65 @@ export function setupRenameCellEditable(file_cols) {
   return addEditable(
     file_cols,
     '__reserved.rename',
-    () => false
+    (params) => isUnprocessedRow(params?.data)
   )
 }
 
-// dispatch({type: files_actions.UPDATE_FILE_ROW, payload: {idx: params.node.rowIndex, row: params.data}})
+export function setupRenameCellEditor(file_cols) {
+  return addFieldToColumn(file_cols, '__reserved.rename', 'cellEditor', RenameCellEditor);
+}
 
-export function setupRenameCellValueSetter(file_cols, dispatch) {
-  return addValueSetter(
+export function setupRenameValueGetter(file_cols, config) {
+  return addFieldToColumn(
     file_cols,
     '__reserved.rename',
-    params => {
-      let replace_row = { ...params.data };
-      let reserved = replace_row.__reserved;
-      if (reserved) {
-        reserved = Object.assign({}, reserved, { rename: params.newValue });
-        replace_row = Object.assign({}, replace_row, { __reserved: reserved });
-      }
-      dispatch({ type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA, payload: { idx: params.node.rowIndex, row: replace_row } })
+    'valueGetter',
+    (params) => resolveOutputFilenameStem(params.data, config)
+  );
+}
+
+export function setupRenameSingleClickEdit(file_cols) {
+  return addFieldToColumn(file_cols, '__reserved.rename', 'singleClickEdit', true);
+}
+
+export const EDITABLE_NAMING_FIELDS = new Set([
+  '__reserved.rename',
+  '__reserved.labelText',
+  '__reserved.qrPayload',
+]);
+
+/**
+ * Build updated row for Redux after a naming-field edit (readOnlyEdit / onCellEditRequest).
+ */
+export function buildRowAfterNamingEdit(row, field, newValue) {
+  const replace_row = { ...row };
+  let reserved = replace_row.__reserved;
+  if (!reserved) return replace_row;
+
+  if (field === '__reserved.rename') {
+    reserved = markNamingFieldSource(reserved, 'rename', NAMING_SOURCE.USER);
+    reserved = { ...reserved, rename: newValue };
+  } else {
+    const namingField = field.replace('__reserved.', '');
+    reserved = markNamingFieldSource(reserved, namingField, NAMING_SOURCE.USER);
+    const nextValue = newValue != null ? String(newValue) : '';
+    if (nextValue.trim() === '') {
+      const updated = { ...reserved };
+      delete updated[namingField];
+      reserved = updated;
+    } else {
+      reserved = { ...reserved, [namingField]: nextValue };
     }
-  )
+  }
+
+  return { ...replace_row, __reserved: reserved };
 }
 
 export function setupRenameCellClass(file_cols) {
   return addCellClass(
     file_cols,
     '__reserved.rename',
-    ({ data }) => data && data.__reserved && data.__reserved.processed === 0 ? 'editable copy-as' : ''
+    ({ data }) => isUnprocessedRow(data) ? 'editable copy-as naming-field' : ''
   )
 }
 
@@ -361,6 +493,97 @@ export function setupRenameCellOnCellClicked(file_cols) {
   return addOnCellClicked(
     file_cols,
     '__reserved.rename',
-    ({ value, data, node }) => (data.__reserved.processed === 1 && !data.__reserved.deleted_after) ? electronAPI.openViewer(data.__reserved.output_path, node.rowIndex) : electronAPI.openViewer(data.__reserved.source.path, node.rowIndex)
+    ({ data, node }) => {
+      if (!canOpenViewerForRow(data)) return;
+      if (data.__reserved.processed === 1 && !data.__reserved.deleted_after) {
+        electronAPI.openViewer(data.__reserved.output_path, node.rowIndex);
+      }
+    }
   )
+}
+
+export function setupNamingFieldEditable(file_cols, field) {
+  return addEditable(
+    file_cols,
+    field,
+    (params) => isUnprocessedRow(params?.data)
+  )
+}
+
+export function setupNamingFieldCellClass(file_cols, field) {
+  return addCellClass(
+    file_cols,
+    field,
+    ({ data }) => isUnprocessedRow(data) ? 'editable naming-field' : 'naming-field'
+  )
+}
+
+export function setupNamingFieldSingleClickEdit(file_cols, field) {
+  return addFieldToColumn(file_cols, field, 'singleClickEdit', true);
+}
+
+export const PREVIEW_DEFERRED_NAMING_FIELDS = new Set([
+  '__reserved.labelText',
+  '__reserved.qrPayload',
+]);
+
+export const PREVIEW_SEE_BELOW_PLACEHOLDER = '<see below>';
+
+function seeBelowCellRenderer() {
+  return (
+    <span className="preview-see-below-placeholder">{PREVIEW_SEE_BELOW_PLACEHOLDER}</span>
+  );
+}
+
+function stripEditableCellClass(cellClass) {
+  if (typeof cellClass === 'function') {
+    return (params) => String(cellClass(params) || '')
+      .replace(/\beditable\b/g, '')
+      .replace(/\s+/g, ' ')
+      .trim() || 'naming-field';
+  }
+  return String(cellClass || '')
+    .replace(/\beditable\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim() || 'naming-field';
+}
+
+/**
+ * Output-name preview: Label/QR show placeholders; metadata columns stay editable for pattern testing.
+ */
+export function applyOutputPreviewColumnTweaks(columnDefs, fileCols = []) {
+  const metadataFields = new Set(
+    (fileCols || [])
+      .map((col) => col?.field)
+      .filter((field) => field && !String(field).startsWith('__')),
+  );
+
+  return columnDefs.map((col) => {
+    const field = col.field;
+    if (PREVIEW_DEFERRED_NAMING_FIELDS.has(field)) {
+      const { singleClickEdit, editable, cellRenderer, ...rest } = col;
+      return {
+        ...rest,
+        editable: false,
+        cellRenderer: seeBelowCellRenderer,
+        cellClass: stripEditableCellClass(col.cellClass),
+      };
+    }
+    if (metadataFields.has(field)) {
+      return {
+        ...col,
+        editable: (params) => isUnprocessedRow(params?.data),
+        singleClickEdit: true,
+        cellClass: (params) => {
+          const base = typeof col.cellClass === 'function'
+            ? col.cellClass(params)
+            : col.cellClass;
+          return isUnprocessedRow(params?.data)
+            ? [base, 'editable'].filter(Boolean).join(' ')
+            : base;
+        },
+      };
+    }
+    return col;
+  });
 }

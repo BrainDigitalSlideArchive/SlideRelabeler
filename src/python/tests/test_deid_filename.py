@@ -37,7 +37,7 @@ def test_deid_filename():
     # an output dict in a similar form that would be used to call the DeidTools object
     output_dict = {
         'config': {
-            'filename': {'use_uuid': True, 'use_prefix': True, 'use_suffix': False, 'prefix': 'deid_', 'suffix': 'deid'},
+            'filename': {'use_uuid': True, 'source': 'uuid'},
             'label': {
                 'qr_mode': {'value': 'uuid'},
                 'add_text': True,

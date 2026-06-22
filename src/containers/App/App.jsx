@@ -7,12 +7,14 @@ import store from '../../store/index';
 
 import * as modal_actions from '../../actions/modal';
 import { selectUploadReadiness } from '../../selectors/uploadRouting';
+import { selectOutputReadiness, summarizeDestinationDirectories } from '../../selectors/outputReadiness';
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
 
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
+import OutputDirectoryPanel from "../../components/OutputDirectoryPanel/OutputDirectoryPanel";
 
 import './App.scss';
 import Modal from "../Modal/Modal";
@@ -28,68 +30,18 @@ function render_cancel_clear_button(disable_changes, file_count, processing, dis
   )
 }
 
-function render_output_dir_button(csv, disable_changes, processing, dispatch) {
-  if (csv.needs_output_dir) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
-  } else if (csv.needs_csv_output_dir) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_CSV_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
-  } else if (!csv.headers) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
-  }
-
-}
-
-function render_output_dir_message(csv, output_dir) {
-  if (csv.needs_output_dir)
-    return (
-      <div className={"__display-dir"}>{output_dir ? <h3>{output_dir}</h3> : <h3>Select a directory to output files into. (required)</h3>}</div>
-    )
-  else if (csv.needs_csv_output_dir)
-    return (
-      <div className={"__display-dir"}>{csv.output_dir ? <h3>{csv.output_dir}</h3> : <h3>Select a directory to output CSV file into. (required)</h3>}</div>
-    )
-  else
-    return (
-      <div className={"__display-dir"}>{output_dir ? <h3>{output_dir}</h3> : <h3>Select a directory to output files into.</h3>}</div>
-    )
-}
-
-function render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch) {
-  let output_configured = false;
+function render_process_files_button(uploadRouting, uploadReadiness, outputReadiness, disable_changes, count, processing, dispatch) {
   let message = "";
 
-  if (csv.needs_output_dir && output_dir) {
-    output_configured = true;
-  }
-    
-  else if (csv.needs_csv_output_dir && csv.output_dir) {
-    output_configured = true;
-  }
-
-  else if (!csv.needs_output_dir && !csv.needs_csv_output_dir && output_dir) {
-    output_configured = true;
-  } 
-
-  else {
-    message = "You need to select an output directory for your output files"
+  if (!outputReadiness.processReady) {
+    if (outputReadiness.patternValidation?.blocking) {
+      message = outputReadiness.patternValidation.messages?.[0]
+        || 'Fix pattern column references before processing.';
+    } else if (!outputReadiness.csvOutputReady) {
+      message = "You need to select an output directory for your CSV file";
+    } else {
+      message = "You need to select an output directory for your output files";
+    }
   }
 
   const autoUp = !!uploadRouting?.auto_upload;
@@ -97,8 +49,8 @@ function render_process_files_button(csv, uploadRouting, uploadReadiness, output
 
   return (
     <div className="__process-files">
-      <button className={count === 0 || processing || !output_configured || disable_changes ? "__action-button _disabled" : "__action-button"}
-              disabled={count === 0 || processing || !output_configured || disable_changes}
+      <button className={count === 0 || processing || !outputReadiness.processReady || disable_changes ? "__action-button _disabled" : "__action-button"}
+              disabled={count === 0 || processing || !outputReadiness.processReady || disable_changes}
               onClick={() => dispatch({type: file_actions.PROCESS_FILES})}>
                 {processLabel}
       </button>
@@ -121,9 +73,11 @@ const App = (props) => {
   let disable_changes = useSelector(state => state.files.disable_changes);
   let debug_config = useSelector(state => state.config.debug);
   let csv = useSelector(state => state.files.csv);
+  let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
   let uploadReadiness = useSelector(selectUploadReadiness);
+  let outputReadiness = useSelector(selectOutputReadiness);
   const networkGlobeClass =
     !uploadRouting.auto_upload
       ? '__button-icon'
@@ -132,6 +86,15 @@ const App = (props) => {
         : '__button-icon _network-warning';
 
   const dispatch = useDispatch();
+  const destSummary = summarizeDestinationDirectories(file_rows);
+  const showOutputDirPanel = csv.needs_output_dir || csv.needs_csv_output_dir || !csv.headers;
+  const outputDirVariant = csv.needs_csv_output_dir ? 'csv' : 'slide';
+  const panelOutputDir = csv.needs_csv_output_dir ? csv.output_dir : output_dir;
+  const panelRequired = csv.needs_csv_output_dir
+    ? outputReadiness.csvOutputDirRequired
+    : outputReadiness.outputDirRequired;
+  const panelHighlighted = outputReadiness.outputDirRequired || outputReadiness.csvOutputDirRequired;
+  const controlsDisabled = disable_changes || processing;
   
   useEffect(() => {
     dispatch({type: file_actions.START_FILES_SAGA});
@@ -213,23 +176,35 @@ const App = (props) => {
                 <FileHeaderInfo/>
               </div>
             </div>
-            <div className={(!output_dir && csv.needs_output_dir) || (!csv.output_dir && csv.needs_csv_output_dir) ? "__list-controls _next-step" : "__list-controls"}>
-              {render_output_dir_button(csv, disable_changes, processing, dispatch)}
-              {render_output_dir_message(csv, output_dir)}
-            </div>
+            {showOutputDirPanel && (
+              <div className="__list-controls __list-controls_output-dir">
+                <OutputDirectoryPanel
+                  variant={outputDirVariant}
+                  destSummary={destSummary}
+                  outputDir={panelOutputDir}
+                  required={panelRequired}
+                  highlighted={panelHighlighted}
+                  disabled={controlsDisabled}
+                  onChoose={() => dispatch({
+                    type: csv.needs_csv_output_dir
+                      ? file_actions.CHOOSE_CSV_OUTPUT_DIR
+                      : file_actions.CHOOSE_OUTPUT_DIR,
+                  })}
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
-          {render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch)}
+          {render_process_files_button(uploadRouting, uploadReadiness, outputReadiness, disable_changes, count, processing, dispatch)}
         </div>
         <div className={"__disclaimer"}>
           Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.
         </div>
         <div id='table'>
           <AppAgGrid
-            autoSizeStrategy={{type: 'fitCellContents'}}
             suppressMovableColumns={true}
             ensureDomOrder={true}
             suppressDragLeaveHidesColumns={true}

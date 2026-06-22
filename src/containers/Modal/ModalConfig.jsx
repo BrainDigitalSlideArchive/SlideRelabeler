@@ -3,108 +3,172 @@ import { useSelector, useDispatch } from "react-redux";
 
 import * as config_actions from "../../actions/config";
 import ModalHeader from './ModalHeader';
-import Checkbox from '../../components/controls/checkbox/Checkbox';
-import InputText from '../../components/controls/input/InputText';
-import Button from '../../components/controls/button/Button';
-import { return_file_extension_from_path, return_filename_basename_from_filename } from "../../helpers/renderer_path_helpers";
-import { generate_dropdown_for_table_columns } from "../../helpers/fe_helpers";
 import { previewLabelStrings } from '../../helpers/label_config_preview';
-import { buildAssembledName } from '../../helpers/assembly_routing';
-import { buildOutputFilenameColumnOptions } from '../../helpers/output_filename';
-import ConfigStickyNav, { scrollConfigSectionIntoView } from '../../components/config/ConfigStickyNav';
+import { applyRowNamingDefaults, countProtectedNamingRows } from '../../helpers/row_naming_defaults';
+import {
+  buildExamplePreviewRow,
+  clonePreviewRowFromFileRow,
+} from '../../helpers/config_preview_row';
+import { getPatternPlaceholderCatalog } from '../../helpers/pattern_engine.js';
+import { selectPatternValidationFromState } from '../../helpers/pattern_validation.js';
+import ConfigStickyNav from '../../components/config/ConfigStickyNav';
 import ConfigOverviewSection from '../../components/config/ConfigOverviewSection';
 import OutputFilenameSection from '../../components/config/OutputFilenameSection';
 import LabelGuidedSteps from '../../components/config/LabelGuidedSteps';
-import AssembledNameSection from '../../components/config/AssembledNameSection';
+import AuditLoggingSection from '../../components/config/AuditLoggingSection';
+import DataLoadingSection from '../../components/config/DataLoadingSection';
 import ConfigAdvancedSection from '../../components/config/ConfigAdvancedSection';
+import HelpIconPopover from '../../components/controls/HelpIconPopover';
+
+const SLIDE_LABEL_HELP = (
+  <>
+    Similar to <strong>Output name</strong> config above, the options below will be applied any time a file
+    does not already have a value defined in the table. If a value is provided for the component during data
+    loading or manual editing, it will override these defaults.
+  </>
+);
 
 function ModalConfig() {
-  const file_cols = useSelector(state => state.files.file_columns);
-  const reserved_cols = useSelector(state => state.files.reserved_columns);
   const filename_config = useSelector(state => state.config.filename);
   const csv_config = useSelector(state => state.config.csv);
   const label_config = useSelector(state => state.config.label);
-  const naming_config = useSelector(state => state.config.naming);
   const wsi_config = useSelector(state => state.config.wsi);
   const debug_config = useSelector(state => state.config.debug);
   const processing = useSelector(state => state.files.processing);
   const copy_config = useSelector(state => state.config.copy);
   const disable_changes = useSelector(state => state.files.disable_changes);
   const file_rows = useSelector(state => state.files.file_rows);
+  const file_cols = useSelector(state => state.files.file_columns);
+  const reserved_columns = useSelector(state => state.files.reserved_columns);
   const config = useSelector(state => state.config);
-  const assembly_config = useSelector(state => state.config.assembly);
   const routing_config = useSelector(state => state.config.routing);
 
   const dispatch = useDispatch();
-  const blocked_fields = useSelector(state => state.files.blocked_fields);
 
   const example_filename = '1234.tiff';
-  const example_basename = return_filename_basename_from_filename(example_filename);
-  const example_ext = return_file_extension_from_path(example_filename);
   const example_uuid = "acde070d-8c4c-4f0d-9d8a-162843c10333";
-  const [previewRowSource, setPreviewRowSource] = useState('sample');
 
   const hasLoadedFiles = Array.isArray(file_rows) && file_rows.length > 0;
   const firstFileRow = hasLoadedFiles ? file_rows[0] : null;
-  const previewFilePath = firstFileRow?.__reserved?.source?.path ?? null;
 
-  const sampleRow = useMemo(() => {
-    const metadata = {
-      BlockId: 'B12',
-      StainId: 'HE',
-      SlideNum: '1',
-      Accession: 'DEMO_ACC',
-    };
-    const assembled = buildAssembledName(metadata, assembly_config) || 'DEMO_ACC_B12_HE_1';
-    return {
-      ...metadata,
-      AssembledName: assembled,
-      __reserved: {
-        uuid: example_uuid,
-        rename: example_basename,
-        source: { filename: example_filename },
-      },
-    };
-  }, [example_basename, example_filename, example_uuid, assembly_config]);
+  const [previewRowMode, setPreviewRowMode] = useState('example');
+  const [previewRow, setPreviewRow] = useState(null);
 
-  const activePreviewRow = useMemo(() => {
-    if (previewRowSource === 'first' && firstFileRow) return firstFileRow;
-    return sampleRow;
-  }, [previewRowSource, firstFileRow, sampleRow]);
+  const enrichedConfig = useMemo(
+    () => ({ ...config, fileCols: file_cols }),
+    [config, file_cols],
+  );
 
-  const assembledPreview = useMemo(
-    () => buildAssembledName(activePreviewRow, assembly_config) || example_basename,
-    [activePreviewRow, assembly_config, example_basename],
+  const examplePreviewRow = useMemo(
+    () => buildExamplePreviewRow({
+      uuid: example_uuid,
+      filename: example_filename,
+      fileCols: file_cols,
+      config: enrichedConfig,
+    }),
+    [example_uuid, example_filename, file_cols, enrichedConfig],
+  );
+
+  useEffect(() => {
+    setPreviewRow((prev) => prev ?? examplePreviewRow);
+  }, [examplePreviewRow]);
+
+  useEffect(() => {
+    setPreviewRow((prev) => {
+      if (!prev) return prev;
+      return applyRowNamingDefaults({ ...prev }, enrichedConfig);
+    });
+  }, [label_config, filename_config, enrichedConfig]);
+
+  const activePreviewRow = previewRow ?? {
+    __reserved: { uuid: example_uuid, source: { filename: example_filename } },
+  };
+  const previewFilePath = activePreviewRow?.__reserved?.source?.path ?? null;
+
+  const placeholderCatalogs = useMemo(
+    () => ({
+      outputName: getPatternPlaceholderCatalog({
+        field: 'outputName',
+        fileRows: file_rows,
+        fileCols: file_cols,
+        hasLoadedFiles,
+        csvConfig: csv_config,
+      }),
+      labelText: getPatternPlaceholderCatalog({
+        field: 'labelText',
+        fileRows: file_rows,
+        fileCols: file_cols,
+        hasLoadedFiles,
+        csvConfig: csv_config,
+      }),
+      qrContent: getPatternPlaceholderCatalog({
+        field: 'qrContent',
+        fileRows: file_rows,
+        fileCols: file_cols,
+        hasLoadedFiles,
+        csvConfig: csv_config,
+      }),
+      dsaAlias: getPatternPlaceholderCatalog({
+        field: 'dsaAlias',
+        fileRows: file_rows,
+        fileCols: file_cols,
+        hasLoadedFiles,
+        csvConfig: csv_config,
+      }),
+    }),
+    [file_rows, file_cols, hasLoadedFiles, csv_config],
+  );
+
+  const patternValidation = useMemo(
+    () => selectPatternValidationFromState({
+      config: enrichedConfig,
+      file_rows,
+      file_cols,
+    }),
+    [enrichedConfig, file_rows, file_cols],
   );
 
   const resolvedPreview = useMemo(
-    () => previewLabelStrings(config, activePreviewRow, {
-      usingSample: !hasLoadedFiles,
+    () => previewLabelStrings(enrichedConfig, activePreviewRow, {
+      usingSample: previewRowMode === 'example',
     }),
-    [config, activePreviewRow, hasLoadedFiles],
+    [enrichedConfig, activePreviewRow, previewRowMode],
+  );
+
+  const schematicPreview = useMemo(
+    () => previewLabelStrings(enrichedConfig, examplePreviewRow, { usingSample: true }),
+    [enrichedConfig, examplePreviewRow, label_config, filename_config],
   );
 
   const controlsDisabled = processing || disable_changes;
 
-  const [column_options, set_column_options] = useState([]);
-
-  useEffect(() => {
-    const new_all_cols = [...reserved_cols, ...file_cols];
-    set_column_options(generate_dropdown_for_table_columns(new_all_cols, blocked_fields));
-  }, [reserved_cols, file_cols, blocked_fields]);
-
-  const outputFilenameColumnOptions = useMemo(
-    () => buildOutputFilenameColumnOptions({
-      fileRows: file_rows,
-      fileCols: file_cols,
-      savedColumn: filename_config.column,
-      csvConfig: csv_config,
-    }),
-    [file_rows, file_cols, filename_config.column, csv_config],
+  const protectedRowCount = useMemo(
+    () => countProtectedNamingRows(file_rows),
+    [file_rows],
   );
+
+  const recomputeNotice = hasLoadedFiles && protectedRowCount > 0
+    ? 'Rows with values from CSV, eSM, or manual edits will not be changed when you update defaults.'
+    : null;
 
   function triggerRecompute() {
     dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING });
+    setPreviewRow((prev) => (prev ? applyRowNamingDefaults({ ...prev }, enrichedConfig) : prev));
+  }
+
+  function handlePreviewRowChange(updatedRow) {
+    setPreviewRow(updatedRow);
+  }
+
+  function handleLoadPreviewFromFirstRow() {
+    if (!firstFileRow) return;
+    setPreviewRow(clonePreviewRowFromFileRow(firstFileRow));
+    setPreviewRowMode('file');
+  }
+
+  function handleResetPreviewRow() {
+    setPreviewRow({ ...examplePreviewRow });
+    setPreviewRowMode('example');
   }
 
   return (
@@ -120,16 +184,20 @@ function ModalConfig() {
               <div className={"__divider"} />
 
               <OutputFilenameSection
-                config={config}
+                config={enrichedConfig}
                 filenameConfig={filename_config}
-                assemblyConfig={assembly_config}
-                columnOptions={outputFilenameColumnOptions}
-                activePreviewRow={activePreviewRow}
+                previewRow={activePreviewRow}
                 disabled={controlsDisabled}
-                exampleFilename={example_filename}
-                exampleExt={example_ext}
-                exampleUuid={example_uuid}
+                hasLoadedFiles={hasLoadedFiles}
+                reservedColumns={reserved_columns}
+                fileCols={file_cols}
+                onPreviewRowChange={handlePreviewRowChange}
+                onLoadPreviewFromFirstRow={handleLoadPreviewFromFirstRow}
+                onResetPreviewRow={handleResetPreviewRow}
                 onRecompute={triggerRecompute}
+                recomputeNotice={recomputeNotice}
+                placeholderCatalog={placeholderCatalogs.outputName}
+                patternValidationMessages={patternValidation.messages}
               />
 
           <div className={"__divider"} />
@@ -137,79 +205,46 @@ function ModalConfig() {
           <section className="__config-control-section" id="config-slide-label">
             <div className={"__config-control-section-title"}>Slide label</div>
             <div className={"__config-control-section-description"}>
-              Configure text, QR, and optional overlay on the deidentified slide label.
+              Choose which components appear on the new, deidentified slide labels.
+              {' '}
+              <HelpIconPopover helpLabel="Slide label defaults help" variant="onLight">
+                {SLIDE_LABEL_HELP}
+              </HelpIconPopover>
             </div>
-            <div className="label-config-section">
+            <div className="config-section-panel label-config-section">
               <LabelGuidedSteps
-                config={config}
+                config={enrichedConfig}
                 labelConfig={label_config}
-                assemblyConfig={assembly_config}
-                routingConfig={routing_config}
-                namingConfig={naming_config}
-                columnOptions={column_options}
                 disabled={controlsDisabled}
-                activePreviewRow={activePreviewRow}
+                previewRow={activePreviewRow}
+                previewRowMode={previewRowMode}
                 previewFilePath={previewFilePath}
                 resolvedPreview={resolvedPreview}
+                schematicPreview={schematicPreview}
                 hasLoadedFiles={hasLoadedFiles}
-                previewRowSource={previewRowSource}
-                onPreviewRowSourceChange={setPreviewRowSource}
+                reservedColumns={reserved_columns}
+                fileCols={file_cols}
+                onPreviewRowChange={handlePreviewRowChange}
+                onLoadPreviewFromFirstRow={handleLoadPreviewFromFirstRow}
+                onResetPreviewRow={handleResetPreviewRow}
                 onRecompute={triggerRecompute}
-                assembledPreview={assembledPreview}
+                placeholderCatalogs={placeholderCatalogs}
+                patternValidationMessages={patternValidation.messages}
               />
             </div>
           </section>
 
           <div className={"__divider"} />
 
-          <section className="__config-control-section" id="config-import-csv">
-            <div className={"__config-control-section-title"}>Import from CSV</div>
-            <div className={"__config-control-section-description"}>
-              If you process slides from a spreadsheet, specify which columns mean file path, optional output name, and
-              optional output folder. Column names are case-sensitive.
-            </div>
-            <div className={"__config-control-section-container"}>
-              <div className={"__config-control-subsection"}>
-                <InputText disabled={controlsDisabled} label={"File path column (required)"} value={csv_config.file_path_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_PATH_COLUMN, payload: new_value })} />
-                <InputText disabled={controlsDisabled} label={"Output name column (optional)"} value={csv_config.file_rename_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_RENAME_COLUMN, payload: new_value })} />
-                <InputText disabled={controlsDisabled} label={"Output folder column (optional)"} value={csv_config.file_destination_directory_column} onChange={(new_value) => dispatch({ type: config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, payload: new_value })} />
-                <div className={"__config-control-subsection-row _top-margin _align-center"}>
-                  <Button text={"Export sample CSV"} onClick={() => dispatch({ type: config_actions.EXPORT_SAMPLE_CSV_TEMPLATE })} />
-                </div>
-              </div>
-              <div className={"__config-control-subsection"}>
-                <Checkbox disabled={controlsDisabled} label={"Save processing log CSV (deid_output.csv)"} checked={csv_config.save_csv} onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_CSV })} />
-                <Checkbox
-                  disabled={controlsDisabled}
-                  label={"Include assembled name in exported CSV"}
-                  checked={!!routing_config?.exportCsv?.enabled}
-                  onClick={() => dispatch({
-                    type: config_actions.SET_ROUTING_CONFIG,
-                    payload: {
-                      exportCsv: {
-                        enabled: !routing_config?.exportCsv?.enabled,
-                        columnHeader: assembly_config?.columnName || 'AssembledName',
-                      },
-                    },
-                  })}
-                />
-                <div className="__config-control-subsection-note-description">
-                  Build rules for assembled name are in the <strong>Assembled name</strong> section.
-                </div>
-              </div>
-            </div>
-          </section>
+          <AuditLoggingSection
+            disabled={controlsDisabled}
+          />
 
           <div className={"__divider"} />
 
-          <AssembledNameSection
-            assembly={assembly_config}
-            routing={routing_config}
-            filenameSource={filename_config?.source}
+          <DataLoadingSection
+            csvConfig={csv_config}
             disabled={controlsDisabled}
-            columnOptions={column_options}
-            sampleRow={activePreviewRow}
-            onScrollToLabel={() => scrollConfigSectionIntoView('config-slide-label')}
           />
 
           <div className={"__divider"} />

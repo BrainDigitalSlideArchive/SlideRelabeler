@@ -1,4 +1,10 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import {
+  computePopoverPosition,
+  findPopoverBoundsElement,
+} from '../../../helpers/popover_position.js';
 
 import './InputText.scss';
 
@@ -14,7 +20,7 @@ function get_input_text_class(disabled, error) {
 }
 
 function InputText(props) {
-  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress } = props;
+  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress, onBlur } = props;
   let rootClass = variant === 'onLight' ? 'InputText InputText--onLight' : 'InputText';
   if (compact) rootClass += ' InputText--compact';
   if (omitLabel) rootClass += ' InputText--controlOnly';
@@ -36,64 +42,34 @@ function InputText(props) {
     return `Help for ${base}`;
   }, [label, ariaLabel]);
 
-  function findBoundsElement() {
-    const root = rootRef.current;
-    if (!root) return null;
-    return (
-      root.closest('.__modal') ||
-      root.closest('.__content') ||
-      root.closest('.__config-controls') ||
-      root.parentElement ||
-      null
-    );
-  }
-
-  function computeAndSetPopoverPosition() {
+  function updatePopoverPosition() {
     const icon = iconRef.current;
     const popover = popoverRef.current;
     if (!icon || !popover) return;
 
-    const boundsEl = findBoundsElement();
-    const boundsRect = boundsEl ? boundsEl.getBoundingClientRect() : document.documentElement.getBoundingClientRect();
-    const iconRect = icon.getBoundingClientRect();
-
-    // Temporarily ensure we can measure it.
-    const popoverRect = popover.getBoundingClientRect();
-    const margin = 8;
-    const gap = 8;
-
-    const maxWidth = Math.max(240, Math.min(640, boundsRect.width - margin * 2));
-    const width = Math.min(popoverRect.width || maxWidth, maxWidth);
-    const height = popoverRect.height;
-
-    const spaceRight = boundsRect.right - iconRect.right - gap - margin;
-    const spaceLeft = iconRect.left - boundsRect.left - gap - margin;
-
-    let left = iconRect.right + gap;
-    let top = iconRect.top;
-
-    // Prefer right; else left; else below.
-    if (spaceRight < 200 && spaceLeft >= 200) {
-      left = iconRect.left - gap - width;
-      top = iconRect.top;
-    } else if (spaceRight < 200 && spaceLeft < 200) {
-      left = iconRect.left;
-      top = iconRect.bottom + gap;
+    const boundsEl = findPopoverBoundsElement(rootRef.current);
+    const style = computePopoverPosition(icon, popover, boundsEl);
+    if (style) {
+      setPopoverStyle(style);
     }
-
-    // Clamp within bounds.
-    left = Math.min(Math.max(left, boundsRect.left + margin), boundsRect.right - width - margin);
-    top = Math.min(Math.max(top, boundsRect.top + margin), boundsRect.bottom - height - margin);
-
-    setPopoverStyle({
-      left: `${Math.round(left)}px`,
-      top: `${Math.round(top)}px`,
-      maxWidth: `${Math.round(maxWidth)}px`,
-    });
   }
 
+  useLayoutEffect(() => {
+    if (!helpOpen) return undefined;
+
+    updatePopoverPosition();
+
+    const onViewportChange = () => updatePopoverPosition();
+    window.addEventListener('resize', onViewportChange);
+    document.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      document.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [helpOpen, tooltip]);
+
   useEffect(() => {
-    if (!helpOpen) return;
+    if (!helpOpen) return undefined;
 
     function onKeyDown(e) {
       if (e.key === 'Escape') {
@@ -103,26 +79,17 @@ function InputText(props) {
 
     function onMouseDown(e) {
       const root = rootRef.current;
+      const popover = popoverRef.current;
       if (!root) return;
-      if (!root.contains(e.target)) {
-        setHelpOpen(false);
-      }
+      if (root.contains(e.target) || popover?.contains(e.target)) return;
+      setHelpOpen(false);
     }
-
-    // Position on open; also update on any scroll/resize events.
-    const raf = requestAnimationFrame(() => computeAndSetPopoverPosition());
-    const onViewportChange = () => computeAndSetPopoverPosition();
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('resize', onViewportChange);
-    document.addEventListener('scroll', onViewportChange, true);
     return () => {
-      cancelAnimationFrame(raf);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('resize', onViewportChange);
-      document.removeEventListener('scroll', onViewportChange, true);
     };
   }, [helpOpen]);
 
@@ -131,6 +98,27 @@ function InputText(props) {
       setPopoverStyle(null);
     }
   }, [helpOpen]);
+
+  const helpPopover = helpOpen && tooltip ? (
+    <div
+      id={popoverId}
+      ref={popoverRef}
+      className={helpOpen && popoverStyle ? '__help-popover _visible' : '__help-popover'}
+      role="dialog"
+      aria-label={helpLabel}
+      style={
+        popoverStyle || {
+          position: 'fixed',
+          left: '-9999px',
+          top: '0',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+        }
+      }
+    >
+      {tooltip}
+    </div>
+  ) : null;
 
   const helpButton = tooltip && (
     <span className="__help-wrap">
@@ -147,16 +135,7 @@ function InputText(props) {
       >
         i
       </button>
-      <div
-        id={popoverId}
-        ref={popoverRef}
-        className={helpOpen ? '__help-popover _visible' : '__help-popover'}
-        role="dialog"
-        aria-label={helpLabel}
-        style={popoverStyle || undefined}
-      >
-        {tooltip}
-      </div>
+      {helpPopover && createPortal(helpPopover, document.body)}
     </span>
   );
 
@@ -181,6 +160,7 @@ function InputText(props) {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyPress={onKeyPress}
+            onBlur={onBlur}
             aria-label={ariaLabel || undefined}
           />
         </div>
@@ -196,6 +176,7 @@ function InputText(props) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyPress={onKeyPress}
+          onBlur={onBlur}
         />
       )}
     </div>

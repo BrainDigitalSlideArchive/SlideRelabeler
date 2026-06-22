@@ -1,6 +1,7 @@
 // helpers/naming_config_migration.js
 
 import { migrateConfigV2 } from './config_v2_migration.js';
+import { migrateConfigV3 } from './computed_field_config.js';
 
 const DEFAULT_NAMING = {
   accessionMode: 'original',
@@ -95,7 +96,7 @@ export function migrateNamingConfig(loadedConfig, loadedEsm) {
     };
   }
 
-  return config;
+  return migrateConfigV3(config);
 }
 
 export {

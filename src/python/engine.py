@@ -344,9 +344,21 @@ def any_to_struct(obj: Any) -> Struct:
 # Original functionality (same semantics)
 # -----------------------------
 
+def _assert_slide_path_readable(file: str) -> None:
+  if not file or not str(file).strip():
+    raise FileNotFoundError("Slide path is empty")
+  if not os.path.exists(file):
+    raise FileNotFoundError(f"File not found: {file}")
+  if not os.path.isfile(file):
+    raise IsADirectoryError(f"Not a file: {file}")
+  if not os.access(file, os.R_OK):
+    raise PermissionError(f"Cannot read file: {file}")
+
+
 def openFile(file: str, second: bool = False):
   source = openFiles.get(file)
   if not source:
+    _assert_slide_path_readable(file)
     try:
       source = large_image.open(file)
       openFiles[file] = source
@@ -358,6 +370,7 @@ def openFile(file: str, second: bool = False):
 
 
 def getMetadata(file: str) -> Dict[str, Any]:
+  _assert_slide_path_readable(file)
   source = openFile(file)
   return {
     "metadata": source.getMetadata(),
@@ -447,9 +460,7 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
       )
     except Exception:
       exc = traceback.format_exc()
-      _push_error(exc)
-      context.set_code(grpc.StatusCode.INTERNAL)
-      context.set_details("internal_error")
+      _set_internal_error(context, "GetMetadata", exc)
       return engine_pb2.MetadataReply()
 
   def GetThumbnail(self, request: engine_pb2.FileRequest, context: grpc.ServicerContext) -> engine_pb2.ImageReply:

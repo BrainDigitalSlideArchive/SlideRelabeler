@@ -40,42 +40,6 @@ export function computeAccessionToken(slide, mappingConfig, criteriaRow) {
   return safeToken(getAccessionFromBarcodeId(slide?.BarcodeId));
 }
 
-/**
- * De-identified accession token for a file row (CSV, eSM-applied, manual add).
- */
-export function computeDeidToken(fileRow, namingConfig) {
-  const mode = namingConfig?.accessionMode || 'original';
-  const tokenCol = (namingConfig?.tokenIdColumn ?? '').trim();
-
-  if (tokenCol && fileRow[tokenCol] != null && String(fileRow[tokenCol]).trim()) {
-    return safeToken(fileRow[tokenCol]);
-  }
-  if (fileRow.deid != null && String(fileRow.deid).trim()) {
-    return safeToken(fileRow.deid);
-  }
-  if (fileRow.TokenID != null && String(fileRow.TokenID).trim()) {
-    return safeToken(fileRow.TokenID);
-  }
-  if (fileRow.__reserved?.deidToken) {
-    return safeToken(fileRow.__reserved.deidToken);
-  }
-
-  if (mode === 'manual') {
-    return safeToken(namingConfig?.accessionToken || '');
-  }
-  if (mode === 'auto') {
-    const base = safeToken(
-      fileRow?.ImageId || fileRow?.SlideId || fileRow?.ImageID || '',
-    );
-    return base ? `CASE_${base}` : '';
-  }
-
-  if (fileRow.Accession != null && String(fileRow.Accession).trim()) {
-    return safeToken(fileRow.Accession);
-  }
-  return safeToken(getAccessionFromBarcodeId(fileRow?.BarcodeId || ''));
-}
-
 export function buildBaseFilename(slide, accessionToken, mappingConfig, transformValue) {
   const fields = Array.isArray(mappingConfig?.fieldsOrder) ? mappingConfig.fieldsOrder : [];
   const parts = [];

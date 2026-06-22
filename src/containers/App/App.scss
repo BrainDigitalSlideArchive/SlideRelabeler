@@ -137,10 +137,12 @@
       padding-left: 0.25em;
       padding-top: 0.25em;
       padding-bottom: 0.25em;
-      &._next-step {
-        border: $green 0.125em solid;
-        width: 45em;     
+
+      &.__list-controls_output-dir {
+        align-items: stretch;
+        margin-bottom: 0.75em;
       }
+
       .__list-controls-group {
         display: flex;
         flex-direction: row;

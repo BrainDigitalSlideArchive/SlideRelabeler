@@ -1,6 +1,7 @@
 import { put, select } from 'redux-saga/effects';
 
 import * as files_actions from "../../actions/files";
+import { isHiddenFileTableColumn } from "../../helpers/file_table_columns.js";
 
 export default function* add_non_linked_to_cols(headers) {
   let linked_headers = [];
@@ -20,7 +21,7 @@ export default function* add_non_linked_to_cols(headers) {
 
   for (const header_idx in headers) {
     let header = headers[header_idx];
-    if (!linked_headers.includes(header) && !header.startsWith('__reserved')) {
+    if (!linked_headers.includes(header) && !header.startsWith('__reserved') && !isHiddenFileTableColumn(header)) {
       yield put({type: files_actions.ADD_FILE_COL, payload: {field: header}});
     }
   }

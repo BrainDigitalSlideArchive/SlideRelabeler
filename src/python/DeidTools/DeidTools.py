@@ -606,12 +606,15 @@ class DeidTools:
 
     def _load_icon_image(self, output_dict):
         label_config = output_dict['config']['label']
-        image_path = label_config['icon_file']['source']['path']
-        if os.path.exists(image_path):
-            icon_image = PIL.Image.open(image_path)
-        else:
-            image_data = base64.b64decode(self.default_image)
-            icon_image = PIL.Image.open(io.BytesIO(image_data))
+        icon_file = label_config.get('icon_file')
+        if not icon_file:
+            return None
+
+        image_path = icon_file.get('source', {}).get('path')
+        if not image_path or not str(image_path).strip() or not os.path.exists(image_path):
+            return None
+
+        icon_image = PIL.Image.open(image_path)
 
         if icon_image.size[0] > 740:
             new_width = 740
@@ -654,7 +657,7 @@ class DeidTools:
         return qr_code_string
 
     def _make_qr_image(self, qr_code_string):
-        if qr_code_string is None:
+        if qr_code_string is None or not str(qr_code_string).strip():
             return None
 
         qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
@@ -667,6 +670,8 @@ class DeidTools:
             image = PIL.Image.new(self.pil_image_mode, (750, 750))
 
         icon_image = self._load_icon_image(output_dict)
+        if icon_image is None:
+            return image, output_height
 
         position = (image.size[0] // 2 - icon_image.size[0] // 2, output_height + self.sep_height)
 
@@ -697,25 +702,30 @@ class DeidTools:
             image = PIL.Image.new(self.pil_image_mode, (750, 750))
 
         qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
-        if qr_code_string is not None:
-            qr_code = self._make_qr_image(qr_code_string)
-            image_cropped = image.crop((0, 0, image.size[0], output_height))
-            width = max(qr_code.size[0], image_cropped.size[0])
+        if qr_code_string is None or not str(qr_code_string).strip():
+            return image, output_height
 
-            qr_code_left = width // 2 - qr_code.size[0] // 2
-            qr_code_top = output_height + self.sep_height
-            qr_loc = (qr_code_left, qr_code_top, qr_code_left + qr_code.size[0], qr_code_top + qr_code.size[1])
+        qr_code = self._make_qr_image(qr_code_string)
+        if qr_code is None:
+            return image, output_height
 
-            if qr_code.size[1] > (750 - output_height - self.sep_height):
-                image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
-                image.paste(image_cropped, (0,0))
-                image.paste(qr_code, qr_loc)
-            else:
-                image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
-                image.paste(image_cropped, (0,0))
-                image.paste(qr_code, qr_loc)
+        image_cropped = image.crop((0, 0, image.size[0], output_height))
+        width = max(qr_code.size[0], image_cropped.size[0])
 
-            output_height = qr_code.size[1] + output_height + self.sep_height + self.sep_height
+        qr_code_left = width // 2 - qr_code.size[0] // 2
+        qr_code_top = output_height + self.sep_height
+        qr_loc = (qr_code_left, qr_code_top, qr_code_left + qr_code.size[0], qr_code_top + qr_code.size[1])
+
+        if qr_code.size[1] > (750 - output_height - self.sep_height):
+            image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
+            image.paste(image_cropped, (0,0))
+            image.paste(qr_code, qr_loc)
+        else:
+            image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
+            image.paste(image_cropped, (0,0))
+            image.paste(qr_code, qr_loc)
+
+        output_height = qr_code.size[1] + output_height + self.sep_height + self.sep_height
 
         return image, output_height
 
@@ -725,10 +735,18 @@ class DeidTools:
 
         icon_image = self._load_icon_image(output_dict)
         qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
-        if qr_code_string is None:
+        has_qr = qr_code_string is not None and str(qr_code_string).strip()
+
+        if icon_image is None and not has_qr:
+            return image, output_height
+        if icon_image is None:
+            return self.add_qr_code_to_image(image, output_dict, desired_title, output_height)
+        if not has_qr:
             return self.add_icon_to_image(image, output_dict, output_height)
 
         qr_code = self._make_qr_image(qr_code_string)
+        if qr_code is None:
+            return self.add_icon_to_image(image, output_dict, output_height)
 
         gap = self.sep_height
         row_top = output_height + self.sep_height
@@ -753,40 +771,54 @@ class DeidTools:
 
         return image, new_height
 
+    def _should_compose_label_only(self, output_dict):
+        preview = output_dict.get('__configPreview') or {}
+        if preview.get('composeOnly'):
+            return True
+        path = output_dict.get('__reserved', {}).get('source', {}).get('path')
+        if not path or not str(path).strip():
+            return True
+        return not os.path.exists(str(path))
+
     def get_deid_label(self, output_dict):
         label_config = output_dict['config']['label']
 
         desired_title = self.get_rename(output_dict)
+        compose_only = self._should_compose_label_only(output_dict)
 
-        if desired_title is not None:
-            curItem = ImageItem(output_dict['__reserved']['source']['path'], {"name": desired_title})
-        else:
-            curItem = ImageItem(output_dict['__reserved']['source']['path'])
-
-        redactList = get_standard_redactions(curItem, desired_title)
-
-        tileSource = curItem.tileSource
-
-        newTitle = get_generated_title(
-            curItem
-        )
-
+        curItem = None
         labelImage = None
-        label_geojson = redactList.get("images", {}).get("label", {}).get("geojson")
 
-        ## TO IMPLEMENT...
-        if (
-            "label" not in redactList["images"]
-            and not config.getConfig("always_redact_label")
-        ) or label_geojson is not None:
-            try:
-                labelImage = PIL.Image.open(
-                    io.BytesIO(tileSource.getAssociatedImage("label")[0])
-                )
-            except Exception:
-                pass
-        if label_geojson is not None and labelImage is not None:
-            labelImage = redact_image_area(labelImage, label_geojson)
+        if not compose_only:
+            source_path = output_dict['__reserved']['source']['path']
+            if desired_title is not None:
+                curItem = ImageItem(source_path, {"name": desired_title})
+            else:
+                curItem = ImageItem(source_path)
+
+            redactList = get_standard_redactions(curItem, desired_title)
+
+            tileSource = curItem.tileSource
+
+            get_generated_title(
+                curItem
+            )
+
+            label_geojson = redactList.get("images", {}).get("label", {}).get("geojson")
+
+            ## TO IMPLEMENT...
+            if (
+                "label" not in redactList["images"]
+                and not config.getConfig("always_redact_label")
+            ) or label_geojson is not None:
+                try:
+                    labelImage = PIL.Image.open(
+                        io.BytesIO(tileSource.getAssociatedImage("label")[0])
+                    )
+                except Exception:
+                    pass
+            if label_geojson is not None and labelImage is not None:
+                labelImage = redact_image_area(labelImage, label_geojson)
 
         output_height = 0
 
@@ -857,6 +889,11 @@ class DeidTools:
         filename_config = config.get('filename', {})
         reserved = output_dict.get('__reserved', {})
         source_meta = reserved.get('source', {})
+
+        reserved_rename = reserved.get('rename')
+        if reserved_rename is not None and str(reserved_rename).strip():
+            return str(reserved_rename)
+
         mode = self._resolve_filename_source(filename_config)
 
         temp = ''
@@ -907,11 +944,6 @@ class DeidTools:
         source = reserved.get('source', {})
 
         temp = self._resolve_output_basename(output_dict)
-
-        if filename_config.get('use_prefix') and ('prefix' in filename_config):
-            temp = str(filename_config.get('prefix', '')) + temp
-        if filename_config.get('use_suffix') and ('suffix' in filename_config):
-            temp = temp + str(filename_config.get('suffix', ''))
 
         ext = source.get('parsed', {}).get('ext')
         if not ext and source.get('filename'):

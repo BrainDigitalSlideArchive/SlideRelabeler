@@ -1,12 +1,18 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import {
+  computePopoverPosition,
+  findPopoverBoundsElement,
+} from '../../helpers/popover_position.js';
 
 import './HelpIconPopover.scss';
 
 /**
- * “i” icon that opens a fixed-position popover (same behavior as InputText tooltips).
+ * “i” icon that opens a fixed-position popover anchored to the trigger.
  */
 function HelpIconPopover(props) {
-  const { children, helpLabel, disabled, variant = 'default' } = props;
+  const { children, helpLabel, disabled, variant = 'default', glyph } = props;
 
   const popoverId = useId();
   const rootRef = useRef(null);
@@ -17,61 +23,34 @@ function HelpIconPopover(props) {
 
   const ariaLabel = useMemo(() => helpLabel || 'Help', [helpLabel]);
 
-  function findBoundsElement() {
-    const root = rootRef.current;
-    if (!root) return null;
-    return (
-      root.closest('.__modal') ||
-      root.closest('.__content') ||
-      root.closest('.__config-controls') ||
-      root.parentElement ||
-      null
-    );
-  }
-
-  function computeAndSetPopoverPosition() {
+  function updatePopoverPosition() {
     const icon = iconRef.current;
     const popover = popoverRef.current;
     if (!icon || !popover) return;
 
-    const boundsEl = findBoundsElement();
-    const boundsRect = boundsEl ? boundsEl.getBoundingClientRect() : document.documentElement.getBoundingClientRect();
-    const iconRect = icon.getBoundingClientRect();
-
-    const popoverRect = popover.getBoundingClientRect();
-    const margin = 8;
-    const gap = 8;
-
-    const maxWidth = Math.max(240, Math.min(640, boundsRect.width - margin * 2));
-    const width = Math.min(popoverRect.width || maxWidth, maxWidth);
-    const height = popoverRect.height;
-
-    const spaceRight = boundsRect.right - iconRect.right - gap - margin;
-    const spaceLeft = iconRect.left - boundsRect.left - gap - margin;
-
-    let left = iconRect.right + gap;
-    let top = iconRect.top;
-
-    if (spaceRight < 200 && spaceLeft >= 200) {
-      left = iconRect.left - gap - width;
-      top = iconRect.top;
-    } else if (spaceRight < 200 && spaceLeft < 200) {
-      left = iconRect.left;
-      top = iconRect.bottom + gap;
+    const boundsEl = findPopoverBoundsElement(rootRef.current);
+    const style = computePopoverPosition(icon, popover, boundsEl);
+    if (style) {
+      setPopoverStyle(style);
     }
-
-    left = Math.min(Math.max(left, boundsRect.left + margin), boundsRect.right - width - margin);
-    top = Math.min(Math.max(top, boundsRect.top + margin), boundsRect.bottom - height - margin);
-
-    setPopoverStyle({
-      left: `${Math.round(left)}px`,
-      top: `${Math.round(top)}px`,
-      maxWidth: `${Math.round(maxWidth)}px`,
-    });
   }
 
+  useLayoutEffect(() => {
+    if (!helpOpen) return undefined;
+
+    updatePopoverPosition();
+
+    const onViewportChange = () => updatePopoverPosition();
+    window.addEventListener('resize', onViewportChange);
+    document.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      document.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [helpOpen, children]);
+
   useEffect(() => {
-    if (!helpOpen) return;
+    if (!helpOpen) return undefined;
 
     function onKeyDown(e) {
       if (e.key === 'Escape') {
@@ -81,25 +60,17 @@ function HelpIconPopover(props) {
 
     function onMouseDown(e) {
       const root = rootRef.current;
+      const popover = popoverRef.current;
       if (!root) return;
-      if (!root.contains(e.target)) {
-        setHelpOpen(false);
-      }
+      if (root.contains(e.target) || popover?.contains(e.target)) return;
+      setHelpOpen(false);
     }
-
-    const raf = requestAnimationFrame(() => computeAndSetPopoverPosition());
-    const onViewportChange = () => computeAndSetPopoverPosition();
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('resize', onViewportChange);
-    document.addEventListener('scroll', onViewportChange, true);
     return () => {
-      cancelAnimationFrame(raf);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('resize', onViewportChange);
-      document.removeEventListener('scroll', onViewportChange, true);
     };
   }, [helpOpen]);
 
@@ -109,10 +80,38 @@ function HelpIconPopover(props) {
     }
   }, [helpOpen]);
 
-  const rootClass =
-    variant === 'onLight'
-      ? 'HelpIconPopover HelpIconPopover--onLight'
-      : 'HelpIconPopover';
+  const rootClass = [
+    'HelpIconPopover',
+    variant === 'onLight' ? 'HelpIconPopover--onLight' : '',
+    variant === 'warning' ? 'HelpIconPopover--warning' : '',
+  ].filter(Boolean).join(' ');
+
+  const iconGlyph = glyph ?? (variant === 'warning' ? '!' : 'i');
+
+  const popoverClassName = helpOpen && popoverStyle
+    ? 'HelpIconPopover__popover HelpIconPopover__popover--visible'
+    : 'HelpIconPopover__popover';
+
+  const popoverNode = helpOpen ? (
+    <div
+      id={popoverId}
+      ref={popoverRef}
+      className={popoverClassName}
+      role="dialog"
+      aria-label={ariaLabel}
+      style={
+        popoverStyle || {
+          position: 'fixed',
+          left: '-9999px',
+          top: '0',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+        }
+      }
+    >
+      {children}
+    </div>
+  ) : null;
 
   return (
     <span ref={rootRef} className={rootClass}>
@@ -127,18 +126,9 @@ function HelpIconPopover(props) {
         onClick={() => setHelpOpen((v) => !v)}
         disabled={disabled}
       >
-        i
+        {iconGlyph}
       </button>
-      <div
-        id={popoverId}
-        ref={popoverRef}
-        className={helpOpen ? 'HelpIconPopover__popover HelpIconPopover__popover--visible' : 'HelpIconPopover__popover'}
-        role="dialog"
-        aria-label={ariaLabel}
-        style={popoverStyle || undefined}
-      >
-        {children}
-      </div>
+      {popoverNode && createPortal(popoverNode, document.body)}
     </span>
   );
 }

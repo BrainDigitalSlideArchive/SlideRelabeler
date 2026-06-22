@@ -84,7 +84,7 @@ export function AgGrid({files,
     {headerName: 'Directory', width:120, field: 'source.directory', cellClass:'directory left-ellipsis' , valueFormatter:({value})=>formatLeftEllipsis(value)},
 
     // filename
-    {headerName:'File name', field:'source.filename', cellClass:'filename', cellRenderer:(params)=>{
+    {headerName:'Original name', field:'source.filename', cellClass:'filename', cellRenderer:(params)=>{
       return <><span title={params.value}>{params.value}</span></>
     }},
   

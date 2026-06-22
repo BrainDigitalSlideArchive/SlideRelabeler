@@ -34,12 +34,11 @@ export function buildDeidUploadMetadata(fileRow) {
     InputFileName: uuidBasename,
   };
 
-  const deidToken = reserved.deidToken ?? fileRow.TokenID ?? fileRow.deid ?? '';
-  if (deidToken) meta.TokenID = String(deidToken);
+  const tokenId = fileRow.TokenID ?? fileRow.deid ?? '';
+  if (tokenId) meta.TokenID = String(tokenId);
 
   const imageId =
-    fileRow.AssembledName ||
-    reserved.assembledItemName ||
+    reserved.dsaAlias ||
     reserved.labelText ||
     reserved.rename ||
     '';

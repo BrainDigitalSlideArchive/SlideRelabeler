@@ -1,80 +1,73 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useDispatch } from 'react-redux';
 
 import * as config_actions from '../../actions/config';
-import Checkbox from '../controls/checkbox/Checkbox';
 import InputText from '../controls/input/InputText';
-import Dropdown from '../controls/dropdown/Dropdown';
-import AssemblyBuildControls from './AssemblyBuildControls';
-import {
-  OUTPUT_FILENAME_SOURCES,
-  resolveOutputBasename,
-  applyFilenameAffixes,
-} from '../../helpers/output_filename';
+import HelpIconPopover from '../controls/HelpIconPopover';
+import { PlaceholderChips } from './ComputedFieldEditor';
+import ConfigTestItOutSection from './ConfigTestItOutSection';
+import ConfigPreviewRowEditor from './ConfigPreviewRowEditor';
+import { OUTPUT_FILENAME_SOURCES } from '../../helpers/output_filename';
+
+const OUTPUT_NAME_HELP = 'When a file is loaded directly from disk, or another method but a value for the desired output name is not provided, we need to define what the output should be named. You can choose to use a random UUID, keep the original filename, or build a custom pattern from placeholders and column values.';
 
 const SOURCE_OPTIONS = [
   {
-    value: 'original',
-    label: 'Keep original filename',
-    helper: 'Use the source file\u2019s basename unchanged.',
-  },
-  {
     value: 'uuid',
     label: 'Use a UUID (recommended for sharing)',
-    helper: 'Assigns a random UUID as the output basename for each file.',
+    helper: 'Assigns a random UUID as the output name for each file.',
+    detail: 'A UUID is a randomly generated unique identifier. Using one as the output name helps deidentify slides for sharing, since it carries no patient or specimen information. Each file gets its own UUID when loaded.',
   },
   {
-    value: 'column',
-    label: 'Use one column',
-    helper:
-      'Works with CSV imports and other imported metadata. Pick the column that holds the desired output name.',
+    value: 'original',
+    label: 'Keep original filename',
+    helper: 'Use the source file\u2019s name unchanged.',
   },
   {
-    value: 'computed',
-    label: 'Compute from multiple columns',
-    helper: 'Combine slide fields (CSV or imported metadata) into one basename.',
+    value: 'pattern',
+    label: 'Custom pattern',
+    helper: 'Build the output name from placeholders and column values (e.g. deid_{uuid}).',
   },
 ];
+
+function renderSourceDetail(source) {
+  if (source === 'uuid') {
+    return SOURCE_OPTIONS.find((opt) => opt.value === 'uuid')?.detail;
+  }
+  if (source === 'original') {
+    return (
+      <>
+        Keeps the source file&apos;s basename unchanged. Use this when the file has already been
+        renamed to the desired deidentified name. To add a prefix or suffix (e.g.{' '}
+        <code>deid-</code>), use <strong>Custom pattern</strong> instead.
+      </>
+    );
+  }
+  return null;
+}
 
 export default function OutputFilenameSection({
   config,
   filenameConfig,
-  assemblyConfig,
-  columnOptions = [],
-  activePreviewRow,
+  previewRow,
   disabled = false,
-  exampleFilename = '1234.tiff',
-  exampleExt = 'tiff',
-  exampleUuid = 'acde070d-8c4c-4f0d-9d8a-162843c10333',
+  hasLoadedFiles = false,
+  reservedColumns = [],
+  fileCols = [],
+  onPreviewRowChange,
+  onLoadPreviewFromFirstRow,
+  onResetPreviewRow,
   onRecompute,
+  recomputeNotice = null,
+  placeholderCatalog = [],
+  patternValidationMessages = [],
 }) {
   const dispatch = useDispatch();
   const source = filenameConfig?.source || 'uuid';
-
-  const outputBasename = useMemo(
-    () => resolveOutputBasename(activePreviewRow, config),
-    [activePreviewRow, config],
-  );
-
-  const savedFilenameStem = useMemo(
-    () => applyFilenameAffixes(outputBasename, config),
-    [outputBasename, config],
-  );
-
-  const columnItem = filenameConfig?.column
-    ? columnOptions.find((o) => o.value === filenameConfig.column) || {
-        label: filenameConfig.column,
-        value: filenameConfig.column,
-      }
-    : null;
+  const pattern = filenameConfig?.pattern ?? '';
 
   function setFilename(partial) {
     dispatch({ type: config_actions.SET_FILENAME_CONFIG, payload: partial });
-    if (onRecompute) onRecompute();
-  }
-
-  function setAssembly(partial) {
-    dispatch({ type: config_actions.SET_ASSEMBLY_CONFIG, payload: partial });
     if (onRecompute) onRecompute();
   }
 
@@ -83,143 +76,121 @@ export default function OutputFilenameSection({
     setFilename({ source: nextSource });
   }
 
+  function handlePatternInsert(token) {
+    setFilename({ source: 'pattern', pattern: `${pattern}${token}` });
+  }
+
   return (
-    <section className="__config-control-section config-guided-section" id="config-output-filename">
-      <div className="__config-control-section-title">Output filename</div>
+    <section className="__config-control-section" id="config-output-filename">
+      <div className="__config-control-section-title">Output name</div>
       <div className="__config-control-section-description">
-        Choose how each saved file is named on disk. Optional prefix and suffix apply to all modes.
-        Does not change the slide label.
+        If the <strong>Output name</strong> column is empty when a file is loaded, how should we define it?
+        {' '}
+        <HelpIconPopover helpLabel="Output name defaults help" variant="onLight">
+          {OUTPUT_NAME_HELP}
+        </HelpIconPopover>
       </div>
 
-      <div className="config-filename-style">
-        <div className="config-filename-style__modes" role="radiogroup" aria-label="Output filename mode">
-          {SOURCE_OPTIONS.map((opt) => (
-            <label key={opt.value} className="config-filename-style__option">
-              <input
-                type="radio"
-                name="filename-source"
-                disabled={disabled}
-                checked={source === opt.value}
-                onChange={() => selectSource(opt.value)}
-              />
-              <span className="config-filename-style__label">{opt.label}</span>
-              <span className="config-filename-style__helper">{opt.helper}</span>
-            </label>
-          ))}
-        </div>
+      <div className="config-section-panel">
+        {recomputeNotice && (
+          <div className="config-recompute-notice" role="note">
+            {recomputeNotice}
+          </div>
+        )}
 
-        {source === 'column' && (
-          <div className="config-filename-style__panel">
-            <div className="config-filename-style__column-fields">
-              <div className="config-filename-field">
-                <span className="config-filename-field__label" id="config-filename-column-label">
-                  Column from loaded data
-                </span>
-                <Dropdown
-                  disabled={disabled}
-                  items={columnOptions}
-                  omitLabel
-                  width="100%"
-                  ariaLabel="Column from loaded data"
-                  placeholder="Select column"
-                  selectedItems={columnItem ? [columnItem] : []}
-                  onSelect={(item) => setFilename({ source: 'column', column: item.value })}
-                />
-              </div>
-              {columnOptions.length === 0 && (
-                <p className="config-filename-sources" role="note">
-                  Load files to populate this list from your data, or type a column header below.
-                </p>
-              )}
-              <div className="config-filename-field">
-                <label className="config-filename-field__label" htmlFor="config-filename-column-text">
-                  Or type column header
+        {patternValidationMessages.length > 0 && (
+          <div className="config-pattern-validation" role="alert">
+            {patternValidationMessages.map((msg) => (
+              <div key={msg}>{msg}</div>
+            ))}
+          </div>
+        )}
+
+        <div className="output-filename-section">
+        <div className="config-filename-style config-filename-style--compact">
+          <div className="output-filename-section__modes-row">
+            <div
+              className="config-filename-style__modes config-filename-style__modes--compact"
+              role="radiogroup"
+              aria-label="Output filename mode"
+            >
+              {SOURCE_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="config-filename-style__option"
+                  title={opt.helper}
+                >
+                  <input
+                    type="radio"
+                    name="filename-source"
+                    disabled={disabled}
+                    checked={source === opt.value}
+                    onChange={() => selectSource(opt.value)}
+                  />
+                  <span className="config-filename-style__label">{opt.label}</span>
+                  <span className="config-filename-style__helper config-filename-style__helper--sr-only">
+                    {opt.helper}
+                  </span>
                 </label>
-                <InputText
-                  disabled={disabled}
-                  omitLabel
-                  variant="onLight"
-                  inputId="config-filename-column-text"
-                  ariaLabel="Or type column header"
-                  placeholder="e.g. output_name"
-                  value={filenameConfig?.column || ''}
-                  onChange={(value) => setFilename({ source: 'column', column: value })}
-                />
-              </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {source === 'computed' && (
-          <div className="config-filename-style__panel">
-            <div className="__config-control-subsection-title">Build name from metadata columns</div>
-            <AssemblyBuildControls
-              assembly={assemblyConfig}
-              disabled={disabled}
-              columnOptions={columnOptions}
-              sampleRow={activePreviewRow}
-              onAssemblyChange={setAssembly}
-              compact
-            />
-          </div>
-        )}
-
-        <div className="config-filename-style__affixes">
-          <div className="config-filename-style__affix-row">
-            <Checkbox
-              disabled={disabled}
-              label="Add prefix"
-              checked={filenameConfig?.use_prefix}
-              onClick={() => setFilename({ use_prefix: !filenameConfig?.use_prefix })}
-            />
-            <InputText
-              disabled={disabled || !filenameConfig?.use_prefix}
-              omitLabel
-              variant="onLight"
-              ariaLabel="Prefix text"
-              placeholder="deid_"
-              value={filenameConfig?.prefix || ''}
-              onChange={(value) => dispatch({ type: config_actions.CHANGE_PREFIX, payload: value })}
-            />
-          </div>
-          <div className="config-filename-style__affix-row">
-            <Checkbox
-              disabled={disabled}
-              label="Add suffix"
-              checked={filenameConfig?.use_suffix}
-              onClick={() => setFilename({ use_suffix: !filenameConfig?.use_suffix })}
-            />
-            <InputText
-              disabled={disabled || !filenameConfig?.use_suffix}
-              omitLabel
-              variant="onLight"
-              ariaLabel="Suffix text"
-              placeholder="_deid"
-              value={filenameConfig?.suffix || ''}
-              onChange={(value) => dispatch({ type: config_actions.CHANGE_SUFFIX, payload: value })}
-            />
+          <div className="output-filename-section__detail" aria-live="polite">
+            {source === 'pattern' ? (
+              <>
+                <div className="config-filename-field">
+                  <span className="config-filename-field__label">Pattern</span>
+                  <InputText
+                    disabled={disabled}
+                    omitLabel
+                    variant="onLight"
+                    ariaLabel="Output name pattern"
+                    placeholder="{blockId}_{uuid}"
+                    value={pattern}
+                    onChange={(value) => setFilename({ source: 'pattern', pattern: value })}
+                  />
+                </div>
+                <div className="computed-field-editor">
+                  <PlaceholderChips
+                    catalog={placeholderCatalog}
+                    disabled={disabled}
+                    onInsert={handlePatternInsert}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="output-filename-section__detail-text">
+                {renderSourceDetail(source)}
+              </p>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="config-filename-preview">
-        <div className="config-filename-preview__title">Example for one file</div>
-        <dl className="config-filename-preview__grid">
-          <div className="config-filename-preview__cell">
-            <dt className="config-filename-preview__label">Original file</dt>
-            <dd className="config-filename-preview__value">{exampleFilename}</dd>
-          </div>
-          <div className="config-filename-preview__cell">
-            <dt className="config-filename-preview__label">Output basename</dt>
-            <dd className="config-filename-preview__value">{outputBasename || '(empty)'}</dd>
-          </div>
-          <div className="config-filename-preview__cell">
-            <dt className="config-filename-preview__label">Saved filename</dt>
-            <dd className="config-filename-preview__value">
-              {savedFilenameStem || '(empty)'}.{exampleExt}
-            </dd>
-          </div>
-        </dl>
+        <ConfigTestItOutSection
+          hint={(
+            <>
+              The highlighted <strong>Output name</strong> column shows what this file would be
+              renamed to based on your selected option above.
+            </>
+          )}
+          disabled={disabled}
+          hasLoadedFiles={hasLoadedFiles}
+          onLoadFromFirstRow={onLoadPreviewFromFirstRow}
+          onResetToExample={onResetPreviewRow}
+        >
+          <ConfigPreviewRowEditor
+            previewRow={previewRow}
+            config={config}
+            reservedColumns={reservedColumns}
+            fileCols={fileCols}
+            disabled={disabled}
+            onRowChange={onPreviewRowChange}
+            highlightColumnFields={['__reserved.rename']}
+            variant="outputFilename"
+          />
+        </ConfigTestItOutSection>
+        </div>
       </div>
     </section>
   );

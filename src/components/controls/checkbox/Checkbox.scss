@@ -35,6 +35,24 @@
       min-width: 0;
     }
   }
+  &.Checkbox--compact {
+    width: auto;
+    margin-right: 0;
+    margin-bottom: 0;
+    align-items: center;
+    gap: 0.35em;
+
+    label {
+      width: auto;
+      white-space: nowrap;
+    }
+
+    .__checkbox {
+      margin-left: 0;
+      flex-shrink: 0;
+    }
+  }
+
   .__checkbox {
     font-weight: bolder;
     display: flex;

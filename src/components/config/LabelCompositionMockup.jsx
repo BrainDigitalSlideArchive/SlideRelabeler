@@ -14,17 +14,25 @@ export default function LabelCompositionMockup({
   addIcon,
   previewText,
   previewQr,
+  textTemplate,
+  qrTemplate,
   iconPath,
   compact = false,
 }) {
   const [iconPreviewSrc, setIconPreviewSrc] = useState(null);
 
-  const textDisplay = addText
-    ? (previewText && String(previewText).trim() ? truncate(previewText) : 'Sample text')
-    : 'Text';
-  const qrPayloadLabel = previewQr && String(previewQr).trim()
-    ? truncate(previewQr, 32)
-    : '(empty)';
+  const usingTextTemplate = textTemplate != null;
+  const fullText = usingTextTemplate
+    ? String(textTemplate)
+    : (addText && previewText && String(previewText).trim()
+      ? String(previewText).trim()
+      : '');
+  const textDisplay = addText ? (fullText || 'Sample text') : 'Text';
+  const qrPayloadLabel = qrTemplate != null
+    ? truncate(qrTemplate, 32)
+    : (previewQr && String(previewQr).trim()
+      ? truncate(previewQr, 32)
+      : '(empty)');
   const iconLabel = addIcon && iconPath ? truncate(iconPath.split(/[/\\]/).pop(), 24) : 'Image';
   const singleGraphic = (addIcon && !addQr) || (!addIcon && addQr);
   const showBothOff = !addIcon && !addQr;
@@ -80,7 +88,9 @@ export default function LabelCompositionMockup({
     return (
       <>
         <ExampleIconSvg className="label-composition-mockup__icon-svg" />
-        <span className="label-composition-mockup__region-label">Image</span>
+        <span className="label-composition-mockup__region-label label-composition-mockup__region-label--muted">
+          No image selected
+        </span>
       </>
     );
   })();
@@ -119,13 +129,19 @@ export default function LabelCompositionMockup({
       className={`label-composition-mockup${compact ? ' label-composition-mockup--compact' : ''}`}
       aria-live="polite"
     >
-      {!compact && <div className="label-composition-mockup__title">Label preview</div>}
+      {!compact && <div className="label-composition-mockup__title">Label schematic</div>}
       <div className="label-composition-mockup__card">
         <div
           id="label-mockup-text"
           data-state={addText ? 'on' : 'off'}
           aria-label={`Label text zone: ${textDisplay}`}
-          className={`label-composition-mockup__zone label-composition-mockup__zone--text ${addText ? 'label-composition-mockup__zone--on' : 'label-composition-mockup__zone--off'}`}
+          className={[
+            'label-composition-mockup__zone',
+            'label-composition-mockup__zone--text',
+            addText ? 'label-composition-mockup__zone--on' : 'label-composition-mockup__zone--off',
+            usingTextTemplate ? 'label-composition-mockup__zone--template' : '',
+          ].filter(Boolean).join(' ')}
+          title={usingTextTemplate ? fullText : (fullText || undefined)}
         >
           {textDisplay}
         </div>

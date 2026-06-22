@@ -12,6 +12,10 @@ import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 import GlobusAPI from './api/GlobusAPI';
 import { buildDeidUploadMetadata } from './helpers/dsa_upload_metadata.js';
+import {
+  checkSlidePathAccessible,
+  buildPathErrorForIpc,
+} from './helpers/slide_path_access.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
@@ -256,8 +260,7 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
   try {
     if (opts.renameItem) {
       const stem =
-        fileRow.AssembledName ||
-        reserved.assembledItemName ||
+        reserved.dsaAlias ||
         reserved.labelText ||
         reserved.rename ||
         '';
@@ -1021,6 +1024,11 @@ ipcMain.handle('open-folder-dialog', async () => {
   });
 });
 
+ipcMain.handle('show-message-box', async (event, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return dialog.showMessageBox(win ?? undefined, options ?? {});
+});
+
 // open-folders-dialog: let the user pick multiple folders from the operating system
 ipcMain.handle('open-folders-dialog', async () => {
   //open the file dialog
@@ -1092,7 +1100,10 @@ ipcMain.handle('write-csv', async (event, file, data) => {
 
 // open-file: tell python to get metadata for a file
 ipcMain.handle('metadata', async (event, file) => {
-  // return PythonBridge.invoke('metadata', normalizePath(file));
+  const pathIssue = checkSlidePathAccessible(file);
+  if (pathIssue) {
+    throw buildPathErrorForIpc(pathIssue);
+  }
   return bridge.invoke('metadata', file);
 });
 

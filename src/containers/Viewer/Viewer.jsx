@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import OpenSeadragon from '../../components/OpenSeaDragon/OpenSeadragon';
 
 import { encodeURLParameters } from '../../helpers/url_helpers';
+import { buildThumbnailProtocolUrl } from '../../helpers/thumbnail_helpers.js';
 import { isViewerDebugEnabled, logViewerDebug } from '../../helpers/viewer_debug';
 import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
 import './Viewer.scss';
@@ -122,6 +123,9 @@ function Viewer(props) {
     if (!sourcePath || rowIndex == null || fileRow?.__reserved?.processed === 1) {
       return;
     }
+    if (fileRow?.__reserved?.error) {
+      return;
+    }
     if (ifds[sourcePath]) {
       return;
     }
@@ -177,7 +181,7 @@ function Viewer(props) {
     const associated_images = file_row.__reserved.associatedImages || [];
 
     const next_thumbnail_url = associated_images.includes('thumbnail')
-      ? `thumbnail://${file_encoded}` : null;
+      ? buildThumbnailProtocolUrl(file) : null;
     const next_label_url = associated_images.includes('label')
       ? `label://${file_encoded}` : null;
     const next_preview_label_url = associated_images.includes('label')

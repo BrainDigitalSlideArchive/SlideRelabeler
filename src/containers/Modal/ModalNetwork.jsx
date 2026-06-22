@@ -6,6 +6,7 @@ import * as globus_actions from "../../actions/globus";
 import * as upload_routing_actions from "../../actions/uploadRouting";
 import * as config_actions from "../../actions/config";
 import { selectUploadReadiness } from "../../selectors/uploadRouting";
+import { getPatternPlaceholderCatalog } from '../../helpers/pattern_engine.js';
 
 import ModalHeader from './ModalHeader';
 import Checkbox from '../../components/controls/checkbox/Checkbox';
@@ -20,6 +21,7 @@ import {
 import GlobusAuthPanel from '../../components/globus/GlobusAuthPanel';
 import GlobusTargetTree from '../../components/globus/GlobusTargetTree';
 import GlobusUploadPathEditPopover from '../../components/globus/GlobusUploadPathEditPopover';
+import DsaAliasEditor from '../../components/config/DsaAliasEditor';
 
 import './ModalNetwork.scss';
 
@@ -29,9 +31,10 @@ const AUTO_UPLOAD_MODE_ITEMS = [
   { label: 'DSA', value: 'dsa' },
 ];
 
-function render_network_config_dsa_content(dispatch, dsa, dsa_upload) {
+function render_network_config_dsa_content(dispatch, dsa, dsa_upload, extras = {}) {
   const { folder_id, username, password, api_url, api_auth, login_error, login_error_message, dsa_folder_exists, dsa_folder_error_message } = dsa;
   const uploadOpts = dsa_upload || {};
+  const { placeholderCatalog = [], onRecompute, dsaAliasPreview } = extras;
 
   let expiration_date = null;
   if (api_auth) {
@@ -119,7 +122,7 @@ function render_network_config_dsa_content(dispatch, dsa, dsa_upload) {
               Uploaded files keep their system file ID name on the server. These options affect the Girder item display name and metadata.
             </div>
             <Checkbox
-              label="Set catalog display name to assembled name"
+              label="Set catalog display name after upload"
               checked={!!uploadOpts.rename_item_after_upload}
               onClick={() => dispatch({
                 type: config_actions.SET_DSA_UPLOAD_CONFIG,
@@ -127,8 +130,15 @@ function render_network_config_dsa_content(dispatch, dsa, dsa_upload) {
               })}
             />
             <div className="__config-control-subsection-note-description">
-              Uses the Assembled name column (+ file extension). Enable in Configuration → Assembled name if unavailable.
+              Uses the DSA alias (+ file extension) from each row when rename is enabled below.
             </div>
+            <DsaAliasEditor
+              dsaUploadConfig={uploadOpts}
+              disabled={false}
+              placeholderCatalog={placeholderCatalog}
+              previewValue={dsaAliasPreview}
+              onRecompute={onRecompute}
+            />
             <Checkbox
               label="Attach deidUpload metadata to DSA item"
               checked={!!uploadOpts.set_item_metadata}
@@ -666,9 +676,26 @@ function render_network_config_globus_content(dispatch, globus, globusUi) {
 function ModalNetwork(props) {
   const dsa = useSelector(state => state.dsa);
   const dsa_upload = useSelector(state => state.config.dsa_upload);
+  const config = useSelector(state => state.config);
+  const file_rows = useSelector(state => state.files.file_rows);
+  const file_cols = useSelector(state => state.files.file_cols);
   const globus = useSelector(state => state.globus);
   const uploadRouting = useSelector((state) => state.uploadRouting);
   const readiness = useSelector(selectUploadReadiness);
+
+  const hasLoadedFiles = Array.isArray(file_rows) && file_rows.length > 0;
+  const placeholderCatalogs = useMemo(
+    () => ({
+      dsaAlias: getPatternPlaceholderCatalog({
+        field: 'dsaAlias',
+        fileRows: file_rows,
+        fileCols: file_cols,
+        hasLoadedFiles,
+        csvConfig: config?.csv,
+      }),
+    }),
+    [file_rows, file_cols, hasLoadedFiles, config?.csv],
+  );
 
   const dispatch = useDispatch();
   const store = useStore();
@@ -1093,7 +1120,10 @@ function ModalNetwork(props) {
           </p>
         )}
 
-        {ur.auto_upload && ur.destination === 'dsa' && render_network_config_dsa_content(dispatch, dsa, dsa_upload)}
+        {ur.auto_upload && ur.destination === 'dsa' && render_network_config_dsa_content(dispatch, dsa, dsa_upload, {
+          placeholderCatalog: placeholderCatalogs.dsaAlias,
+          onRecompute: () => dispatch({ type: config_actions.RECOMPUTE_ALL_NAMING }),
+        })}
         {ur.auto_upload && ur.destination === 'globus' &&
           render_network_config_globus_content(dispatch, globus, {
             searchingEndpoints,

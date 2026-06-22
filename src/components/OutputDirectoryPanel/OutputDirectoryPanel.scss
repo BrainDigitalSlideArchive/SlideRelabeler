@@ -1,0 +1,171 @@
+@import '../../styles/colors';
+
+.output-directory-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 42rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  background: $config-callout-bg;
+  border: 1px solid $border-surface;
+
+  &._highlighted {
+    border-color: $green;
+    border-width: 2px;
+    box-shadow: 0 0 0 1px rgba($green, 0.25);
+  }
+
+  &._optional {
+    opacity: 0.95;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $on-surface;
+    letter-spacing: 0.01em;
+  }
+
+  &__badge {
+    flex-shrink: 0;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $on-surface-muted;
+    background: rgba($black, 0.06);
+    border: 1px solid $border-surface;
+
+    &._required {
+      color: $surface-warning-text;
+      background: rgba($red, 0.15);
+      border-color: rgba($red, 0.35);
+    }
+
+    &._ready {
+      color: darken($green, 35%);
+      background: rgba($green, 0.35);
+      border-color: rgba($green, 0.6);
+    }
+
+    &._set {
+      color: $darker-blue;
+      background: rgba($blue, 0.35);
+      border-color: rgba($darker-blue, 0.25);
+    }
+  }
+
+  &__progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__progress {
+    flex: 1;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: rgba($black, 0.08);
+    overflow: hidden;
+  }
+
+  &__progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, $green 0%, darken($green, 8%) 100%);
+    transition: width 0.25s ease;
+  }
+
+  &__progress-label {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    color: $on-surface-muted;
+    white-space: nowrap;
+  }
+
+  &__body {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: $on-surface-muted;
+  }
+
+  &__path {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.45rem 0.6rem;
+    border-radius: 0.35rem;
+    background: $surface-elevated;
+    border: 1px solid $border-surface;
+  }
+
+  &__path-icon {
+    flex-shrink: 0;
+    font-size: 1rem;
+    color: $darker-blue;
+  }
+
+  &__path-text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    color: $on-surface;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__actions {
+    display: flex;
+    padding-top: 0.15rem;
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 9rem;
+    padding: 0.45rem 1rem;
+    white-space: nowrap;
+    border: none;
+    border-radius: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: $darker-blue;
+    color: $beige;
+    transition: background-color 0.2s, opacity 0.2s;
+
+    &:hover:not(._disabled):not(:disabled) {
+      background: darken($darker-blue, 6%);
+    }
+
+    &._secondary {
+      background: transparent;
+      color: $darker-blue;
+      border: 1px solid $border-surface-strong;
+
+      &:hover:not(._disabled):not(:disabled) {
+        background: rgba($blue, 0.25);
+      }
+    }
+
+    &._disabled,
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

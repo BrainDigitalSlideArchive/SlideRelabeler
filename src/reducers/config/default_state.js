@@ -6,13 +6,10 @@ export const default_state = {
   routing: { ...DEFAULT_ROUTING },
   filename: {
     source: 'uuid',
+    pattern: '',
     column: '',
     use_uuid: true,
     style: 'uuid',
-    use_suffix: false,
-    use_prefix: false,
-  prefix: 'deid_',
-  suffix: '_deid',
   },
   csv: {
     save_csv: true,
@@ -35,6 +32,11 @@ export const default_state = {
     add_text: true,
     add_icon: false,
     icon_file: null,
+    textDefault: 'output_name',
+    qrDefault: 'output_name',
+    qrPattern: '',
+    labelText: { mode: 'output_name', pattern: '' },
+    qrContent: { mode: 'output_name', pattern: '' },
     qr_mode: {label: 'Encode Filename', value: 'user_defined', description: 'Use rename column featuring output filename'},
     text_column_field: {value: 'AssembledName', label: 'Assembled name'},
     qr_column_fields: [],
@@ -55,6 +57,7 @@ export const default_state = {
   dsa_upload: {
     rename_item_after_upload: false,
     set_item_metadata: false,
+    dsaAlias: { mode: 'output_name', pattern: '' },
     item_name_assembly: {
       mode: 'same_as_label',
       template: '',

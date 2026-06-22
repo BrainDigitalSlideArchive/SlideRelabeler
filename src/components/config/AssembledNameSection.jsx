@@ -12,7 +12,6 @@ function routingChips(routing, filenameSource) {
   if (filenameSource === 'computed') chips.push('filename');
   if (routing?.labelText?.enabled) chips.push('label');
   if (routing?.dsaItemName?.enabled) chips.push('DSA');
-  if (routing?.exportCsv?.enabled) chips.push('CSV');
   if (routing?.qr?.enabled && routing?.qr?.mode === 'same_column') chips.push('QR');
   return chips;
 }
@@ -131,12 +130,6 @@ export default function AssembledNameSection({
               label="Use for DSA catalog title"
               checked={!!routing?.dsaItemName?.enabled}
               onClick={() => setRouting({ dsaItemName: { enabled: !routing?.dsaItemName?.enabled } })}
-            />
-            <Checkbox
-              disabled={disabled}
-              label="Include in exported CSV"
-              checked={!!routing?.exportCsv?.enabled}
-              onClick={() => setRouting({ exportCsv: { enabled: !routing?.exportCsv?.enabled, columnHeader: colName } })}
             />
             <Checkbox
               disabled={disabled}

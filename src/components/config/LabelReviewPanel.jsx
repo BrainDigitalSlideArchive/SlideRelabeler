@@ -13,8 +13,7 @@ export default function LabelReviewPanel({
   addIcon,
   labelText,
   qrPayload,
-  assembledName,
-  deidToken,
+  dsaAlias,
   warnings = [],
   rowSource,
   onRowSourceChange,
@@ -34,11 +33,11 @@ export default function LabelReviewPanel({
   const selectedSource = rowSourceOptions.filter((o) => o.value === rowSource);
   const display = (val) => (val && String(val).trim() ? val : '(none)');
 
-  const labelDiffersFromAssembled =
+  const labelDiffersFromDsaAlias =
     addText &&
-    assembledName &&
+    dsaAlias &&
     labelText &&
-    String(labelText).trim() !== String(assembledName).trim();
+    String(labelText).trim() !== String(dsaAlias).trim();
 
   return (
     <div className="config-guided-step label-review-panel config-guided-section">
@@ -67,22 +66,16 @@ export default function LabelReviewPanel({
               <td>{display(labelText)}</td>
             </tr>
           )}
-          {addText && labelDiffersFromAssembled && (
+          {addText && labelDiffersFromDsaAlias && (
             <tr>
-              <th>Assembled name</th>
-              <td>{display(assembledName)}</td>
+              <th>DSA alias</th>
+              <td>{display(dsaAlias)}</td>
             </tr>
           )}
           {addQr && (
             <tr>
               <th>QR content</th>
               <td>{display(qrPayload)}</td>
-            </tr>
-          )}
-          {deidToken && (
-            <tr>
-              <th>Specimen ID</th>
-              <td>{display(deidToken)}</td>
             </tr>
           )}
           {addIcon && (

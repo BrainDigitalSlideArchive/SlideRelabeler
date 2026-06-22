@@ -77,6 +77,7 @@ const API = {
   openFileSingleDialog: () => ipcRenderer.invoke('open-file-single-dialog'),
   openFolderDialog: () => { return ipcRenderer.invoke('open-folder-dialog') },
   openFoldersDialog: () => { return ipcRenderer.invoke('open-folders-dialog') },
+  showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
   getAllWSIFilePaths: (folder_path) => { return ipcRenderer.invoke('get-all-wsi-file-paths', folder_path) },
   openSaveFileDialog: (file_types) => ipcRenderer.invoke('open-save-file-dialog', file_types),
   getMetadata: (file_path) => ipcRenderer.invoke('metadata', file_path),
