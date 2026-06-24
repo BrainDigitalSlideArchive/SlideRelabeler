@@ -418,9 +418,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(files_actions.ADD_CSV_HEADERS, (state, action) => {
       return produce(state, draft => {
-        draft.csv.header = action.payload.header;
-        for (let row_idx = 0; row_idx < state.file_columns.length; row_idx++) {
-        }
+        draft.csv.header = action.payload.headers ?? action.payload.header ?? [];
       });
     })
     .addCase(files_actions.ADD_CSV_ROWS, (state, action) => {
@@ -476,6 +474,16 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(files_actions.LINK_HEADER_TO_DESTINATION_DIRECTORY_COLUMN, (state, action) => {
       return produce(state, draft => {
         draft.csv.reserved_destination_directory_column = { header: action.payload.header, header_idx: action.payload.header_idx };
+      });
+    })
+    .addCase(files_actions.LINK_HEADER_TO_LABEL_COLUMN, (state, action) => {
+      return produce(state, draft => {
+        draft.csv.reserved_label_column = { header: action.payload.header, header_idx: action.payload.header_idx };
+      });
+    })
+    .addCase(files_actions.LINK_HEADER_TO_QR_COLUMN, (state, action) => {
+      return produce(state, draft => {
+        draft.csv.reserved_qr_column = { header: action.payload.header, header_idx: action.payload.header_idx };
       });
     })
     .addCase(app_actions.RESET_STORE, (state, action) => {

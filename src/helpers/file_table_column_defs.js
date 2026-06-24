@@ -36,6 +36,7 @@ import {
   filterRemoveColumnForPreview,
 } from './file_table_columns.js';
 import GridTooltipInnerHeader from '../components/AgGrid/GridTooltipInnerHeader.jsx';
+import { applyTransformValueColumnDefs } from './esm_transform_column_defs.js';
 
 export const PATH_COLUMN_FIELDS = new Set([
   '__reserved.source.directory',
@@ -159,6 +160,10 @@ export function buildFileTableColumnDefs({
   }
 
   columnDefs = setupOverflowTextRenderer(columnDefs);
+
+  if (!isPreview) {
+    columnDefs = applyTransformValueColumnDefs(columnDefs);
+  }
 
   if (isPreview) {
     columnDefs = stripPreviewCellClicks(columnDefs);

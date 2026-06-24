@@ -41,7 +41,6 @@ function ModalConfig() {
   const file_cols = useSelector(state => state.files.file_columns);
   const reserved_columns = useSelector(state => state.files.reserved_columns);
   const config = useSelector(state => state.config);
-  const routing_config = useSelector(state => state.config.routing);
 
   const dispatch = useDispatch();
 

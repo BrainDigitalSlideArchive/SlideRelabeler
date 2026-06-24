@@ -126,6 +126,23 @@ $esm-cols: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   }
 }
 
+.esm-search-criteria__stain-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.esm-search-criteria__stain-select {
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+
 // Slim full-width inputs inside the light panel (override global compact widths)
 .esm-search-criteria__panel .esm-search-criteria__cell {
   .InputText.InputText--onLight.InputText--controlOnly.InputText--compact {
@@ -243,4 +260,60 @@ $esm-cols: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.45rem;
   padding-top: 0.15rem;
+}
+
+.esm-search-feedback {
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+
+  &__messages {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  &__details {
+    margin-top: 0.35rem;
+  }
+
+  &__details-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+    text-decoration: underline;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.85;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__details-list {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.75rem;
+    opacity: 0.9;
+  }
+
+  &--info {
+    color: #1e40af;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.22);
+  }
+
+  &--warning {
+    color: #92400e;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+  }
+
+  &--error {
+    color: #991b1b;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
 }

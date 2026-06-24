@@ -38,6 +38,18 @@ test('evaluateFieldPattern resolves camelCase and built-ins', () => {
   assert.equal(out, 'B12_deid_OUT');
 });
 
+test('evaluateFieldPattern preserves unresolved tokens when requested', () => {
+  const row = { __reserved: { uuid: '' } };
+  const out = evaluateFieldPattern(
+    row,
+    '{blockId}_{uuid}',
+    { uuid: '' },
+    null,
+    { preserveUnresolvedTokens: ['uuid'] },
+  );
+  assert.equal(out, '_{uuid}');
+});
+
 test('validatePatternForRows blocks only affected rows', () => {
   const rows = [
     { BlockId: 'B1', __reserved: { renameSource: NAMING_SOURCE.DEFAULT } },

@@ -10,6 +10,10 @@ import {
   estimateColumnDefsTotalWidth,
   filterPreviewOmittedColumns,
   PREVIEW_OMITTED_COLUMN_FIELDS,
+  applyAgGridColumnProfile,
+  applyFileTableColumnProfile,
+  DEFAULT_DYNAMIC_COLUMN,
+  FILE_TABLE_COLUMN_PROFILE,
 } from './file_table_columns.js';
 
 describe('isPathColumnIconMode', () => {
@@ -146,5 +150,35 @@ describe('estimateColumnDefsTotalWidth', () => {
       { field: 'c' },
     ];
     assert.equal(estimateColumnDefsTotalWidth(cols), 58 + 76 + 100);
+  });
+});
+
+describe('applyAgGridColumnProfile', () => {
+  it('applies DEFAULT_DYNAMIC_COLUMN to unknown fields', () => {
+    const cols = applyAgGridColumnProfile(
+      [{ field: 'CustomCol', headerName: 'Custom' }],
+      {},
+    );
+    assert.deepEqual(cols[0].flex, DEFAULT_DYNAMIC_COLUMN.flex);
+    assert.equal(cols[0].minWidth, DEFAULT_DYNAMIC_COLUMN.minWidth);
+    assert.equal(cols[0].headerTooltipText, 'CustomCol');
+  });
+
+  it('resolves profile via colId when field is absent', () => {
+    const profile = { MyCol: { minWidth: 88, flex: 0 } };
+    const cols = applyAgGridColumnProfile(
+      [{ colId: 'MyCol', headerName: 'My Col' }],
+      profile,
+    );
+    assert.equal(cols[0].minWidth, 88);
+    assert.equal(cols[0].flex, 0);
+  });
+});
+
+describe('applyFileTableColumnProfile', () => {
+  it('delegates to applyAgGridColumnProfile for known reserved fields', () => {
+    const cols = applyFileTableColumnProfile([{ field: '__reserved.rename' }]);
+    assert.equal(cols[0].minWidth, FILE_TABLE_COLUMN_PROFILE['__reserved.rename'].minWidth);
+    assert.equal(cols[0].flex, FILE_TABLE_COLUMN_PROFILE['__reserved.rename'].flex);
   });
 });

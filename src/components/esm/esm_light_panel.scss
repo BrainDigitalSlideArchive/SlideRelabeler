@@ -276,28 +276,28 @@
     width: 100%;
     min-width: 0;
     margin-bottom: 0;
+    flex-direction: column;
+    align-items: stretch;
 
-    .InputText__label-row {
+    .__label-wrap {
+      width: 100%;
+      min-height: auto;
       margin-bottom: 0.2rem;
     }
 
-    .InputText__label-row .__label {
+    .__label-text {
       color: $esm-panel-text;
       font-size: 0.75rem;
       font-weight: 600;
     }
 
-    .InputText__control-row {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .InputText__control-row .__input-text {
+    .__input-text {
       width: 100%;
       max-width: none;
       min-width: 0;
       min-height: 1.75rem;
       height: 1.75rem;
+      margin-left: 0;
       padding: 0 0.45rem;
       font-size: 0.8125rem;
       box-sizing: border-box;
@@ -321,6 +321,21 @@
         background-color: #f1f5f9;
       }
     }
+
+    &.InputText--controlOnly {
+      flex-direction: row;
+      align-items: center;
+
+      .InputText__control-row {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .InputText__control-row .__input-text {
+        flex: 1;
+        width: auto;
+      }
+    }
   }
 }
 
@@ -340,4 +355,19 @@
   overflow: hidden;
   min-height: 12rem;
   background: $esm-panel-bg;
+}
+
+.esm-staging-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.esm-staging-panel__empty-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: $esm-panel-muted;
+  line-height: 1.45;
 }

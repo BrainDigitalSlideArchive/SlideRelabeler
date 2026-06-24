@@ -66,7 +66,7 @@ export default function ConfigOverviewSection({ hasLoadedFiles = false }) {
             <span className="config-overview__glossary-toggle-hint">
               {glossaryOpen
                 ? 'Hide additional definitions'
-                : 'Expand for assembled name, UUID, label text, and QR content'}
+                : 'Expand for UUID, label text, and QR content'}
             </span>
           </span>
           <span className="config-overview__glossary-chevron" aria-hidden="true">
@@ -80,11 +80,6 @@ export default function ConfigOverviewSection({ hasLoadedFiles = false }) {
               the configuration sections below.
             </p>
             <dl className="config-overview__glossary">
-              <dt>Assembled name</dt>
-              <dd>
-                A combined string built from slide metadata columns. Shown in the file table and optionally reused for
-                filenames, labels, exports, or a DSA upload alias.
-              </dd>
               <dt>UUID</dt>
               <dd>
                 A universally unique identifier—a completely randomized value assigned to each file. You can optionally

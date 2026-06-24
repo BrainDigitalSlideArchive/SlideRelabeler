@@ -8,6 +8,12 @@ import * as files_actions from '../../actions/files';
 import { migrateNamingConfig } from '../../helpers/naming_config_migration.js';
 import { migrateConfigV3 } from '../../helpers/computed_field_config.js';
 import { normalizeFilenameConfig } from '../../helpers/output_filename.js';
+import {
+  normalizeCsvConfig,
+  alternatesFromLegacyPickerValue,
+  CSV_RESERVED_FIELD_SPECS,
+  syncCsvLegacyColumnValue,
+} from '../../helpers/csv_column_config.js';
 
 function syncFilenameLegacyFields(draft) {
   const normalized = normalizeFilenameConfig(draft.filename);
@@ -43,18 +49,46 @@ const config_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(config_actions.CHANGE_FILE_PATH_COLUMN, (state, action) => {
       return produce(state, draft => {
-        draft.csv.file_path_column = action.payload;
+        const spec = CSV_RESERVED_FIELD_SPECS.find((s) => s.key === 'filePath');
+        const trimmed = action.payload != null ? String(action.payload).trim() : '';
+        if (!draft.csv.reservedColumns) draft.csv.reservedColumns = {};
+        draft.csv.reservedColumns.filePath = {
+          aliases: alternatesFromLegacyPickerValue(trimmed, spec?.defaultHeader),
+        };
+        draft.csv.file_path_column = syncCsvLegacyColumnValue(
+          'filePath',
+          draft.csv.reservedColumns.filePath.aliases,
+        );
       })
     })
     .addCase(config_actions.CHANGE_FILE_RENAME_COLUMN, (state, action) => {
       return produce(state, draft => {
-        draft.csv.file_rename_column = action.payload;
-        draft.filename.column = action.payload;
-        if (action.payload) {
-          draft.filename.source = 'column';
-          syncFilenameLegacyFields(draft);
-        }
+        const spec = CSV_RESERVED_FIELD_SPECS.find((s) => s.key === 'outputName');
+        const trimmed = action.payload != null ? String(action.payload).trim() : '';
+        if (!draft.csv.reservedColumns) draft.csv.reservedColumns = {};
+        draft.csv.reservedColumns.outputName = {
+          aliases: alternatesFromLegacyPickerValue(trimmed, spec?.defaultHeader),
+        };
+        draft.csv.file_rename_column = syncCsvLegacyColumnValue(
+          'outputName',
+          draft.csv.reservedColumns.outputName.aliases,
+        );
       })
+    })
+    .addCase(config_actions.SET_CSV_RESERVED_ALIASES, (state, action) => {
+      return produce(state, draft => {
+        const { fieldKey, aliases } = action.payload ?? {};
+        if (!fieldKey || !draft.csv.reservedColumns) return;
+        const filtered = Array.isArray(aliases)
+          ? aliases.map((a) => String(a).trim()).filter(Boolean)
+          : [];
+        draft.csv.reservedColumns[fieldKey] = { aliases: filtered };
+        if (fieldKey === 'filePath') {
+          draft.csv.file_path_column = syncCsvLegacyColumnValue('filePath', filtered);
+        } else if (fieldKey === 'outputName') {
+          draft.csv.file_rename_column = syncCsvLegacyColumnValue('outputName', filtered);
+        }
+      });
     })
     .addCase(config_actions.CHANGE_FILE_DESTINATION_DIRECTORY_COLUMN, (state, action) => {
       return produce(state, draft => {

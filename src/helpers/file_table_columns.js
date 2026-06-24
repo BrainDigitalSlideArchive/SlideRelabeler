@@ -114,14 +114,41 @@ export const FILE_TABLE_COLUMN_PROFILE = {
   },
 };
 
-const DEFAULT_DYNAMIC_COLUMN = {
+export const DEFAULT_DYNAMIC_COLUMN = {
   flex: 1,
   minWidth: 100,
 };
 
+/** Slide-field sizing for the eSM staging results grid. */
+export const ESM_STAGING_COLUMN_PROFILE = {
+  __select: {
+    width: 44,
+    minWidth: 44,
+    maxWidth: 44,
+    pinned: 'left',
+    resizable: false,
+    suppressSizeToFit: true,
+  },
+  Accession: { minWidth: 100, flex: 0 },
+  BlockId: { minWidth: 76, flex: 0 },
+  StainId: { minWidth: 76, flex: 0 },
+  SlideNum: { minWidth: 72, flex: 0 },
+  ImageId: { minWidth: 100, flex: 0 },
+  SlideId: { minWidth: 100, flex: 0 },
+  ScanDate: { minWidth: 100, flex: 0 },
+  CompressedFileLocation: { flex: 1, minWidth: 140 },
+};
+
+/** eSM staging profile plus shared sizing for reserved mapping targets. */
+export const ESM_STAGING_PROFILE = {
+  ...ESM_STAGING_COLUMN_PROFILE,
+  '__reserved.rename': FILE_TABLE_COLUMN_PROFILE['__reserved.rename'],
+  '__reserved.labelText': FILE_TABLE_COLUMN_PROFILE['__reserved.labelText'],
+};
+
 function profileKeyForColumn(col) {
   if (col?.headerClass === REMOVE_ROW_HEADER_CLASS) return REMOVE_ROW_HEADER_CLASS;
-  return col?.field ?? null;
+  return col?.field ?? col?.colId ?? null;
 }
 
 export function shouldHideQrColumn(labelConfig) {
@@ -190,18 +217,27 @@ export function estimateColumnDefsTotalWidth(columnDefs) {
 }
 
 /**
- * Merge FILE_TABLE_COLUMN_PROFILE onto column defs.
+ * Merge a declarative column profile onto column defs.
+ * Unknown columns with a field or colId receive DEFAULT_DYNAMIC_COLUMN.
  */
-export function applyFileTableColumnProfile(columns) {
+export function applyAgGridColumnProfile(columns, profileMap) {
   return (columns || []).map((col) => {
     const key = profileKeyForColumn(col);
-    const profile = key ? FILE_TABLE_COLUMN_PROFILE[key] : null;
+    const profile = key ? profileMap[key] : null;
 
     if (!profile) {
-      if (!col?.field) return col;
-      return { ...col, ...DEFAULT_DYNAMIC_COLUMN, headerTooltipText: col.field };
+      if (!col?.field && !col?.colId) return col;
+      const tooltipKey = col.field ?? col.colId ?? key;
+      return { ...col, ...DEFAULT_DYNAMIC_COLUMN, headerTooltipText: tooltipKey };
     }
 
     return { ...col, ...profile };
   });
+}
+
+/**
+ * Merge FILE_TABLE_COLUMN_PROFILE onto column defs.
+ */
+export function applyFileTableColumnProfile(columns) {
+  return applyAgGridColumnProfile(columns, FILE_TABLE_COLUMN_PROFILE);
 }

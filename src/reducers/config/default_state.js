@@ -13,6 +13,12 @@ export const default_state = {
   },
   csv: {
     save_csv: true,
+    reservedColumns: {
+      filePath: { aliases: [] },
+      outputName: { aliases: [] },
+      labelText: { aliases: [] },
+      qrContent: { aliases: [] },
+    },
     file_path_column: 'path',
     file_rename_column: '',
     file_destination_directory_column: ''

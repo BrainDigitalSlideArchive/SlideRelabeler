@@ -136,7 +136,7 @@ function ModalHelp(props) {
           <p>
             This application is a work in progress and is dependent upon feedback you provide to improve the application
             and ensure it works as expected.  If you have any feedback please provide it to the developers of the application
-            <a href={"mailto:arosad2@protonmail.ch"}>Aaron Rosado</a> and <a href={"mailto:pearcetm@upmc.edu"}>Tom Pierce</a>
+            <a href={"mailto:arosad2@protonmail.ch"}>Aaron Rosado</a> and <a href={"mailto:tmpearce@gmail.com"}>Tom Pierce</a>
           </p>
         </div>
       </div>

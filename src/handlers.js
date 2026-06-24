@@ -16,18 +16,44 @@ import {
   checkSlidePathAccessible,
   buildPathErrorForIpc,
 } from './helpers/slide_path_access.js';
+import { WSI_DIALOG_EXTENSIONS, isWsiExtension } from './helpers/wsi_extensions.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
 
 export { bridge };
 
-const wsiCustomFilter = { name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff'] };
+const wsiCustomFilter = {
+  name: `WSI Files (${WSI_DIALOG_EXTENSIONS.map((e) => `*.${e}`).join(', ')})`,
+  extensions: WSI_DIALOG_EXTENSIONS,
+};
 let upload_status = {
 };
 
 let dsa_client = null;
 let esm_client = null;
+let esm_client_config_key = null;
+
+function esmConnectionKey(canonicalUrl, proxyUrl) {
+  return `${canonicalUrl || ''}|${proxyUrl || ''}`;
+}
+
+function getOrCreateEsmClient(canonicalUrl, proxyUrl) {
+  const key = esmConnectionKey(canonicalUrl, proxyUrl);
+  if (!esm_client || esm_client_config_key !== key) {
+    esm_client = new ESMAPI(canonicalUrl, { proxyUrl });
+    esm_client_config_key = key;
+  }
+  return esm_client;
+}
+
+function parseEsmConnection(connection) {
+  const c = connection && typeof connection === 'object' ? connection : {};
+  return {
+    canonicalUrl: c.url != null ? String(c.url) : '',
+    proxyUrl: c.proxyUrl != null ? String(c.proxyUrl) : '',
+  };
+}
 let globus_client = null;
 
 function globusHandlerDebug(...args) {
@@ -85,14 +111,16 @@ ipcMain.handle('dsa-logout', async (event) => {
  * IPC handler for eSlideManager login
  * @returns {Promise<[boolean, Object]>} [success, response/error]
  */
-ipcMain.handle('esm-login', async (event, url, username, password) => {
+ipcMain.handle('esm-login', async (event, connection, username, password) => {
+  const { canonicalUrl, proxyUrl } = parseEsmConnection(connection);
   try {
-    esm_client = new ESMAPI(url);
+    esm_client = new ESMAPI(canonicalUrl, { proxyUrl });
+    esm_client_config_key = esmConnectionKey(canonicalUrl, proxyUrl);
     const response = await esm_client.tryLogin(username, password);
     if (response.ok) {
       return [true, { ok: true }];
     } else {
-      return [false, { message: response.error || 'Login failed' }];
+      return [false, { message: response.error || response.message || 'Login failed' }];
     }
   } catch (error) {
     console.error('eSlideManager login error:', error.message || error);
@@ -101,23 +129,32 @@ ipcMain.handle('esm-login', async (event, url, username, password) => {
 });
 
 /**
+ * @returns {string}
+ */
+function esmSearchErrorMessage(error) {
+  if (!error) return 'Search failed';
+  if (typeof error === 'string') return error;
+  if (error.message) return String(error.message);
+  if (error.error) return String(error.error);
+  return 'Search failed';
+}
+
+/**
  * IPC handler for eSlideManager slide search by accession number
  * @returns {Promise<[boolean, Array|Object]>} [success, slides array or error]
  */
-ipcMain.handle('esm-search-accession', async (event, url, username, password, accession) => {
+ipcMain.handle('esm-search-accession', async (event, connection, username, password, accession) => {
+  const { canonicalUrl, proxyUrl } = parseEsmConnection(connection);
   try {
-    // Create new client if URL changed or client doesn't exist
-    if (!esm_client || esm_client.api_url !== url) {
-      esm_client = new ESMAPI(url);
-    }
+    getOrCreateEsmClient(canonicalUrl, proxyUrl);
     const data = await esm_client.searchByAccession(username, password, accession);
     if (data && data.error) {
-      return [false, { message: data.error }];
+      return [false, { message: esmSearchErrorMessage(data) }];
     }
     return [true, data];
   } catch (error) {
     console.error('eSlideManager search error:', error.message || error);
-    return [false, { message: error.message || 'Search failed' }];
+    return [false, { message: esmSearchErrorMessage(error) }];
   }
 });
 
@@ -130,6 +167,7 @@ ipcMain.handle('esm-logout', async (event) => {
     if (esm_client) {
       const response = esm_client.logout();
       esm_client = null;
+      esm_client_config_key = null;
       return [true, response];
     }
     return [true, { ok: true, message: "Logged out" }];
@@ -825,10 +863,14 @@ ipcMain.handle('get-platform', async () => {
  * An IPC handler that opens a dialog to choose a file to save
  * @param {string} file_type The type of file to save
  */
-ipcMain.handle('open-save-file-dialog', async (event, file_types) => {
+ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) => {
   let dialog_options = {
     properties: ['createDirectory', "showOverwriteConfirmation"],
     filters: []
+  }
+
+  if (defaultPath) {
+    dialog_options.defaultPath = defaultPath;
   }
 
   if (file_types.includes('csv')) {
@@ -1045,7 +1087,7 @@ ipcMain.handle('open-folders-dialog', async () => {
 ipcMain.handle('get-all-wsi-file-paths', async (event, folder_path) => {
   const paths = [];
   walk.walkSync(folder_path, function (basedir, filename, stat) {
-    if (['.svs', '.ndpi', '.czi', '.tiff'].includes(path.extname(filename))) {
+    if (isWsiExtension(filename)) {
       paths.push(join(basedir, filename));
     }
   });

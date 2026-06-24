@@ -9,50 +9,67 @@ import './esm_light_panel.scss';
 export default function ESMStagingPanel({ disabled = false }) {
   const dispatch = useDispatch();
   const selectedIds = useSelector((s) => s.esm.selectedIds);
-  const slidesByAccession = useSelector((s) => s.esm.slidesByAccession);
+  const searchFeedback = useSelector((s) => s.esm.searchFeedback);
+  const stagingRowCount = searchFeedback?.stagingRowCount ?? 0;
+  const hasStagingRows = stagingRowCount > 0;
 
-  const hasStagingKeys =
-    slidesByAccession && typeof slidesByAccession === 'object' && Object.keys(slidesByAccession).length > 0;
   const applySelectionDisabled =
-    disabled || !hasStagingKeys || !Array.isArray(selectedIds) || selectedIds.length === 0;
+    disabled || !hasStagingRows || !Array.isArray(selectedIds) || selectedIds.length === 0;
 
   return (
     <div className="esm-staging-panel">
       <div className="esm-light-panel__card">
-        <div className="esm-light-panel__card-header">Staging results</div>
-        <p className="esm-light-panel__hint">
-          Use the table filters to narrow rows, then use the header checkbox to select all visible rows. Add selected
-          slides to the main file list when ready.
-        </p>
+        <div className="esm-light-panel__card-header">Results</div>
+        {hasStagingRows ? (
+          <>
+            <p className="esm-light-panel__hint">
+              Use the table filters to narrow rows, then use the header checkbox to select all visible rows. Add
+              selected slides to the main file list when ready.
+            </p>
 
-        <div className="esm-light-panel__actions-row">
-          <button
-            type="button"
-            className="esm-light-panel__btn esm-light-panel__btn--primary"
-            disabled={applySelectionDisabled}
-            onClick={() => dispatch({ type: esm_actions.ESM_APPLY_SELECTION })}
-          >
-            {`Add selected (${selectedIds?.length || 0}) to file list`}
-          </button>
-          <button
-            type="button"
-            className="esm-light-panel__btn esm-light-panel__btn--secondary"
-            disabled={disabled}
-            onClick={() => dispatch({ type: esm_actions.ESM_CLEAR_RESULTS })}
-          >
-            Clear results
-          </button>
-        </div>
+            <div className="esm-light-panel__actions-row">
+              <button
+                type="button"
+                className="esm-light-panel__btn esm-light-panel__btn--primary"
+                disabled={applySelectionDisabled}
+                onClick={() => dispatch({ type: esm_actions.ESM_APPLY_SELECTION })}
+              >
+                {`Add selected (${selectedIds?.length || 0}) to file list`}
+              </button>
+              <button
+                type="button"
+                className="esm-light-panel__btn esm-light-panel__btn--secondary"
+                disabled={disabled}
+                onClick={() => dispatch({ type: esm_actions.ESM_CLEAR_RESULTS })}
+              >
+                Clear results
+              </button>
+            </div>
 
-        <div className="esm-staging-panel__grid-wrap">
-          <ESMAgGrid
-            autoSizeStrategy={{ type: 'fitCellContents' }}
-            suppressMovableColumns={true}
-            ensureDomOrder={true}
-            suppressDragLeaveHidesColumns={true}
-            enableCellTextSelection={true}
-          />
-        </div>
+            <div className="esm-staging-panel__grid-wrap">
+              <ESMAgGrid
+                suppressMovableColumns={true}
+                ensureDomOrder={true}
+                suppressDragLeaveHidesColumns={true}
+                enableCellTextSelection={true}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="esm-staging-panel__empty">
+            <p className="esm-staging-panel__empty-text">
+              No slides to add. Adjust search criteria or stain filter and search again.
+            </p>
+            <button
+              type="button"
+              className="esm-light-panel__btn esm-light-panel__btn--secondary"
+              disabled={disabled}
+              onClick={() => dispatch({ type: esm_actions.ESM_CLEAR_RESULTS })}
+            >
+              Clear results
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

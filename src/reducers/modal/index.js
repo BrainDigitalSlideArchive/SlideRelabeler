@@ -60,11 +60,23 @@ const modal_reducer  = createReducer(default_state, (builder) => {
         draft.allow_select_csv_destination_directory_column = true;
       });
     })
+    .addCase(modal_actions.ALLOW_SELECT_CSV_LABEL_COLUMN, (state, action) => {
+      return produce(state, draft => {
+        draft.allow_select_csv_label_column = true;
+      });
+    })
+    .addCase(modal_actions.ALLOW_SELECT_CSV_QR_COLUMN, (state, action) => {
+      return produce(state, draft => {
+        draft.allow_select_csv_qr_column = true;
+      });
+    })
     .addCase(modal_actions.DISALLOW_SELECT_CSV, (state, action) => {
       return produce(state, draft => {
         draft.allow_select_csv_path_column = false;
         draft.allow_select_csv_rename_column = false;
         draft.allow_select_csv_destination_directory_column = false;
+        draft.allow_select_csv_label_column = false;
+        draft.allow_select_csv_qr_column = false;
       });
     })
     .addCase(modal_actions.CLOSE_MODAL, (state, action) => {

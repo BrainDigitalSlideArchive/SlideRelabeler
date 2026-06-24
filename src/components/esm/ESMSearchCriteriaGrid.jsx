@@ -3,6 +3,9 @@ import { useSelector, useDispatch } from 'react-redux';
 
 import * as esm_actions from '../../actions/esm';
 import { parseEsmSearchCriteriaCsv } from '../../helpers/esm_search_criteria_csv';
+import { ESM_STAIN_FILTER_ALL, ESM_STAIN_FILTER_MATCH } from '../../helpers/esm_profile_helpers';
+import { normalizeAccessionKey } from '../../helpers/esm_results_filter';
+import { outcomesByAccessionKey } from '../../helpers/esm_search_feedback';
 import InputText from '../controls/input/InputText';
 
 import './ESMSearchCriteriaGrid.scss';
@@ -12,11 +15,139 @@ function hasAnyAccession(rows) {
   return rows.some((r) => String(r?.accession ?? '').trim());
 }
 
-/**
- * Spreadsheet-style search criteria: accession, optional block, optional de-ID, optional stain.
- * Search runs one eSM query per distinct accession and merges results for staging.
- */
-function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, searchError }) {
+function StainCell({ row, rowIndex, disabled, profile, dispatch, onKeyPress }) {
+  const presets = profile?.stainPresets || [];
+  const stainMode = row.stainMode === ESM_STAIN_FILTER_MATCH ? ESM_STAIN_FILTER_MATCH : ESM_STAIN_FILTER_ALL;
+  const stainValue = row.stain ?? '';
+
+  const presetMatch = presets.find(
+    (p) => p?.matchValue?.trim().toLowerCase() === stainValue.trim().toLowerCase()
+  );
+
+  let selectValue = '__all__';
+  if (stainMode === ESM_STAIN_FILTER_MATCH) {
+    if (presetMatch) selectValue = `preset:${presetMatch.id}`;
+    else selectValue = '__custom__';
+  }
+
+  function onSelectChange(e) {
+    const v = e.target.value;
+    if (v === '__all__') {
+      dispatch({
+        type: esm_actions.ESM_UPDATE_SEARCH_ROW,
+        payload: { id: row.id, stainMode: ESM_STAIN_FILTER_ALL, stain: '' },
+      });
+      return;
+    }
+    if (v === '__custom__') {
+      dispatch({
+        type: esm_actions.ESM_UPDATE_SEARCH_ROW,
+        payload: { id: row.id, stainMode: ESM_STAIN_FILTER_MATCH, stain: stainValue },
+      });
+      return;
+    }
+    if (v.startsWith('preset:')) {
+      const presetId = v.slice('preset:'.length);
+      const preset = presets.find((p) => p.id === presetId);
+      dispatch({
+        type: esm_actions.ESM_UPDATE_SEARCH_ROW,
+        payload: {
+          id: row.id,
+          stainMode: ESM_STAIN_FILTER_MATCH,
+          stain: preset?.matchValue ?? '',
+        },
+      });
+    }
+  }
+
+  return (
+    <div className="esm-search-criteria__stain-cell">
+      <select
+        className="esm-search-criteria__stain-select"
+        disabled={disabled}
+        aria-label={`Stain filter, row ${rowIndex + 1}`}
+        value={selectValue}
+        onChange={onSelectChange}
+      >
+        <option value="__all__">All stains</option>
+        {presets.map((p) => (
+          <option key={p.id} value={`preset:${p.id}`}>
+            {p.label?.trim() || p.matchValue || 'Preset'}
+          </option>
+        ))}
+        <option value="__custom__">Custom…</option>
+      </select>
+      {selectValue === '__custom__' && (
+        <InputText
+          omitLabel
+          compact
+          variant="onLight"
+          ariaLabel={`Custom stain, row ${rowIndex + 1}`}
+          disabled={disabled}
+          value={stainValue}
+          onChange={(v) =>
+            dispatch({
+              type: esm_actions.ESM_UPDATE_SEARCH_ROW,
+              payload: { id: row.id, stainMode: ESM_STAIN_FILTER_MATCH, stain: v },
+            })
+          }
+          onKeyPress={onKeyPress}
+        />
+      )}
+    </div>
+  );
+}
+
+function EsmSearchFeedbackBanner({ searchFeedback }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const fb = searchFeedback || {};
+  const level = fb.level || 'none';
+  if (level === 'none' || !Array.isArray(fb.messages) || fb.messages.length === 0) return null;
+
+  const errorOutcomes = (fb.outcomes || []).filter((o) => o.status === 'error' && o.message);
+  const hasDetails = errorOutcomes.length > 0;
+
+  return (
+    <div
+      className={`esm-search-feedback esm-search-feedback--${level}`}
+      role={level === 'error' ? 'alert' : 'status'}
+    >
+      <ul className="esm-search-feedback__messages">
+        {fb.messages.map((msg, i) => (
+          <li key={i}>{msg}</li>
+        ))}
+      </ul>
+      {hasDetails && (
+        <div className="esm-search-feedback__details">
+          <button
+            type="button"
+            className="esm-search-feedback__details-toggle"
+            onClick={() => setShowDetails((v) => !v)}
+          >
+            {showDetails ? 'Hide details' : 'Show details'}
+          </button>
+          {showDetails && (
+            <ul className="esm-search-feedback__details-list">
+              {errorOutcomes.map((o) => (
+                <li key={o.accession}>
+                  <strong>{o.accession}:</strong> {o.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ESMSearchCriteriaGrid({
+  authenticated,
+  disableChanges,
+  searchLoading,
+  searchFeedback,
+  profile = null,
+}) {
   const dispatch = useDispatch();
   const searchRows = useSelector((s) => s.esm.searchRows);
   const rows = Array.isArray(searchRows) ? searchRows : [];
@@ -27,6 +158,7 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
   const disabled = !authenticated || disableChanges || searchLoading;
   const canRemoveRow = rows.length > 1;
   const searchDisabled = !authenticated || !hasAnyAccession(rows) || disableChanges || searchLoading;
+  const outcomeByAcc = outcomesByAccessionKey(searchFeedback?.outcomes);
 
   const runSearch = useCallback(() => {
     if (authenticated && hasAnyAccession(rows)) {
@@ -95,8 +227,7 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
 
         <p className="esm-search-criteria__hint-panel">
           One row per specimen. Search loads every distinct accession, then each row filters by optional block and
-          stain (see filename mapping for stain-regex when stain is left blank). Earlier rows win when the same slide
-          matches multiple rows.
+          stain. Earlier rows win when the same slide matches multiple rows.
         </p>
 
         {importError && <div className="esm-search-criteria__import-error">{importError}</div>}
@@ -116,7 +247,7 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
             <div className="esm-search-criteria__th">Accession</div>
             <div className="esm-search-criteria__th">Block (optional)</div>
             <div className="esm-search-criteria__th">De-identification (optional)</div>
-            <div className="esm-search-criteria__th">Stain (optional)</div>
+            <div className="esm-search-criteria__th">Stain filter</div>
             <div className="esm-search-criteria__th esm-search-criteria__th--action" aria-hidden="true" />
           </div>
           <div
@@ -134,7 +265,9 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
                     ariaLabel={`Accession, row ${rowIndex + 1}`}
                     inputId={`esm-search-acc-${row.id}`}
                     disabled={disabled}
-                    error={searchError && Boolean(String(row.accession ?? '').trim())}
+                    error={
+                      outcomeByAcc.get(normalizeAccessionKey(row.accession)) === 'error'
+                    }
                     value={row.accession}
                     onChange={(v) =>
                       dispatch({ type: esm_actions.ESM_UPDATE_SEARCH_ROW, payload: { id: row.id, accession: v } })
@@ -173,17 +306,12 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
                   />
                 </div>
                 <div className="esm-search-criteria__cell">
-                  <InputText
-                    omitLabel
-                    compact
-                    variant="onLight"
-                    ariaLabel={`Stain, row ${rowIndex + 1}`}
-                    inputId={`esm-search-stain-${row.id}`}
+                  <StainCell
+                    row={row}
+                    rowIndex={rowIndex}
                     disabled={disabled}
-                    value={row.stain}
-                    onChange={(v) =>
-                      dispatch({ type: esm_actions.ESM_UPDATE_SEARCH_ROW, payload: { id: row.id, stain: v } })
-                    }
+                    profile={profile}
+                    dispatch={dispatch}
                     onKeyPress={handleKeyPress}
                   />
                 </div>
@@ -201,6 +329,8 @@ function ESMSearchCriteriaGrid({ authenticated, disableChanges, searchLoading, s
             ))}
           </div>
         </div>
+
+        <EsmSearchFeedbackBanner searchFeedback={searchFeedback} />
 
         <div className="esm-search-criteria__panel-footer">
           <button

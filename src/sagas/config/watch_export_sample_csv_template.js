@@ -28,7 +28,7 @@ function* export_sample_csv_template(file) {
 export default function* watch_export_sample_csv_template() {
   while (true) {
     const action = yield take(config_actions.EXPORT_SAMPLE_CSV_TEMPLATE);
-    const file = yield electronAPI.openSaveFileDialog(['csv']);
+    const file = yield electronAPI.openSaveFileDialog(['csv'], 'slide_relabeler_template.csv');
     if (file) {
       yield call(export_sample_csv_template, file);
     }

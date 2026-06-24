@@ -220,10 +220,13 @@ function resolveColumnToken(token, fileRow, aliasMap) {
  * @param {string} pattern
  * @param {object} context — outputName, labelText, qrPayload, dsaAlias, uuid
  * @param {Map<string,string>} [aliasMap]
+ * @param {{ preserveUnresolvedTokens?: string[] }} [options]
  */
-export function evaluateFieldPattern(fileRow, pattern, context = {}, aliasMap = null) {
+export function evaluateFieldPattern(fileRow, pattern, context = {}, aliasMap = null, options = {}) {
   const tpl = toStr(pattern);
   if (!tpl.trim()) return '';
+
+  const preserve = new Set(options.preserveUnresolvedTokens || []);
 
   return tpl.replace(PLACEHOLDER_TOKEN_RE, (_match, raw) => {
     const inner = raw.trim();
@@ -231,8 +234,17 @@ export function evaluateFieldPattern(fileRow, pattern, context = {}, aliasMap = 
       return getRowFieldValue(fileRow, inner.slice(6).trim());
     }
     const builtin = resolveBuiltinToken(inner, fileRow, context);
-    if (builtin !== null) return builtin;
-    return resolveColumnToken(inner, fileRow, aliasMap);
+    if (builtin !== null) {
+      if (builtin === '' && preserve.has(inner)) {
+        return `{${inner}}`;
+      }
+      return builtin;
+    }
+    const column = resolveColumnToken(inner, fileRow, aliasMap);
+    if (column === '' && preserve.has(inner)) {
+      return `{${inner}}`;
+    }
+    return column;
   });
 }
 

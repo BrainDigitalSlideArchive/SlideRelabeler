@@ -4,24 +4,33 @@ import HelpIconPopover from '../controls/HelpIconPopover';
 
 const CURRENT_COLUMNS_HELP = 'These are columns from your currently loaded file list. Click a chip to insert it into the pattern. Any column name - even those not currently visible here - can be wrapped in curly braces (e.g. {blockId}). This is especially useful when loading data from CSV or an API, where column names come from your imported data.';
 
-export function PlaceholderChips({ catalog, disabled, onInsert }) {
+export function PlaceholderChips({
+  catalog,
+  catalogLabel = 'Current columns',
+  helpText = CURRENT_COLUMNS_HELP,
+  disabled,
+  onInsert,
+}) {
   return (
     <div className="computed-field-editor__catalog">
       <div className="computed-field-editor__catalog-header">
-        <span className="computed-field-editor__catalog-label">Current columns</span>
-        <HelpIconPopover helpLabel="Current columns help" variant="onLight">
-          {CURRENT_COLUMNS_HELP}
+        <span className="computed-field-editor__catalog-label">{catalogLabel}</span>
+        <HelpIconPopover helpLabel={`${catalogLabel} help`} variant="onLight">
+          {helpText}
         </HelpIconPopover>
       </div>
       {catalog?.length > 0 && (
-        <div className="computed-field-editor__placeholders" aria-label="Available placeholders">
+        <div className="computed-field-editor__placeholders" aria-label={`${catalogLabel} placeholders`}>
           {catalog.map((item) => (
             <button
               key={item.token}
               type="button"
               className="computed-field-editor__chip"
               disabled={disabled}
-              title={item.altInsertValue ? `${item.insertValue} or ${item.altInsertValue}` : item.insertValue}
+              title={
+                item.hint
+                || (item.altInsertValue ? `${item.insertValue} or ${item.altInsertValue}` : item.insertValue)
+              }
               onClick={() => onInsert(item.insertValue)}
             >
               {item.insertValue}

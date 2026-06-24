@@ -14,6 +14,7 @@ import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
 import * as auditLog_actions from '../../actions/auditLog';
 import { initialSessionMetrics } from '../../reducers/files/default_state';
+import { makeEmptySearchFeedback } from '../../helpers/esm_search_feedback';
 
 const globus_actions_for_save = Object.values(globus_actions).filter(
   (a) => a !== globus_actions.GLOBUS_UPLOAD_COORDINATOR_TICK
@@ -39,22 +40,18 @@ function* watch_save_store() {
     const storeToSave = {
       ...store,
       esm: store.esm ? {
-        url: store.esm.url,
-        username: store.esm.username,
-        // password: NOT persisted
-        mappingConfig: store.esm.mappingConfig,
-        transformRules: store.esm.transformRules,
-        selectedTransformRuleIds: store.esm.selectedTransformRuleIds,
-        searchRows: store.esm.searchRows,
-        // Clear all auth/session state:
+        integrationEnabled: store.esm.integrationEnabled,
+        rememberUsername: store.esm.rememberUsername,
+        username: store.esm.rememberUsername ? store.esm.username : '',
+        profiles: store.esm.profiles,
+        activeProfileId: store.esm.activeProfileId,
         authenticated: false,
         authToken: null,
         loading: false,
         error: false,
         errorMessage: null,
         searchLoading: false,
-        searchError: false,
-        searchErrorMessage: null,
+        searchFeedback: makeEmptySearchFeedback(),
         results: [],
         slidesByAccession: {},
         selectedIds: [],

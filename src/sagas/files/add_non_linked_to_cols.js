@@ -5,18 +5,23 @@ import { isHiddenFileTableColumn } from "../../helpers/file_table_columns.js";
 
 export default function* add_non_linked_to_cols(headers) {
   let linked_headers = [];
-  const {reserved_path_column, reserved_rename_column, reserved_destination_directory_column} = yield select(state => state.files.csv);
+  const {
+    reserved_path_column,
+    reserved_rename_column,
+    reserved_destination_directory_column,
+    reserved_label_column,
+    reserved_qr_column,
+  } = yield select(state => state.files.csv);
 
-  if (reserved_path_column) {
-    linked_headers.push(reserved_path_column.header);
+  for (const col of [
+    reserved_path_column,
+    reserved_rename_column,
+    reserved_destination_directory_column,
+    reserved_label_column,
+    reserved_qr_column,
+  ]) {
+    if (col?.header) linked_headers.push(col.header);
   }
-  if (reserved_rename_column) {
-    linked_headers.push(reserved_rename_column.header);
-  }
-  if (reserved_destination_directory_column) {
-    linked_headers.push(reserved_destination_directory_column.header);
-  }
-  
 
 
   for (const header_idx in headers) {

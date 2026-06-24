@@ -4,6 +4,7 @@ import { safeToken, getAccessionFromBarcodeId } from './slide_naming.js';
 import { resolveAssembly } from './template_engine.js';
 import { applyRules } from './esm_transform_rules.js';
 import { getFilenameSource } from './output_filename.js';
+import { getActiveProfile, getProfileTransformRules } from './esm_profile_helpers.js';
 
 export const DEFAULT_ASSEMBLY = {
   specimenId: { source: 'from_metadata', fixedValue: '', column: '' },
@@ -206,10 +207,8 @@ export function applyAssemblyAndRouting(fileRow, config, options = {}) {
  * Saga/helper: apply assembly with eSM transform rules from store.
  */
 export function applyAssemblyAndRoutingWithStore(fileRow, config, esmState) {
-  const selectedRules = esmState?.selectedTransformRuleIds
-    ? (esmState.transformRules || []).filter((r) =>
-      (esmState.selectedTransformRuleIds || []).includes(r.id))
-    : [];
+  const profile = getActiveProfile(esmState);
+  const selectedRules = getProfileTransformRules(profile);
   return applyAssemblyAndRouting(fileRow, config, {
     transformValue: (value, field) => applyRules(value, selectedRules, field),
   });

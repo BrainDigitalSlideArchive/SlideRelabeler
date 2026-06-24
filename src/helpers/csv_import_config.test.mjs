@@ -7,44 +7,40 @@ import {
   getCsvTemplateHeaders,
 } from './csv_import_config.js';
 
-test('getCsvTemplateHeaders uses configured names with defaults for label and qr', () => {
-  const headers = getCsvTemplateHeaders({
-    file_path_column: 'file location',
-    file_rename_column: 'deid_name',
-    file_destination_directory_column: 'dest',
-  });
-  assert.equal(headers.filePath, 'file location');
-  assert.equal(headers.outputFolder, 'dest');
-  assert.equal(headers.outputName, 'deid_name');
+test('getCsvTemplateHeaders always returns default header names', () => {
+  const headers = getCsvTemplateHeaders({});
+  assert.equal(headers.filePath, CSV_TEMPLATE_DEFAULT_HEADERS.filePath);
+  assert.equal(headers.outputName, CSV_TEMPLATE_DEFAULT_HEADERS.outputName);
   assert.equal(headers.label, CSV_TEMPLATE_DEFAULT_HEADERS.label);
   assert.equal(headers.qr, CSV_TEMPLATE_DEFAULT_HEADERS.qr);
 });
 
-test('getCsvTemplateHeaders falls back to defaults when mapping fields are blank', () => {
+test('getCsvTemplateHeaders ignores legacy columns and alternates', () => {
   const headers = getCsvTemplateHeaders({
-    file_path_column: '  ',
-    file_rename_column: '',
-    file_destination_directory_column: null,
+    file_path_column: 'file',
+    file_rename_column: 'deid_name',
+    reservedColumns: {
+      filePath: { aliases: ['file', 'file location'] },
+      outputName: { aliases: ['deid_name'] },
+      labelText: { aliases: ['slide_label'] },
+      qrContent: { aliases: ['qr_code'] },
+    },
   });
-  assert.deepEqual(headers, CSV_TEMPLATE_DEFAULT_HEADERS);
+  assert.equal(headers.filePath, 'path');
+  assert.equal(headers.outputName, 'output_name');
+  assert.equal(headers.label, 'label');
+  assert.equal(headers.qr, 'qr');
 });
 
-test('getCsvTemplateHeaderList returns five unique headers in order', () => {
+test('getCsvTemplateHeaderList returns four default headers in order', () => {
   const list = getCsvTemplateHeaderList({});
-  assert.deepEqual(list, [
-    'path',
-    'output_folder',
-    'output_name',
-    'label',
-    'qr',
-  ]);
+  assert.deepEqual(list, ['path', 'output_name', 'label', 'qr']);
 });
 
 test('buildCsvTemplateRow populates values from file row reserved fields', () => {
   const row = buildCsvTemplateRow({
     __reserved: {
       source: { path: '/slides/a.tiff' },
-      destinationDirectory: '/out',
       rename: 'custom-name',
       labelText: 'Label A',
       qrPayload: 'qr-data',
@@ -55,7 +51,6 @@ test('buildCsvTemplateRow populates values from file row reserved fields', () =>
   });
 
   assert.equal(row.path, '/slides/a.tiff');
-  assert.equal(row.output_folder, '/out');
   assert.equal(row.output_name, 'custom-name');
   assert.equal(row.label, 'Label A');
   assert.equal(row.qr, 'qr-data');
@@ -77,7 +72,6 @@ test('buildCsvTemplateRow uses resolveOutputBasename when rename is unset', () =
 test('buildCsvTemplateRow returns empty row when no file row provided', () => {
   const row = buildCsvTemplateRow(null, {});
   assert.equal(row.path, '');
-  assert.equal(row.output_folder, '');
   assert.equal(row.output_name, '');
   assert.equal(row.label, '');
   assert.equal(row.qr, '');

@@ -71,6 +71,7 @@ const App = (props) => {
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
   let disable_changes = useSelector(state => state.files.disable_changes);
+  const esmIntegrationEnabled = useSelector((state) => state.esm?.integrationEnabled !== false);
   let debug_config = useSelector(state => state.config.debug);
   let csv = useSelector(state => state.files.csv);
   let file_rows = useSelector(state => state.files.file_rows);
@@ -131,7 +132,8 @@ const App = (props) => {
                         onClick={() => dispatch({type: file_actions.SELECT_IMPORT_CSV_XSLX})}>
                   CSV Import
                 </button>
-                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"}
+                <button disabled={disable_changes || processing || !esmIntegrationEnabled} className={disable_changes || processing || !esmIntegrationEnabled ? "__button _disabled" : "__button"}
+                        title={!esmIntegrationEnabled ? 'Enable eSlideManager under Configuration → Data loading → API Integrations' : undefined}
                         onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'esm'}})}>
                   eSlideManager
                 </button>

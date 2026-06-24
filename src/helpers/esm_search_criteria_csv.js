@@ -1,4 +1,5 @@
 import { makeEsmSearchRow } from '../reducers/esm/default_state';
+import { ESM_STAIN_FILTER_ALL, ESM_STAIN_FILTER_MATCH } from './esm_profile_helpers';
 
 function stripBom(text) {
   if (typeof text !== 'string' || text.length === 0) return text;
@@ -160,6 +161,7 @@ export function parseEsmSearchCriteriaCsv(text) {
         accession,
         blockId,
         deid,
+        stainMode: stain ? ESM_STAIN_FILTER_MATCH : ESM_STAIN_FILTER_ALL,
         stain,
       });
     }

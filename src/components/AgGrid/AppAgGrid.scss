@@ -449,6 +449,10 @@
     padding: 0 !important;
 }
 
+.__transformed-value-cell {
+    background: rgba(59, 130, 246, 0.08);
+}
+
 .grid-hover-tooltip {
     position: fixed;
     z-index: 10000;

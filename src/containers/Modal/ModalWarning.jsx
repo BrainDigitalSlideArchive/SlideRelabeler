@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import PropTypes from "prop-types";
 
 import ModalHeader from "./ModalHeader";
-import { render_select } from "./ModalError";
+import { CsvColumnSelectControls } from "./ModalError";
 import {generate_dropdown_for_table_columns} from "../../helpers/fe_helpers";
 
 import * as modal_actions from "../../actions/modal";
@@ -23,6 +23,8 @@ function ModalWarning() {
   const allow_select_csv_path_column = useSelector(state => state.modal.allow_select_csv_path_column);
   const allow_select_csv_rename_column = useSelector(state => state.modal.allow_select_csv_rename_column);
   const allow_select_csv_destination_directory_column = useSelector(state => state.modal.allow_select_csv_destination_directory_column);
+  const allow_select_csv_label_column = useSelector(state => state.modal.allow_select_csv_label_column);
+  const allow_select_csv_qr_column = useSelector(state => state.modal.allow_select_csv_qr_column);
 
   const [column_options, set_column_options] = useState([]);
 
@@ -60,8 +62,20 @@ function ModalWarning() {
             ))
         }
         {
-          (allow_select_csv_path_column || allow_select_csv_rename_column || allow_select_csv_destination_directory_column) &&
-          render_select(allow_select_csv_path_column, allow_select_csv_rename_column, allow_select_csv_destination_directory_column, processing, disable_changes, column_options, csv_config, csv.file, dispatch)
+          (allow_select_csv_path_column || allow_select_csv_rename_column || allow_select_csv_destination_directory_column || allow_select_csv_label_column || allow_select_csv_qr_column) &&
+          <CsvColumnSelectControls
+            allowSelectCsvPathColumn={allow_select_csv_path_column}
+            allowSelectCsvRenameColumn={allow_select_csv_rename_column}
+            allowSelectCsvDestinationDirectoryColumn={allow_select_csv_destination_directory_column}
+            allowSelectCsvLabelColumn={allow_select_csv_label_column}
+            allowSelectCsvQrColumn={allow_select_csv_qr_column}
+            processing={processing}
+            disableChanges={disable_changes}
+            columnOptions={column_options}
+            csvConfig={csv_config}
+            csvFile={csv.file}
+            dispatch={dispatch}
+          />
         }
       </div>
     </div>
