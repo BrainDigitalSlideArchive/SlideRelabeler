@@ -1,4 +1,4 @@
-import { select, take, put, call, fork, delay } from 'redux-saga/effects';
+import { select, take, put, call, fork, delay, join } from 'redux-saga/effects';
 
 import * as dsa_actions from '../../actions/dsa';
 import * as files_actions from '../../actions/files';
@@ -6,28 +6,79 @@ import * as files_actions from '../../actions/files';
 function* watch_complete_upload(row_idx) {
     while (true) {
         const action = yield take(dsa_actions.UPLOAD_FILE_COMPLETE);
-        // Stop listening for complete upload and file progress on completion of file upload
+        const payload = action.payload;
+        const completedRowIdx = typeof payload === 'object' ? payload.row_idx : payload;
+        if (completedRowIdx !== row_idx) {
+            continue;
+        }
+
         yield electronAPI.dsaStopUploadComplete();
         yield electronAPI.dsaStopUploadFileProgress();
         yield electronAPI.dsaStopUploadFileError();
 
-        break;
-    }
-    yield put({ type: files_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
+        const config = yield select((state) => state.config);
+        const file_rows = yield select((state) => state.files.file_rows);
+        const file_row = file_rows[row_idx];
+        const itemId = typeof payload === 'object' ? payload.itemId : null;
+        const fileName = typeof payload === 'object' ? payload.fileName : null;
 
-    let delete_after = yield select(state => state.dsa.delete_after);
-    if (delete_after) {
-        const file_rows = yield select(state => state.files.file_rows);
-        const file_path = file_rows[row_idx].__reserved.output_path;
-        yield electronAPI.deleteFile(file_path.replace(/\\/g, '/'));
-        yield put({ type: files_actions.UPLOAD_DELETE_AFTER, payload: { row_idx: row_idx } });
+        const dsaUpload = config?.dsa_upload || {};
+        if (itemId && file_row && (dsaUpload.rename_item_after_upload || dsaUpload.set_item_metadata)) {
+            const enrichResult = yield call(electronAPI.dsaEnrichUploadedItem, {
+                itemId,
+                fileRow: file_row,
+                options: {
+                    renameItem: !!dsaUpload.rename_item_after_upload,
+                    setMetadata: !!dsaUpload.set_item_metadata,
+                    fileName,
+                },
+            });
+            if (enrichResult && enrichResult[0]) {
+                yield put({
+                    type: files_actions.UPDATE_FILE_ROW_NAMING,
+                    payload: {
+                        row_idx,
+                        file_row: {
+                            ...file_row,
+                            __reserved: {
+                                ...file_row.__reserved,
+                                dsa_item_id: itemId,
+                            },
+                        },
+                    },
+                });
+            } else if (enrichResult && enrichResult[1]) {
+                yield put({
+                    type: files_actions.UPDATE_FILE_ROW_NAMING,
+                    payload: {
+                        row_idx,
+                        file_row: {
+                            ...file_row,
+                            __reserved: {
+                                ...file_row.__reserved,
+                                dsa_enrich_error: enrichResult[1].message || 'DSA enrich failed',
+                            },
+                        },
+                    },
+                });
+            }
+        }
+
+        yield put({ type: files_actions.UPLOAD_FILE_FINALIZE, payload: { row_idx: row_idx } });
+
+        let delete_after = yield select(state => state.dsa.delete_after);
+        if (delete_after) {
+            const file_path = file_rows[row_idx].__reserved.output_path;
+            yield electronAPI.deleteFile(file_path.replace(/\\/g, '/'));
+            yield put({ type: files_actions.UPLOAD_DELETE_AFTER, payload: { row_idx: row_idx } });
+        }
+        break;
     }
 }
 
 function* watch_upload() {
     yield fork(upload_queue)
     while (true) {
-        // payload should be the file row
         const action = yield take(dsa_actions.UPLOAD_FILE);
         yield put({ type: dsa_actions.ADD_UPLOAD_FILE_TO_QUEUE, payload: action.payload })
     }
@@ -42,8 +93,9 @@ function* upload_queue() {
                 yield put({ type: files_actions.SET_UPLOADING, payload: true })
             }
             const upload_payload = queue[0];
-            yield fork(upload_file, upload_payload)
-            yield take(dsa_actions.UPLOAD_FILE_COMPLETE);
+            const completeTask = yield fork(watch_complete_upload, upload_payload.row_idx);
+            yield call(upload_file, upload_payload);
+            yield join(completeTask);
             yield put({ type: dsa_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, payload: upload_payload.row_idx })
         }
         const currentlyUploading = yield select(state => state.files.uploading);
@@ -56,13 +108,10 @@ function* upload_queue() {
 
 function* upload_file(payload) {
     const { folder_id, row_idx, file_path, file } = payload;
-    // Setup listeners for file progress and complete upload dsa channels
-    let progress_listener = yield electronAPI.dsaSetupUploadFileProgress(window.redux_store.dispatch);
-    let complete_update_listener = yield electronAPI.dsaSetupUploadComplete(window.redux_store.dispatch);
+    yield electronAPI.dsaSetupUploadFileProgress(window.redux_store.dispatch);
+    yield electronAPI.dsaSetupUploadComplete(window.redux_store.dispatch);
     if (file && row_idx && file_path) {
-        // Start watching for complete file upload to stop listening for file progress and complete upload
-        yield fork(watch_complete_upload, row_idx);
-        const upload_response = yield electronAPI.dsaUploadFile(folder_id, row_idx, file_path);
+        yield electronAPI.dsaUploadFile(folder_id, row_idx, file_path);
     }
 }
 

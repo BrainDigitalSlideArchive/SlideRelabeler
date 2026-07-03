@@ -8,15 +8,18 @@ import { return_filename_dir_from_path, return_separator } from "../../helpers/r
 import get_uuid from "../files/get_uuid";
 
 import {
-  computeAccessionToken,
-  buildBaseFilename,
   applyDuplicateStrategy,
   getAccessionFromBarcodeId,
-  getEsmStagingSlideId,
 } from "../../helpers/esm_filename_helpers";
 
-import { applyRules, getSelectedTransformRules } from "../../helpers/esm_transform_rules";
 import { buildStagingSlides } from "../../helpers/esm_results_filter";
+import {
+  getActiveProfile,
+  applyProfilePatternsToFileRow,
+  collectEsmImportColumnFields,
+} from "../../helpers/esm_profile_helpers";
+import { applyRowNamingDefaults, initRowNamingSources } from "../../helpers/row_naming_defaults";
+import { initDestinationSource } from "../../helpers/destination_directory.js";
 
 function getFileExtFromPath(p) {
   const s = (p ?? "").toString();
@@ -25,7 +28,7 @@ function getFileExtFromPath(p) {
   return s.slice(idx);
 }
 
-function* slideToFileRow(slide, output_dir, mappedRename) {
+function* slideToFileRow(slide, output_dir, criteriaDeid) {
   const accession = getAccessionFromBarcodeId(slide?.BarcodeId);
   const file_path = slide?.CompressedFileLocation || "";
   if (!file_path) return null;
@@ -62,15 +65,19 @@ function* slideToFileRow(slide, output_dir, mappedRename) {
     ImageId: slide?.ImageId || "",
     SlideId: slide?.SlideId || "",
     ScanDate: slide?.ScanDate || "",
+    deid: criteriaDeid || "",
     __reserved: {
       source: source,
       uuid: file_uuid,
-      rename: mappedRename || filename,
+      rename: '',
       processed: 0,
     },
   };
 
   file_row.__reserved.destinationDirectory = output_dir;
+  if (output_dir) {
+    file_row.__reserved = initDestinationSource(file_row.__reserved);
+  }
   return file_row;
 }
 
@@ -78,21 +85,20 @@ export function* watch_apply_selection() {
   while (true) {
     yield take(esm_actions.ESM_APPLY_SELECTION);
 
-    const searchRows = yield select((state) => state.esm.searchRows);
-    const slidesByAccession = yield select((state) => state.esm.slidesByAccession);
-    const selectedIds = yield select((state) => state.esm.selectedIds);
-    const mappingConfig = yield select((state) => state.esm.mappingConfig);
-    const transformRules = yield select((state) => state.esm.transformRules);
-    const selectedTransformRuleIds = yield select((state) => state.esm.selectedTransformRuleIds);
+    const esmState = yield select((state) => state.esm);
+    const searchRows = esmState.searchRows;
+    const slidesByAccession = esmState.slidesByAccession;
+    const selectedIds = esmState.selectedIds;
     const output_dir = yield select((state) => state.files.output_dir);
+    const config = yield select((state) => state.config);
+    const file_cols = yield select((state) => state.files.file_columns);
+    const enrichedConfig = { ...config, fileCols: file_cols };
 
-    const selectedRules = getSelectedTransformRules(transformRules, selectedTransformRuleIds);
+    const profile = getActiveProfile(esmState);
     const stagingRows = buildStagingSlides({
       searchRows,
       slidesByAccession,
-      mappingConfig,
-      transformRules,
-      selectedTransformRuleIds,
+      profile,
     });
 
     if (!Array.isArray(selectedIds) || selectedIds.length === 0 || stagingRows.length === 0) {
@@ -103,43 +109,53 @@ export function* watch_apply_selection() {
 
     if (selectedStaging.length === 0) continue;
 
-    const filenameItems = selectedStaging.map((row) => {
+    const duplicateStrategy = profile?.duplicateStrategy || 'suffix-index';
+
+    const prepared = [];
+    for (const row of selectedStaging) {
       const slide = row.__raw;
       const criteriaRow = row.__esm?.criteriaRow;
-      const accessionToken = computeAccessionToken(slide, mappingConfig, criteriaRow);
-      const baseName = buildBaseFilename(
-        slide,
-        accessionToken,
-        mappingConfig,
-        (value) => applyRules(value, selectedRules),
-      );
-      const ext = getFileExtFromPath(slide?.CompressedFileLocation);
-      const id = getEsmStagingSlideId(slide);
-      return { id, slide, baseName, ext };
-    });
+      const id = row.__esm?.id;
 
-    const deduped = applyDuplicateStrategy(
-      filenameItems.map((it) => ({ id: it.id, baseName: it.baseName, ext: it.ext })),
-      mappingConfig?.duplicateStrategy,
-    );
+      let fileRow = yield call(slideToFileRow, slide, output_dir, criteriaRow?.deid || '');
+      if (!fileRow) continue;
 
-    const renameById = new Map();
-    for (const it of deduped) {
-      const base = it.finalBaseName || it.baseName || "";
-      renameById.set(it.id, base || "");
+      fileRow = initRowNamingSources(fileRow);
+      fileRow = applyProfilePatternsToFileRow(fileRow, profile, slide, criteriaRow);
+      prepared.push({ id, slide, criteriaRow, fileRow });
+    }
+
+    let renameById = new Map();
+    if (profile?.outputNameMapping?.enabled) {
+      const items = prepared
+        .filter((p) => p.fileRow.__reserved?.rename)
+        .map((p) => ({
+          id: p.id,
+          baseName: p.fileRow.__reserved.rename,
+          ext: getFileExtFromPath(p.slide?.CompressedFileLocation),
+        }));
+      const deduped = applyDuplicateStrategy(items, duplicateStrategy);
+      renameById = new Map(deduped.map((it) => [it.id, it.finalBaseName || it.baseName || '']));
+      for (const p of prepared) {
+        if (renameById.has(p.id)) {
+          p.fileRow.__reserved.rename = renameById.get(p.id);
+        }
+      }
     }
 
     const file_rows = [];
-    for (const it of filenameItems) {
-      const rename = renameById.get(it.id) || "";
-      if (!renameById.has(it.id) && mappingConfig?.duplicateStrategy === "skip-duplicates") {
+    for (const p of prepared) {
+      if (profile?.outputNameMapping?.enabled && !renameById.has(p.id) && duplicateStrategy === 'skip-duplicates') {
         continue;
       }
-      const row = yield call(slideToFileRow, it.slide, output_dir, rename);
-      if (row) file_rows.push(row);
+      const fileRow = applyRowNamingDefaults(p.fileRow, enrichedConfig);
+      file_rows.push(fileRow);
     }
 
     if (file_rows.length > 0) {
+      for (const field of collectEsmImportColumnFields(profile, file_rows)) {
+        yield put({ type: files_actions.ADD_FILE_COL, payload: { field } });
+      }
       yield put({ type: files_actions.ADD_FILE_ROWS, payload: file_rows });
       yield put({ type: files_actions.UPDATE_FILES_WITHOUT_METADATA });
     }

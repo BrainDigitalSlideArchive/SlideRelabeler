@@ -94,10 +94,72 @@ export function applyRules(value, rules) {
   return s;
 }
 
+/**
+ * Apply transform rules and return provenance for UI tooltips.
+ * @returns {{ value: string, original: string, changed: boolean, appliedRules: Array<{ id: string, name: string }> }}
+ */
+export function applyRulesWithProvenance(value, rules) {
+  const original = toStr(value);
+  let current = original;
+  const appliedRules = [];
+  const list = Array.isArray(rules) ? rules : [];
+
+  for (const rule of list) {
+    const next = applyRule(current, rule);
+    if (next !== current) {
+      appliedRules.push({
+        id: rule?.id != null ? String(rule.id) : '',
+        name: rule?.name?.trim() ? String(rule.name).trim() : '(unnamed rule)',
+      });
+      current = next;
+    }
+  }
+
+  return {
+    value: current,
+    original,
+    changed: current !== original,
+    appliedRules,
+  };
+}
+
+export function applyFieldTransform(value, rules) {
+  return applyRulesWithProvenance(value, rules);
+}
+
 export function getSelectedTransformRules(transformRules, selectedIds) {
   const rules = Array.isArray(transformRules) ? transformRules : [];
   const ids = Array.isArray(selectedIds) ? selectedIds : [];
   const byId = new Map(rules.filter(Boolean).map((r) => [r.id, r]));
   return ids.map((id) => byId.get(id)).filter(Boolean).filter((r) => r.enabled !== false);
+}
+
+const SUMMARY_TRUNCATE = 24;
+
+function truncateSummaryText(text) {
+  const s = String(text ?? '');
+  if (s.length <= SUMMARY_TRUNCATE) return s;
+  return `${s.slice(0, SUMMARY_TRUNCATE - 1)}…`;
+}
+
+/**
+ * One-line summary of a transform rule's steps for collapsed config UI.
+ */
+export function summarizeTransformRuleSteps(rule) {
+  const steps = (Array.isArray(rule?.steps) ? rule.steps : [])
+    .filter((step) => String(step?.find ?? '').trim());
+
+  if (steps.length === 0) return 'No steps';
+
+  if (steps.length === 1) {
+    const find = truncateSummaryText(steps[0].find);
+    const replace = truncateSummaryText(steps[0].replace ?? '');
+    return `"${find}" → "${replace}"`;
+  }
+
+  const first = steps[0];
+  const firstFind = truncateSummaryText(first.find);
+  const firstReplace = truncateSummaryText(first.replace ?? '');
+  return `${steps.length} steps: "${firstFind}" → "${firstReplace}", …`;
 }
 

@@ -1,0 +1,67 @@
+@import '../../styles/colors.scss';
+@import './SlideLabelLayout.scss';
+
+.overview-label-illustration {
+  margin: 0;
+
+  &__sticker {
+    background: linear-gradient(180deg, #ffffff 0%, #f6f7f9 100%);
+    border: 1px solid #c8cdd3;
+    border-radius: 0.25em;
+    box-shadow:
+      0 1px 2px rgba($black, 0.08),
+      inset 0 0 0 1px rgba($black, 0.04);
+    padding: 0.5em 0.625em 0.45em;
+    max-width: 100%;
+  }
+
+  &__text {
+    @include slide-label-layout-text-band;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: $config-text-primary;
+    padding: 0.35em 0.25em 0.45em;
+    border-bottom: 1px dashed #ced4da;
+    margin-bottom: 0.45em;
+  }
+
+  &__row {
+    @include slide-label-layout-bottom-row;
+  }
+
+  &__icon,
+  &__qr {
+    @include slide-label-layout-region-cell;
+    padding: 0.25em;
+    border-radius: 0.2em;
+    background: rgba($black, 0.02);
+    border: 1px solid #dee2e6;
+  }
+
+  &__icon-svg {
+    width: 2.25em;
+    height: 2.25em;
+  }
+
+  &__qr-svg {
+    width: 2.5em;
+    height: 2.5em;
+
+    rect {
+      fill: $config-text-primary;
+    }
+  }
+
+  &__region-label {
+    @include slide-label-layout-region-label;
+  }
+
+  &__caption {
+    margin-top: 0.45em;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: $config-text-tertiary;
+    text-align: center;
+  }
+}

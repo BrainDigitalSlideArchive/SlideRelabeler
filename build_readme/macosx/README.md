@@ -114,7 +114,7 @@ If you prefer to build manually or need more control over the process:
 
 2. **Create the conda environment:**
    ```bash
-   conda env create -f environment.yml
+   conda env create -f environment-macos.yml
    ```
 
    **Note:** If you encounter errors related to `rawpy` or `large-image[common]` installation, see the Troubleshooting section below.
@@ -185,7 +185,7 @@ To use the application:
 
 **Note:** This is a known historical issue with M1 Macs. The current build process should handle this automatically, but if you encounter issues:
 
-1. The error typically occurs during `conda env create -f environment.yml`
+1. The error typically occurs during `conda env create -f environment-macos.yml`
 2. If `large-image[common]` fails to install due to rawpy, you may need to manually build rawpy:
    ```bash
    # Install cmake if not already installed
@@ -227,7 +227,7 @@ To use the application:
 **Solution:**
 - Make sure the conda environment is activated: `conda activate sliderelabeler`
 - Check that PyInstaller can find the required binaries in `src/python/DeidTools/mac-bin/`
-- Verify that all dependencies in `environment.yml` installed correctly
+- Verify that all dependencies in `environment-macos.yml` installed correctly
 - Check the error messages for specific missing dependencies
 
 **Problem:** Build succeeds but app won't launch
@@ -253,11 +253,18 @@ To use the application:
 If you want to run the application in development mode (without building a distributable):
 
 ```bash
-conda activate sliderelabeler
-npm start
+npm run dev
 ```
 
-This will launch the app using your local Python installation rather than a packaged version.
+This launches Electron and sets `PYTHON` to the absolute path of the `sliderelabeler` conda interpreter (bypassing pyenv or other shims on PATH). You do not need `conda activate` for this command.
+
+If the backend fails with `ModuleNotFoundError` (for example, missing `grpc`), confirm the conda env has the required packages:
+
+```bash
+conda run -n sliderelabeler python -c "import grpc; import large_image"
+```
+
+`npm start` is still available but uses whatever `python` resolves to in your shell.
 
 To test the PyInstaller build without creating the full Electron bundle:
 

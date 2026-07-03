@@ -1,15 +1,22 @@
 import {put, select} from 'redux-saga/effects';
 import get_uuid from "./get_uuid";
 import * as files_actions from "../../actions/files";
-import {return_filename_basename_from_filename} from "../../helpers/renderer_path_helpers";
+import {
+  applyRowNamingDefaults,
+  initRowNamingSources,
+} from '../../helpers/row_naming_defaults.js';
+import {
+  DESTINATION_SOURCE,
+  initDestinationSource,
+} from '../../helpers/destination_directory.js';
 
 export function* make_file_row(file) {
-  // let metadata = yield electronAPI.getMetadata(file.source.path);
-  const basename = return_filename_basename_from_filename(file.source.filename);
-  // const file_uuid = yield get_uuid(file);
   const output_dir = yield select(state => state.files.output_dir);
 
-  let metadata = Object.assign({}, file, {rename: basename, destinationDirectory: output_dir});
+  let metadata = Object.assign({}, file, { destinationDirectory: output_dir });
+  if (output_dir) {
+    metadata = initDestinationSource(metadata);
+  }
 
   // make reserved
   let file_row = {
@@ -17,6 +24,12 @@ export function* make_file_row(file) {
   }
 
   file_row.__reserved.uuid = yield get_uuid(file_row.__reserved.source.path);
+
+  const config = yield select(state => state.config);
+  const file_cols = yield select(state => state.files.file_cols);
+  const enrichedConfig = { ...config, fileCols: file_cols };
+  file_row = initRowNamingSources(file_row);
+  file_row = applyRowNamingDefaults(file_row, enrichedConfig);
 
   return file_row;
 }

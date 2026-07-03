@@ -22,7 +22,7 @@ Before building the application, ensure you have the following installed and con
 **Miniconda3 is recommended** for this project because:
 - Smaller download size (~400MB vs ~600MB+ for Anaconda)
 - Faster installation
-- The project's `environment.yml` specifies all required dependencies, so you don't need Anaconda's pre-installed packages
+- The project's `environment-windows.yml` specifies all required dependencies, so you don't need Anaconda's pre-installed packages
 
 **Installation Steps:**
 
@@ -182,7 +182,7 @@ Conda is already in the path
 
 #### Step 2: Create Conda Environment
 - Checks if the `sliderelabeler` conda environment exists
-- If not, creates it from `environment.yml`
+- If not, creates it from `environment-windows.yml`
 - Accepts conda terms of service for default and conda-forge channels
 - Installs Python 3.12 and all required packages (large-image, openslide, pyinstaller, etc.)
 
@@ -202,7 +202,7 @@ Creating environment sliderelabeler
 - pyinstaller
 - pyvips
 - pyproj
-- And many other dependencies (see `environment.yml`)
+- And many other dependencies (see `environment-windows.yml`)
 
 #### Step 3: Activate Environment and Fix OpenSlide Bug
 - Activates the `sliderelabeler` conda environment
@@ -341,8 +341,8 @@ conda env list | Select-String -Pattern sliderelabeler
 conda tos accept
 conda tos accept --override-channels --channel conda-forge
 
-# Create environment from environment.yml
-conda env create -f environment.yml
+# Create environment from environment-windows.yml
+conda env create -f environment-windows.yml
 ```
 
 **Verify creation:**
@@ -518,7 +518,7 @@ if ((Test-Path $buildPath) -and (Test-Path "$buildPath\*.exe")) {
 #### Issue: Conda Environment Creation Fails
 
 **Symptoms:**
-- `conda env create -f environment.yml` fails
+- `conda env create -f environment-windows.yml` fails
 - Error messages about packages not found
 - Timeout errors
 
@@ -537,14 +537,14 @@ if ((Test-Path $buildPath) -and (Test-Path "$buildPath\*.exe")) {
 
 3. **Try creating environment with verbose output:**
    ```powershell
-   conda env create -f environment.yml -v
+   conda env create -f environment-windows.yml -v
    ```
 
 4. **Check internet connection** - conda needs to download packages
 
 5. **Try with specific channel priority:**
    ```powershell
-   conda env create -f environment.yml -c conda-forge -c defaults
+   conda env create -f environment-windows.yml -c conda-forge -c defaults
    ```
 
 #### Issue: OpenSlide Bug Fix Not Applied

@@ -7,3 +7,24 @@ $green: #a5ccb2;
 $red: #cca5bf;
 $light-blue: #d6e2e8;
 $beige: #F4EDD3;
+
+// Elevated panels inside blue modals (label preview, preview strip, etc.)
+$surface-elevated: #FAFAF6;
+$on-surface: #2F3A3D;
+$on-surface-muted: #5A6B72;
+$on-modal-muted: #E8EDF0;
+$border-surface: rgba($black, 0.22);
+$border-surface-strong: $darker-blue;
+$accent-label: $darker-blue;
+$surface-warning-text: #8B3A3A;
+
+// Configuration dialog light panel (dark text on neutral surface)
+$config-panel-bg: #FFFFFF;
+$config-panel-surface: #F8F9FA;
+$config-text-primary: #212529;
+$config-text-secondary: #495057;
+$config-text-tertiary: #6C757D;
+$config-border: #DEE2E6;
+$config-accent: #495057;
+$config-callout-bg: #EFF6FF;
+$config-callout-border: #BFDBFE;

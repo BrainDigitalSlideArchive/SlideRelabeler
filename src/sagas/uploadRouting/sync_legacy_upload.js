@@ -9,23 +9,28 @@ const triggerActions = [
   upload_routing_actions.RESTORE_UPLOAD_ROUTING,
   upload_routing_actions.SET_AUTO_UPLOAD,
   upload_routing_actions.TOGGLE_AUTO_UPLOAD,
-  upload_routing_actions.SET_DELETE_LOCAL_AFTER,
-  upload_routing_actions.TOGGLE_DELETE_LOCAL_AFTER,
+  upload_routing_actions.SET_KEEP_LOCAL_COPY,
+  upload_routing_actions.TOGGLE_KEEP_LOCAL_COPY,
   upload_routing_actions.SET_MAX_LOCAL_PENDING,
   upload_routing_actions.SET_UPLOAD_DESTINATION,
   upload_routing_actions.SET_AUTO_UPLOAD_MODE,
   app_actions.RESET_STORE,
 ];
 
+function deleteAfterUpload(ur) {
+  return !!(ur.auto_upload && !ur.keep_local_copy);
+}
+
 function* syncLegacyFlags() {
   const ur = yield select((s) => s.uploadRouting);
   const dsaUpload = !!(ur.auto_upload && ur.destination === 'dsa');
   const globUpload = !!(ur.auto_upload && ur.destination === 'globus');
+  const deleteAfter = deleteAfterUpload(ur);
   yield put({
     type: dsa_actions.UPDATE_DSA,
     payload: {
       upload: dsaUpload,
-      delete_after: dsaUpload && ur.delete_local_after,
+      delete_after: dsaUpload && deleteAfter,
       upload_throttle_limit: ur.max_local_pending,
     },
   });
@@ -33,7 +38,7 @@ function* syncLegacyFlags() {
     type: globus_actions.SYNC_UPLOAD_PREFS_FROM_ROUTING,
     payload: {
       upload: globUpload,
-      delete_after: globUpload && ur.delete_local_after,
+      delete_after: globUpload && deleteAfter,
     },
   });
 }

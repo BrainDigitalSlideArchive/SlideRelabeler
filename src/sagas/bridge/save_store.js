@@ -12,7 +12,10 @@ import * as esm_actions from '../../actions/esm';
 import * as dsa_actions from '../../actions/dsa';
 import * as globus_actions from '../../actions/globus';
 import * as upload_routing_actions from '../../actions/uploadRouting';
+import * as auditLog_actions from '../../actions/auditLog';
+import * as api_integrations_actions from '../../actions/apiIntegrations';
 import { initialSessionMetrics } from '../../reducers/files/default_state';
+import { makeEmptySearchFeedback } from '../../helpers/esm_search_feedback';
 
 const globus_actions_for_save = Object.values(globus_actions).filter(
   (a) => a !== globus_actions.GLOBUS_UPLOAD_COORDINATOR_TICK
@@ -25,6 +28,8 @@ let actions_to_save = [
   ...Object.values(dsa_actions),
   ...globus_actions_for_save,
   ...Object.values(upload_routing_actions),
+  ...Object.values(auditLog_actions),
+  ...Object.values(api_integrations_actions),
 ]
 
 function* watch_save_store() {
@@ -37,22 +42,18 @@ function* watch_save_store() {
     const storeToSave = {
       ...store,
       esm: store.esm ? {
-        url: store.esm.url,
-        username: store.esm.username,
-        // password: NOT persisted
-        mappingConfig: store.esm.mappingConfig,
-        transformRules: store.esm.transformRules,
-        selectedTransformRuleIds: store.esm.selectedTransformRuleIds,
-        searchRows: store.esm.searchRows,
-        // Clear all auth/session state:
+        integrationEnabled: store.esm.integrationEnabled,
+        rememberUsername: store.esm.rememberUsername,
+        username: store.esm.rememberUsername ? store.esm.username : '',
+        profiles: store.esm.profiles,
+        activeProfileId: store.esm.activeProfileId,
         authenticated: false,
         authToken: null,
         loading: false,
         error: false,
         errorMessage: null,
         searchLoading: false,
-        searchError: false,
-        searchErrorMessage: null,
+        searchFeedback: makeEmptySearchFeedback(),
         results: [],
         slidesByAccession: {},
         selectedIds: [],
@@ -74,11 +75,15 @@ function* watch_save_store() {
         dsa_folder_error_message: null,
       } : store.dsa,
       uploadRouting: store.uploadRouting ? {
+        local_output_enabled: store.uploadRouting.local_output_enabled,
         auto_upload: store.uploadRouting.auto_upload,
-        delete_local_after: store.uploadRouting.delete_local_after,
+        keep_local_copy: store.uploadRouting.keep_local_copy,
+        staging_dir_mode: store.uploadRouting.staging_dir_mode,
+        staging_dir_custom: store.uploadRouting.staging_dir_custom,
         max_local_pending: store.uploadRouting.max_local_pending,
         max_globus_parallel_uploads: store.uploadRouting.max_globus_parallel_uploads,
         destination: store.uploadRouting.destination,
+        default_local_output_dir: store.uploadRouting.default_local_output_dir ?? '',
       } : store.uploadRouting,
       globus: store.globus ? {
         disable_ssl_verification: store.globus.disable_ssl_verification,
@@ -111,6 +116,10 @@ function* watch_save_store() {
       files: store.files
         ? { ...store.files, session_metrics: { ...initialSessionMetrics } }
         : store.files,
+      auditLog: store.auditLog ?? undefined,
+      apiIntegrations: store.apiIntegrations ? {
+        lastSelectedId: store.apiIntegrations.lastSelectedId,
+      } : store.apiIntegrations,
     };
     
     const response = yield set_store(storeToSave);

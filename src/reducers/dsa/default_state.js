@@ -1,6 +1,5 @@
 const default_state = {
-    // api_url: 'https://braincomp.pathology.pitt.edu/dsa/api/v1',
-    api_url: 'https://pearcelab.pitt.edu/dsa/api/v1',
+    api_url: '',
     api_auth: null,
     username: '',
     password: '',

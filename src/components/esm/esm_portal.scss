@@ -1,0 +1,311 @@
+@import '../../styles/colors.scss';
+@import './esm_light_panel_shared';
+
+.esm-portal {
+  .config-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .config-panel__body--gate {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .config-panel__body--workspace {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.esm-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid $config-border;
+  border-radius: 0.35rem;
+  background: $config-panel-bg;
+  color: $config-text-primary;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: $config-panel-surface;
+    border-color: darken($config-border, 6%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba($config-accent, 0.35);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.esm-login-card {
+  width: min(24rem, 100%);
+  padding: 1.25rem 1.35rem 1.35rem;
+  border: 1px solid $config-border;
+  border-radius: 0.65rem;
+  background: $config-panel-bg;
+  box-shadow:
+    0 8px 24px rgba($black, 0.08),
+    0 2px 6px rgba($black, 0.04);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: $config-text-primary;
+  }
+
+  &__cancel {
+    padding: 0;
+    border: none;
+    background: none;
+    color: $config-text-secondary;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    &:hover:not(:disabled) {
+      color: $config-text-primary;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__error {
+    margin: 0 0 0.85rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.35rem;
+    border: 1px solid rgba($surface-warning-text, 0.35);
+    background: rgba($surface-warning-text, 0.08);
+    color: $surface-warning-text;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  &__profile-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 1rem;
+    border: 1px solid $config-border;
+    border-radius: 0.4rem;
+    overflow: hidden;
+    background: $config-panel-bg;
+  }
+
+  &__select {
+    flex: 1;
+    min-width: 0;
+    height: 2.25rem;
+    padding: 0 1.75rem 0 0.65rem;
+    border: none;
+    border-right: 1px solid $config-border;
+    background-color: $config-panel-bg;
+    color: $config-text-primary;
+    font-size: 0.875rem;
+    font-family: inherit;
+    font-weight: 500;
+    color-scheme: light;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212529' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.85em;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  &__gear-wrap {
+    display: flex;
+    align-items: stretch;
+  }
+
+  &__gear {
+    border: none;
+    border-radius: 0;
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+
+  &__empty {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: $config-text-secondary;
+    text-align: center;
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  &__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $config-text-primary;
+  }
+
+  &__input {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 2.35rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid $config-border;
+    border-radius: 0.35rem;
+    background: $config-panel-bg;
+    color: $config-text-primary;
+    font-size: 0.875rem;
+    font-family: inherit;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    &._error {
+      border-color: rgba($surface-warning-text, 0.65);
+    }
+  }
+
+  &__remember {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.15rem 0 0;
+    font-size: 0.8125rem;
+    color: $config-text-primary;
+    cursor: pointer;
+
+    input {
+      accent-color: $config-accent;
+      cursor: pointer;
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  &__already-in {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.35rem;
+    background: $config-panel-surface;
+    border: 1px solid $config-border;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: $config-text-secondary;
+    text-align: center;
+  }
+
+  &__submit {
+    appearance: none;
+    width: 100%;
+    margin-top: 0.85rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid $esm-primary;
+    border-radius: 0.4rem;
+    background: $esm-primary;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background: $esm-primary-hover;
+      border-color: $esm-primary-hover;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.esm-session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  flex-shrink: 0;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid $config-border;
+  background: $config-panel-surface;
+
+  &__identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  &__profile {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $config-text-secondary;
+  }
+
+  &__username {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: $config-text-primary;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+}

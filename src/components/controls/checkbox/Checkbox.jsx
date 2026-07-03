@@ -15,6 +15,7 @@ function Checkbox(props) {
     checkboxId,
     tooltip,
     helpVariant,
+    compact = false,
   } = props;
 
   function toggle() {
@@ -34,6 +35,7 @@ function Checkbox(props) {
     'Checkbox',
     disabled ? '_disabled' : '',
     hasHelp ? 'Checkbox--hasHelp' : '',
+    compact ? 'Checkbox--compact' : '',
   ]
     .filter(Boolean)
     .join(' ');

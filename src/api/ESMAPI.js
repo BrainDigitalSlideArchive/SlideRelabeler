@@ -1,5 +1,145 @@
 import { net } from 'electron';
 import { XMLParser } from "fast-xml-parser";
+import { rewriteRelayRedirectUrl } from '../helpers/esm_relay_redirect.js';
+import {
+    getResponseFinalUrl,
+    isLoginPageUrl,
+    validateLoginStepResponse,
+    validateRecordsListSetupResponse,
+} from '../helpers/esm_login_validation.js';
+
+function toStr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v);
+}
+
+function normalizeEsmBaseUrl(url) {
+    const t = String(url ?? '').trim();
+    if (!t) return '';
+    return t.replace(/\/$/, '');
+}
+
+function logLoginStepFailure(step, response, message) {
+    console.error('eSlideManager login step failed:', {
+        step,
+        status: response?.status,
+        finalUrl: getResponseFinalUrl(response),
+        message,
+    });
+}
+
+function logSearchStepFailure(step, response, message) {
+    console.error('eSlideManager search step failed:', {
+        step,
+        status: response?.status,
+        finalUrl: getResponseFinalUrl(response),
+        contentType: response?.headers?.['content-type'],
+        message,
+    });
+}
+
+const MAX_AUTH_RETRIES = 1;
+
+/**
+ * True when eSM list payload indicates zero records (no Rows array).
+ */
+function indicatesZeroRecords(data) {
+    if (!data || typeof data !== 'object') return false;
+    const countKeys = ['TotalRecords', 'RecordCount', 'TotalRecordCount', 'totalRecords', 'recordCount'];
+    for (const key of countKeys) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            const n = Number(data[key]);
+            if (!Number.isNaN(n) && n === 0) return true;
+        }
+    }
+    if (data.Rows === null) return true;
+    if (Array.isArray(data.Rows) && data.Rows.length === 0) return true;
+    return false;
+}
+
+/**
+ * True when payload looks like an error page, session expiry, or explicit error text.
+ */
+function looksLikeErrorPayload(data) {
+    if (!data) return true;
+    if (typeof data === 'string') {
+        const s = data.toLowerCase();
+        return s.includes('<html') || s.includes('login') || s.includes('error');
+    }
+    if (typeof data !== 'object') return false;
+    if (data.Alert) return true;
+    if (data.Warning) return true;
+    if (data.error || data.Error || data.errorMessage) return true;
+    const msg = toStr(data.message || data.Message);
+    if (msg && /error|login|session|expired|denied/i.test(msg)) return true;
+    return false;
+}
+
+function esmPayloadErrorMessage(data, fallback = 'eSlideManager request failed') {
+    if (!data) return fallback;
+    if (typeof data === 'string') return data.slice(0, 500) || fallback;
+    if (data.Alert) return String(data.Alert);
+    if (data.Warning) return String(data.Warning);
+    if (data.message) return String(data.message);
+    if (data.Message) return String(data.Message);
+    if (data.error) return String(data.error);
+    return fallback;
+}
+
+function parseSlideRows(rows) {
+    const fields = ['BlockId', 'StainId', 'BarcodeId', 'CompressedFileLocation', 'ScanDate'];
+    return rows.map((row) => {
+        const slide = fields.reduce((obj, field) => {
+            obj[field] = row.Cells[field].Contents;
+            return obj;
+        }, {});
+        slide.ImageId = row.Attributes.ImageIds;
+        const slideNumMatch = slide.BarcodeId.match(/;s(\d+);/i);
+        slide.SlideNum = slideNumMatch ? parseInt(slideNumMatch[1], 10) : null;
+        slide.SlideId = row.Attributes.Ids;
+        return slide;
+    });
+}
+
+function parseFilteredRecordListResponse(response) {
+    if (!response.data) {
+        console.error('Response data is undefined. Status:', response.status);
+        return Promise.reject({
+            error: 'no_data',
+            message: 'Invalid response: no data returned from eSlideManager.',
+        });
+    }
+
+    const data = response.data;
+
+    if (data.Rows) {
+        if (!Array.isArray(data.Rows)) {
+            console.error('Response data.Rows is not an array:', typeof data.Rows, data.Rows);
+            return Promise.reject({
+                error: 'invalid_rows',
+                message: 'Invalid response: Rows is not an array.',
+            });
+        }
+        return parseSlideRows(data.Rows);
+    }
+
+    if (indicatesZeroRecords(data)) {
+        return [];
+    }
+
+    if (looksLikeErrorPayload(data)) {
+        console.error('eSM response looks like an error payload:', data);
+        logSearchStepFailure('GetFilteredRecordList', response, esmPayloadErrorMessage(data, 'eSlideManager returned an error. Try logging in again.'));
+        return Promise.reject({
+            error: 'error_payload',
+            message: esmPayloadErrorMessage(data, 'eSlideManager returned an error. Try logging in again.'),
+            data,
+        });
+    }
+
+    console.warn('eSM response missing Rows; treating as empty result. Payload:', data);
+    return [];
+}
 
 /**
  * Default browser-like headers for eSlideManager requests
@@ -101,21 +241,180 @@ function makeRequest(options) {
     });
 }
 
+const MAX_ESM_REDIRECTS = 10;
+
+function buildNetResponse(finalUrl, originalUrl, statusCode, statusText, responseHeaders, responseData) {
+    const contentType = responseHeaders['content-type'] || '';
+    let parsedData = responseData;
+    if (contentType.includes('application/json')) {
+        try {
+            parsedData = JSON.parse(responseData);
+        } catch (e) {
+            // keep string
+        }
+    }
+    return {
+        status: statusCode,
+        statusText: statusText || 'OK',
+        headers: responseHeaders,
+        data: parsedData,
+        request: {
+            res: {
+                responseUrl: finalUrl,
+            },
+            path: new URL(finalUrl).pathname,
+        },
+        config: {
+            url: originalUrl,
+        },
+    };
+}
+
+/**
+ * Relay-mode HTTP via net.request with manual redirect following and URL rewrite.
+ */
+function makeRelayRequest(client, options) {
+    return new Promise((resolve, reject) => {
+        const initialMethod = options.method || 'GET';
+        const headers = { ...DEFAULT_HEADERS, ...(options.headers || {}) };
+        const initialBody = options.data && (initialMethod === 'POST' || initialMethod === 'PUT')
+            ? options.data
+            : undefined;
+        let hop = 0;
+        let requestGeneration = 0;
+
+        function startRequest(url, method, body) {
+            const myGeneration = ++requestGeneration;
+            const request = net.request({
+                method: method || 'GET',
+                url,
+                redirect: 'manual',
+                useSessionCookies: true,
+            });
+
+            Object.keys(headers).forEach((key) => {
+                request.setHeader(key, headers[key]);
+            });
+
+            if (body && (method === 'POST' || method === 'PUT')) {
+                request.write(body);
+            }
+
+            request.on('redirect', (statusCode, redirectMethod, redirectUrl) => {
+                if (myGeneration !== requestGeneration) return;
+                hop += 1;
+                if (hop > MAX_ESM_REDIRECTS) {
+                    request.abort();
+                    reject(new Error('eSlideManager: too many redirects'));
+                    return;
+                }
+                const rewritten = client.rewriteRelayRedirect(redirectUrl, url);
+                request.abort();
+                const nextBody = (redirectMethod === 'POST' || redirectMethod === 'PUT') ? body : undefined;
+                startRequest(rewritten, redirectMethod, nextBody);
+            });
+
+            request.on('response', (response) => {
+                if (myGeneration !== requestGeneration) return;
+
+                const statusCode = response.statusCode;
+                const finalUrl = response.url || url;
+                let responseData = '';
+                const responseHeaders = {};
+                const rawHeaders = response.headers || {};
+                Object.keys(rawHeaders).forEach((key) => {
+                    responseHeaders[key.toLowerCase()] = rawHeaders[key];
+                });
+
+                if (statusCode >= 300 && statusCode < 400) {
+                    const locationHeader = responseHeaders.location;
+                    const location = Array.isArray(locationHeader) ? locationHeader[0] : locationHeader;
+                    if (location) {
+                        hop += 1;
+                        if (hop > MAX_ESM_REDIRECTS) {
+                            request.abort();
+                            reject(new Error('eSlideManager: too many redirects'));
+                            return;
+                        }
+                        const rewritten = client.rewriteRelayRedirect(location, url);
+                        request.abort();
+                        startRequest(rewritten, 'GET', undefined);
+                        return;
+                    }
+                }
+
+                response.on('data', (chunk) => {
+                    responseData += chunk.toString();
+                });
+
+                response.on('end', () => {
+                    if (myGeneration !== requestGeneration) return;
+                    resolve(buildNetResponse(
+                        finalUrl,
+                        options.url,
+                        statusCode,
+                        response.statusMessage,
+                        responseHeaders,
+                        responseData,
+                    ));
+                });
+            });
+
+            request.on('error', (error) => {
+                if (myGeneration !== requestGeneration) return;
+                console.error('eSlideManager relay request error:', error.message || error);
+                reject(error);
+            });
+
+            request.end();
+        }
+
+        startRequest(options.url, initialMethod, initialBody);
+    });
+}
+
+function makeEsmRequest(client, options) {
+    if (client.usingRelay) {
+        return makeRelayRequest(client, options);
+    }
+    return makeRequest(options);
+}
+
 /**
  * eSlideManager API client
  * Handles authentication and slide search functionality
  */
 class ESMAPI {
     /**
-     * @param {string} [api_url='https://eslide.upmc.edu'] - Base URL for eSlideManager API
+     * @param {string} [canonicalUrl=''] - Canonical eSM base URL
+     * @param {{ proxyUrl?: string }} [options]
      */
-    constructor(api_url = 'https://eslide.upmc.edu') {
-        this.api_url = api_url;
+    constructor(canonicalUrl = '', options = {}) {
+        const proxyUrl = options.proxyUrl ?? '';
+        this.canonicalBase = normalizeEsmBaseUrl(canonicalUrl) || '';
+        this.proxyBase = normalizeEsmBaseUrl(proxyUrl) || null;
+        this.usingRelay = Boolean(this.proxyBase);
+        this.api_url = this.proxyBase || this.canonicalBase;
         this.currentUsername = null;
         this.currentPassword = null;
         this.lookupPromise = null;
         this.xmlparser = new XMLParser();
         this.loginURL = `${this.api_url}/Login.php`;
+    }
+
+    esmUrl(relativePath) {
+        const path = String(relativePath).replace(/^\//, '');
+        return `${this.api_url}/${path}`;
+    }
+
+    rewriteRelayRedirect(redirectUrl, currentUrl) {
+        if (!this.usingRelay) return redirectUrl;
+        return rewriteRelayRedirectUrl(
+            redirectUrl,
+            currentUrl || this.api_url,
+            this.canonicalBase,
+            this.proxyBase,
+        );
     }
 
     /**
@@ -125,38 +424,33 @@ class ESMAPI {
      * @returns {Promise<Object>} Response object or error object with {error: 'login error', message: string}
      */
     doLogin(username, password) {
-        return makeRequest({
+        return makeEsmRequest(this, {
             method: 'GET',
-            url: this.loginURL
+            url: this.loginURL,
         })
             .then(() => {
                 const formData = new URLSearchParams();
                 formData.append('user', username);
                 formData.append('password', password);
-                
-                return makeRequest({
+
+                return makeEsmRequest(this, {
                     method: 'POST',
-                    url: `${this.api_url}/authenticate.php`,
+                    url: this.esmUrl('authenticate.php'),
                     data: formData.toString(),
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'Referer': this.loginURL,
-                        'Origin': this.api_url
-                    }
+                        'Origin': this.api_url,
+                    },
                 });
             })
-            .then(response => {
-                // Get final URL to check if login was successful
-                const finalUrl = response.request?.res?.responseUrl || 
-                               response.request?.responseURL ||
-                               response.config.url;
-                
-                if (finalUrl && finalUrl.split('?')[0] === this.loginURL) {
-                    // Login failed - redirected back to login page
+            .then((authResponse) => {
+                const finalUrl = getResponseFinalUrl(authResponse);
+
+                if (isLoginPageUrl(finalUrl)) {
                     this.currentUsername = '';
                     this.currentPassword = '';
-                    
-                    // Extract error message from query parameters if present
+
                     let errorMessage = 'Login failed';
                     try {
                         const urlObj = new URL(finalUrl);
@@ -167,22 +461,51 @@ class ESMAPI {
                     } catch (urlError) {
                         // Ignore parsing errors
                     }
-                    
-                    console.error('eSlideManager login failed:', errorMessage);
+
+                    logLoginStepFailure('authenticate', authResponse, errorMessage);
                     return { error: 'login error', message: errorMessage };
-                } else {
-                    // Login successful - cache credentials
-                    this.currentUsername = username;
-                    this.currentPassword = password;
-                    
-                    return makeRequest({
-                        method: 'GET',
-                        url: `${this.api_url}/DetermineHierarchy.php?RoleId=99&HierarchyId=1`,
-                        headers: {
-                            'Referer': `${this.api_url}/authenticate.php`
-                        }
-                    });
                 }
+
+                const authCheck = validateLoginStepResponse(authResponse, 'authenticate');
+                if (authCheck.error) {
+                    this.currentUsername = '';
+                    this.currentPassword = '';
+                    logLoginStepFailure('authenticate', authResponse, authCheck.error);
+                    return { error: 'login error', message: authCheck.error };
+                }
+                if (authCheck.loginRequired) {
+                    this.currentUsername = '';
+                    this.currentPassword = '';
+                    logLoginStepFailure('authenticate', authResponse, 'Login failed');
+                    return { error: 'login error', message: 'Login failed' };
+                }
+
+                this.currentUsername = username;
+                this.currentPassword = password;
+
+                return makeEsmRequest(this, {
+                    method: 'GET',
+                    url: this.esmUrl('DetermineHierarchy.php?RoleId=99&HierarchyId=1'),
+                    headers: {
+                        'Referer': this.esmUrl('authenticate.php'),
+                    },
+                });
+            })
+            .then((response) => {
+                if (response?.error) return response;
+
+                const hierarchyCheck = validateLoginStepResponse(response, 'DetermineHierarchy');
+                if (hierarchyCheck.error || hierarchyCheck.loginRequired) {
+                    this.currentUsername = '';
+                    this.currentPassword = '';
+                    const message = hierarchyCheck.error || 'Login session could not be established';
+                    logLoginStepFailure('DetermineHierarchy', response, message);
+                    return {
+                        error: 'login error',
+                        message,
+                    };
+                }
+                return { ok: true };
             });
     }
 
@@ -196,12 +519,29 @@ class ESMAPI {
         if (username === this.currentUsername && password === this.currentPassword && this.currentUsername && this.currentPassword) {
             return { ok: true };
         }
-        return this.doLogin(username, password).then(response => {
+        return this.doLogin(username, password).then((response) => {
             if (response.error) {
-                return { error: 'Login failed', ok: false };
-            } else {
-                return { ok: true };
+                console.error('eSlideManager login failed:', {
+                    message: response.message || response.error,
+                });
+                return { error: response.message || 'Login failed', ok: false };
             }
+            return { ok: true };
+        });
+    }
+
+    retryAuthAndFindSlides(username, password, accessionNumber, authRetryDepth) {
+        if (authRetryDepth >= MAX_AUTH_RETRIES) {
+            return Promise.reject({
+                error: 'auth_exhausted',
+                message: 'Session expired or login failed. Log out and log in again.',
+            });
+        }
+        return this.doLogin(username, password).then((loginResponse) => {
+            if (loginResponse.error) {
+                return { error: 'login failed', message: loginResponse.message };
+            }
+            return this.findSlides(username, password, accessionNumber, authRetryDepth + 1);
         });
     }
 
@@ -212,7 +552,7 @@ class ESMAPI {
      * @param {string} [accessionNumber=''] - Accession number to search for
      * @returns {Promise<Array>} Array of slide objects with BlockId, StainId, BarcodeId, etc.
      */
-    findSlides(username, password, accessionNumber = '') {
+    findSlides(username, password, accessionNumber = '', authRetryDepth = 0) {
         if (typeof accessionNumber !== 'string') {
             return Promise.reject({ error: 'Accession number must be a string' });
         }
@@ -233,31 +573,36 @@ class ESMAPI {
         }
 
         return Promise.resolve(promise).then(() => {
-            return makeRequest({
+            return makeEsmRequest(this, {
                 method: 'POST',
-                url: `${this.api_url}/Records_List.php`,
+                url: this.esmUrl('Records_List.php'),
                 data: formData.toString(),
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Referer': `${this.api_url}/Login.php`,
+                    'Referer': this.loginURL,
                     'Origin': this.api_url
                 }
             });
         })
         .then(response => {
-            // if redirected to the login page, log in, then retry
             const finalUrl = response.request?.res?.responseUrl || 
                            response.request?.responseURL ||
                            response.config.url;
-            
-            if (finalUrl && finalUrl.startsWith(this.loginURL)) {
-                return this.doLogin(username, password).then(loginResponse => {
-                    if (loginResponse.error) {
-                        //login failed, return a login error
-                        return {error: 'login failed'};
-                    } else {
-                        return this.findSlides(username, password, accessionNumber);
-                    }
+            const redirectedToLogin = isLoginPageUrl(finalUrl);
+
+            if (redirectedToLogin) {
+                return this.retryAuthAndFindSlides(username, password, accessionNumber, authRetryDepth);
+            }
+
+            const recordsListCheck = validateRecordsListSetupResponse(response);
+            if (recordsListCheck.loginRequired) {
+                return this.retryAuthAndFindSlides(username, password, accessionNumber, authRetryDepth);
+            }
+            if (recordsListCheck.error) {
+                logSearchStepFailure('Records_List', response, recordsListCheck.error);
+                return Promise.reject({
+                    error: 'records_list_failed',
+                    message: recordsListCheck.error,
                 });
             }
 
@@ -272,50 +617,18 @@ class ESMAPI {
             formData2.append('IsExpanded', 1);
             formData2.append('AJAX', 1);
             
-            return makeRequest({
+            return makeEsmRequest(this, {
                 method: 'POST',
-                url: `${this.api_url}/GetFilteredRecordList.php`,
+                url: this.esmUrl('GetFilteredRecordList.php'),
                 data: formData2.toString(),
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Referer': `${this.api_url}/Records_List.php`,
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Referer': this.esmUrl('Records_List.php'),
                     'Origin': this.api_url
                 }
             })
-                .then(response => {
-                    // Check if response.data exists and has Rows
-                    if (!response.data) {
-                        console.error('Response data is undefined. Status:', response.status);
-                        return Promise.reject({ error: 'no_data', message: 'Invalid response: no data' });
-                    }
-                    
-                    if (!response.data.Rows) {
-                        console.error('Response data.Rows is undefined. Response data:', response.data);
-                        return Promise.reject({ error: 'no_rows', message: 'Invalid response: no Rows in data. The server may have returned an error or different format.', data: response.data });
-                    }
-                    
-                    if (!Array.isArray(response.data.Rows)) {
-                        console.error('Response data.Rows is not an array:', typeof response.data.Rows, response.data.Rows);
-                        return Promise.reject({ error: 'invalid_rows', message: 'Invalid response: Rows is not an array' });
-                    }
-                    
-                    // Extract slide data from response
-                    const fields = ['BlockId', 'StainId', 'BarcodeId', 'CompressedFileLocation', 'ScanDate'];
-                    const data = response.data.Rows.map(row => {
-                        const slide = fields.reduce((obj, field) => {
-                            obj[field] = row.Cells[field].Contents;
-                            return obj;
-                        }, {});
-                        slide.ImageId = row.Attributes.ImageIds;
-                        // Extract slide number from barcode (format: ;s<number>;)
-                        const slideNumMatch = slide.BarcodeId.match(/;s(\d+);/i);
-                        slide.SlideNum = slideNumMatch ? parseInt(slideNumMatch[1]) : null;
-                        slide.SlideId = row.Attributes.Ids;
-                        return slide;
-                    });
-                    
-                    return data;
-                });
+                .then((response) => parseFilteredRecordListResponse(response));
         })
         .catch(e => {
             console.error('eSlideManager search error:', e.message || e);
@@ -335,22 +648,21 @@ class ESMAPI {
      * @returns {Promise<Array>} Array of slide objects
      */
     searchByAccession(username, password, accessionNumber = '') {
-        // Queue requests to ensure only one search is active at a time
-        if (this.lookupPromise) {
-            return this.lookupPromise.then(() => {
-                this.lookupPromise = this.findSlides(username, password, accessionNumber);
-                return this.lookupPromise;
-            });
-        } else {
+        const runSearch = () => {
             this.lookupPromise = this.findSlides(username, password, accessionNumber);
             return this.lookupPromise.then(result => {
-                this.lookupPromise = null; // Clear after completion
+                this.lookupPromise = null;
                 return result;
             }).catch(error => {
-                this.lookupPromise = null; // Clear on error
+                this.lookupPromise = null;
                 throw error;
             });
+        };
+
+        if (this.lookupPromise) {
+            return this.lookupPromise.then(() => runSearch());
         }
+        return runSearch();
     }
 
     /**

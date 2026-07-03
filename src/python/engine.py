@@ -188,14 +188,44 @@ def bootstrap_env() -> Dict[str, Any]:
   return json_setup
 
 
+def _maybe_install_patchlibtiff_guard() -> None:
+  """Install tiff_reader guard on darwin/arm64 (auto) or when SLIDERELABELER_PATCH_LIBTIFF=1."""
+  from patch_libtiff_platform import patch_libtiff_mode, should_patch_libtiff
+
+  if not should_patch_libtiff():
+    return
+  from libtiff_guard import install_patchlibtiff_guard
+
+  install_patchlibtiff_guard()
+  mode = patch_libtiff_mode()
+  mode_label = "auto-enabled (darwin/arm64)" if mode == "auto" else "forced (SLIDERELABELER_PATCH_LIBTIFF=1)"
+  print(
+    f"[engine] libtiff guard {mode_label}: tiff_reader patches registered "
+    "(patchLibtiff + _getJpegTables + _getJpegFrameSize)",
+    file=sys.stderr,
+    flush=True,
+  )
+
+
 # -----------------------------
 # Heavy imports after bootstrap
 # -----------------------------
 bootstrap_env()
+_maybe_install_patchlibtiff_guard()
 
 import base64  # noqa: E402 (still used internally if needed)
 import large_image  # noqa: E402
 from DeidTools import DeidTools  # noqa: E402
+
+from patch_libtiff_platform import should_patch_libtiff
+
+if should_patch_libtiff():
+  from libtiff_guard import is_guard_active
+  print(
+    f"[engine] libtiff guard active: guard_executed={is_guard_active()}",
+    file=sys.stderr,
+    flush=True,
+  )
 
 large_image.config.setConfig('cache_sources', False)
 
@@ -320,9 +350,21 @@ def any_to_struct(obj: Any) -> Struct:
 # Original functionality (same semantics)
 # -----------------------------
 
+def _assert_slide_path_readable(file: str) -> None:
+  if not file or not str(file).strip():
+    raise FileNotFoundError("Slide path is empty")
+  if not os.path.exists(file):
+    raise FileNotFoundError(f"File not found: {file}")
+  if not os.path.isfile(file):
+    raise IsADirectoryError(f"Not a file: {file}")
+  if not os.access(file, os.R_OK):
+    raise PermissionError(f"Cannot read file: {file}")
+
+
 def openFile(file: str, second: bool = False):
   source = openFiles.get(file)
   if not source:
+    _assert_slide_path_readable(file)
     try:
       source = large_image.open(file)
       openFiles[file] = source
@@ -334,6 +376,7 @@ def openFile(file: str, second: bool = False):
 
 
 def getMetadata(file: str) -> Dict[str, Any]:
+  _assert_slide_path_readable(file)
   source = openFile(file)
   return {
     "metadata": source.getMetadata(),
@@ -423,9 +466,7 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
       )
     except Exception:
       exc = traceback.format_exc()
-      _push_error(exc)
-      context.set_code(grpc.StatusCode.INTERNAL)
-      context.set_details("internal_error")
+      _set_internal_error(context, "GetMetadata", exc)
       return engine_pb2.MetadataReply()
 
   def GetThumbnail(self, request: engine_pb2.FileRequest, context: grpc.ServicerContext) -> engine_pb2.ImageReply:
@@ -508,6 +549,11 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
     try:      
       d = struct_to_dict(request.data)
       out = preview_metadata(d)
+      prior_ifds = out.get("prior_ifds") if isinstance(out, dict) else None
+      new_ifds = out.get("new_ifds") if isinstance(out, dict) else None
+      prior_len = len(prior_ifds) if isinstance(prior_ifds, list) else 0
+      new_len = len(new_ifds) if isinstance(new_ifds, list) else 0
+      print(f"[metadata-preview] PreviewMetadata OK prior={prior_len} new={new_len}", flush=True)
       return engine_pb2.PreviewMetadataReply(data=any_to_struct(out))
     except Exception:
       exc = traceback.format_exc()

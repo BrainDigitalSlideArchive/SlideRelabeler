@@ -121,4 +121,12 @@ if os.path.exists(output_dict['source']['path']):
 
     output = deid_tools.preview_label(output_dict_11)
     output.save('test_null_text_qr.png')
+
+    # Side-by-side icon + QR layout (see test_label_layout.py for assertions)
+    output_dict_12 = copy.deepcopy(output_dict)
+    output_dict_12['config']['label']['add_text'] = False
+    output_dict_12['config']['label']['add_icon'] = True
+    output_dict_12['config']['label']['add_qr'] = True
+    output = deid_tools.preview_label(output_dict_12)
+    output.save('test_icon_qr_row.png')
     pass

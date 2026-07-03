@@ -80,12 +80,11 @@ function ModalHelp(props) {
             deidentified files for your specific use case.
           </p>
           <p>
-            Filename configuration is by default a client side generated uuid based on the input file's path.
-            If you select the rename option the output filename will by default match the input filename unless you've
-            loaded files using a csv file featuring a rename column and setup your CSV input accordingly.  If you use the rename 
-            feature you can change the rename value in the main window's table.  You are able to add text by default to all output filenames either
-            at the beginning ("prefix") or ending ("suffix").  You can alter the possible fields here to see an example of
-            what the output filename would look like.
+            Filename configuration is by default a client-side generated UUID based on the input file&apos;s path.
+            You can keep the original basename, use a UUID, or build a custom pattern from placeholders such as{' '}
+            <code>{'{uuid}'}</code> or <code>{'{originalBasename}'}</code> (for example, <code>deid_{'{uuid}'}</code>).
+            If you load files from a CSV with an output-name column, those values override the default per row.
+            You can also edit the Output name column in the main table at any time.
           </p>
           <p>
             Whole slide image configuration by default removes this macro image as it may contain sensitive patient information.
@@ -104,8 +103,9 @@ function ModalHelp(props) {
             a column that contains the filename for your target files.  Using this field is required by the CSV import functionality
             if you do not put in the correct column name, you will be given an opportunity to select it before processing the files. 
             There are also optional columns you can specify that control the filename rename feature or where the file gets outputed.
-            By default the application creates an output CSV file in your output directory with a deid_output.csv filename.
-            You can toggle whether to save the output csv file or not using the labeled checkbox in this section.
+            Processing events are recorded in an in-app audit history (see Audit logging in configuration).
+            You can browse, filter, and export that history to CSV when you need an external record.
+            Export chooses the file name and location; no CSV is written automatically to the output directory.
           </p>
         </div>
         <div className={"__content-section"}>
@@ -136,7 +136,7 @@ function ModalHelp(props) {
           <p>
             This application is a work in progress and is dependent upon feedback you provide to improve the application
             and ensure it works as expected.  If you have any feedback please provide it to the developers of the application
-            <a href={"mailto:arosad2@protonmail.ch"}>Aaron Rosado</a> and <a href={"mailto:pearcetm@upmc.edu"}>Tom Pierce</a>
+            <a href={"mailto:arosad2@protonmail.ch"}>Aaron Rosado</a> and <a href={"mailto:tmpearce@gmail.com"}>Tom Pierce</a>
           </p>
         </div>
       </div>

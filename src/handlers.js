@@ -1,27 +1,59 @@
 import { ipcMain, dialog, BrowserWindow, app, safeStorage, shell } from 'electron';
 import { GrpcPythonBridge } from './bridge/grpcPythonBridge';
-import path, { join } from 'path';
+import { logMetadataPreview, summarizeMetadataPayload } from './helpers/metadata_preview_debug';
+import path, { join, extname } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
-import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { registerRoute } from './routers/main-electron-router';
 import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 import GlobusAPI from './api/GlobusAPI';
+import { buildDeidUploadMetadata } from './helpers/dsa_upload_metadata.js';
+import {
+  checkSlidePathAccessible,
+  buildPathErrorForIpc,
+} from './helpers/slide_path_access.js';
+import { WSI_DIALOG_EXTENSIONS, isWsiExtension } from './helpers/wsi_extensions.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
 
 export { bridge };
 
-const wsiCustomFilter = { name: 'WSI Files (*.svs, *.ndpi, *.tif, *.tiff)', extensions: ['svs', 'ndpi', 'tif', 'tiff'] };
+const wsiCustomFilter = {
+  name: `WSI Files (${WSI_DIALOG_EXTENSIONS.map((e) => `*.${e}`).join(', ')})`,
+  extensions: WSI_DIALOG_EXTENSIONS,
+};
 let upload_status = {
 };
 
 let dsa_client = null;
 let esm_client = null;
+let esm_client_config_key = null;
+
+function esmConnectionKey(canonicalUrl, proxyUrl) {
+  return `${canonicalUrl || ''}|${proxyUrl || ''}`;
+}
+
+function getOrCreateEsmClient(canonicalUrl, proxyUrl) {
+  const key = esmConnectionKey(canonicalUrl, proxyUrl);
+  if (!esm_client || esm_client_config_key !== key) {
+    esm_client = new ESMAPI(canonicalUrl, { proxyUrl });
+    esm_client_config_key = key;
+  }
+  return esm_client;
+}
+
+function parseEsmConnection(connection) {
+  const c = connection && typeof connection === 'object' ? connection : {};
+  return {
+    canonicalUrl: c.url != null ? String(c.url) : '',
+    proxyUrl: c.proxyUrl != null ? String(c.proxyUrl) : '',
+  };
+}
 let globus_client = null;
 
 function globusHandlerDebug(...args) {
@@ -79,14 +111,16 @@ ipcMain.handle('dsa-logout', async (event) => {
  * IPC handler for eSlideManager login
  * @returns {Promise<[boolean, Object]>} [success, response/error]
  */
-ipcMain.handle('esm-login', async (event, url, username, password) => {
+ipcMain.handle('esm-login', async (event, connection, username, password) => {
+  const { canonicalUrl, proxyUrl } = parseEsmConnection(connection);
   try {
-    esm_client = new ESMAPI(url);
+    esm_client = new ESMAPI(canonicalUrl, { proxyUrl });
+    esm_client_config_key = esmConnectionKey(canonicalUrl, proxyUrl);
     const response = await esm_client.tryLogin(username, password);
     if (response.ok) {
       return [true, { ok: true }];
     } else {
-      return [false, { message: response.error || 'Login failed' }];
+      return [false, { message: response.error || response.message || 'Login failed' }];
     }
   } catch (error) {
     console.error('eSlideManager login error:', error.message || error);
@@ -95,23 +129,32 @@ ipcMain.handle('esm-login', async (event, url, username, password) => {
 });
 
 /**
+ * @returns {string}
+ */
+function esmSearchErrorMessage(error) {
+  if (!error) return 'Search failed';
+  if (typeof error === 'string') return error;
+  if (error.message) return String(error.message);
+  if (error.error) return String(error.error);
+  return 'Search failed';
+}
+
+/**
  * IPC handler for eSlideManager slide search by accession number
  * @returns {Promise<[boolean, Array|Object]>} [success, slides array or error]
  */
-ipcMain.handle('esm-search-accession', async (event, url, username, password, accession) => {
+ipcMain.handle('esm-search-accession', async (event, connection, username, password, accession) => {
+  const { canonicalUrl, proxyUrl } = parseEsmConnection(connection);
   try {
-    // Create new client if URL changed or client doesn't exist
-    if (!esm_client || esm_client.api_url !== url) {
-      esm_client = new ESMAPI(url);
-    }
+    getOrCreateEsmClient(canonicalUrl, proxyUrl);
     const data = await esm_client.searchByAccession(username, password, accession);
     if (data && data.error) {
-      return [false, { message: data.error }];
+      return [false, { message: esmSearchErrorMessage(data) }];
     }
     return [true, data];
   } catch (error) {
     console.error('eSlideManager search error:', error.message || error);
-    return [false, { message: error.message || 'Search failed' }];
+    return [false, { message: esmSearchErrorMessage(error) }];
   }
 });
 
@@ -124,6 +167,7 @@ ipcMain.handle('esm-logout', async (event) => {
     if (esm_client) {
       const response = esm_client.logout();
       esm_client = null;
+      esm_client_config_key = null;
       return [true, response];
     }
     return [true, { ok: true, message: "Logged out" }];
@@ -182,11 +226,25 @@ function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path
         const progress = (response[1].received / file_size) * 100;
 
         if (finalize) {
-          window.webContents.send('dsa-upload-file-complete', file_row_idx);
+          const complete = await dsa_client.upload_file_complete(upload_id);
           close(fd);
-        } else {
-          window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
+          if (complete && complete[0]) {
+            const fileDoc = complete[1];
+            window.webContents.send('dsa-upload-file-complete', {
+              row_idx: file_row_idx,
+              itemId: fileDoc.itemId,
+              fileId: fileDoc._id,
+              fileName: fileDoc.name,
+            });
+            resolve(true);
+          } else {
+            const errMsg = complete?.[1]?.message || 'Upload completion failed';
+            window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
+            reject(false);
+          }
+          return;
         }
+        window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
         resolve(true);
       } else {
         window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: response[1].message, row_idx: file_row_idx });
@@ -227,6 +285,46 @@ ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_pa
     }
   }
   return response;
+});
+
+ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, options }) => {
+  if (!dsa_client || !itemId || !fileRow) {
+    return [false, { message: 'Missing DSA client, item id, or file row' }];
+  }
+  const opts = options || {};
+  const reserved = fileRow.__reserved || {};
+  const results = {};
+
+  try {
+    if (opts.renameItem) {
+      const stem =
+        reserved.dsaAlias ||
+        reserved.labelText ||
+        reserved.rename ||
+        '';
+      const fileName = opts.fileName || '';
+      const ext = extname(fileName) || reserved.source?.parsed?.ext || '';
+      if (stem && ext) {
+        const itemName = `${stem}${ext}`;
+        const renameResp = await dsa_client.updateItem(itemId, { name: itemName });
+        if (!renameResp[0]) {
+          return [false, renameResp[1] || { message: 'Item rename failed' }];
+        }
+        results.item = renameResp[1];
+      }
+    }
+    if (opts.setMetadata) {
+      const metadata = buildDeidUploadMetadata(fileRow);
+      const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
+      if (!metaResp[0]) {
+        return [false, metaResp[1] || { message: 'Metadata update failed' }];
+      }
+      results.metadata = metaResp[1];
+    }
+    return [true, results];
+  } catch (err) {
+    return [false, { message: err?.message || String(err) }];
+  }
 });
 
 ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {
@@ -765,10 +863,14 @@ ipcMain.handle('get-platform', async () => {
  * An IPC handler that opens a dialog to choose a file to save
  * @param {string} file_type The type of file to save
  */
-ipcMain.handle('open-save-file-dialog', async (event, file_types) => {
+ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) => {
   let dialog_options = {
     properties: ['createDirectory', "showOverwriteConfirmation"],
     filters: []
+  }
+
+  if (defaultPath) {
+    dialog_options.defaultPath = defaultPath;
   }
 
   if (file_types.includes('csv')) {
@@ -805,8 +907,13 @@ ipcMain.handle('open-file-single-dialog', async () => {
 });
 
 ipcMain.handle('cancel-restart-bridge', async () => {
-  bridge._shell.kill();
-  bridge = new PythonBridge();
+  try {
+    await bridge.stop();
+  } catch (err) {
+    console.error('[py grpc] cancel-restart-bridge stop failed', err);
+  }
+  bridge = new GrpcPythonBridge();
+  await bridge.start();
 });
 
 ipcMain.handle('delete-file', async (event, file_path) => {
@@ -836,6 +943,30 @@ ipcMain.handle('open-icon-single-dialog', async () => {
     }
   });
   // ipcMain.emit('store-changes-finalized')
+});
+
+const LOCAL_IMAGE_PREVIEW_MIME = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+};
+
+ipcMain.handle('read-local-image-preview', async (_event, filePath) => {
+  if (!filePath || typeof filePath !== 'string') return null;
+  if (!existsSync(filePath)) return null;
+
+  const mime = LOCAL_IMAGE_PREVIEW_MIME[extname(filePath).toLowerCase()];
+  if (!mime) return null;
+
+  try {
+    const data = readFileSync(filePath);
+    return `data:${mime};base64,${data.toString('base64')}`;
+  } catch {
+    return null;
+  }
 });
 
 ipcMain.handle('get-store', async () => {
@@ -935,6 +1066,11 @@ ipcMain.handle('open-folder-dialog', async () => {
   });
 });
 
+ipcMain.handle('show-message-box', async (event, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return dialog.showMessageBox(win ?? undefined, options ?? {});
+});
+
 // open-folders-dialog: let the user pick multiple folders from the operating system
 ipcMain.handle('open-folders-dialog', async () => {
   //open the file dialog
@@ -951,7 +1087,7 @@ ipcMain.handle('open-folders-dialog', async () => {
 ipcMain.handle('get-all-wsi-file-paths', async (event, folder_path) => {
   const paths = [];
   walk.walkSync(folder_path, function (basedir, filename, stat) {
-    if (['.svs', '.ndpi', '.czi', '.tiff'].includes(path.extname(filename))) {
+    if (isWsiExtension(filename)) {
       paths.push(join(basedir, filename));
     }
   });
@@ -1006,11 +1142,15 @@ ipcMain.handle('write-csv', async (event, file, data) => {
 
 // open-file: tell python to get metadata for a file
 ipcMain.handle('metadata', async (event, file) => {
-  // return PythonBridge.invoke('metadata', normalizePath(file));
+  const pathIssue = checkSlidePathAccessible(file);
+  if (pathIssue) {
+    throw buildPathErrorForIpc(pathIssue);
+  }
   return bridge.invoke('metadata', file);
 });
 
 ipcMain.handle('open-viewer', async (event, file, row_idx) => {
+  console.info('[viewer] open-viewer', { file, row_idx, row_idx_type: typeof row_idx });
   console.log(`******* Creating Viewer Window for ${file} at ${row_idx} ************`)
   const encoded_file_uri = encodeURIComponent(file);
 
@@ -1031,7 +1171,7 @@ ipcMain.handle('open-viewer', async (event, file, row_idx) => {
       id: 'viewer',
       browserWindow: window,
       htmlFile: path.join(__dirname, '..', 'renderer', 'viewer', 'index.html'),
-      query: { file: file, row_idx: row_idx }
+      query: { file: file, row_idx: String(row_idx ?? '') },
     })
   }
 
@@ -1144,6 +1284,28 @@ ipcMain.handle('get-output-path', async (event, info) => {
   return bridge.invoke('get-output-path', info);
 });
 
+const STAGING_SUBFOLDER = path.join('SlideRelabeler', 'staging');
+
+function resolveStagingDirectoryPath(options = {}) {
+  const mode = options.mode === 'custom' ? 'custom' : 'system';
+  const custom = typeof options.customPath === 'string' ? options.customPath.trim() : '';
+  if (mode === 'custom' && custom) {
+    return custom;
+  }
+  return path.join(app.getPath('temp'), STAGING_SUBFOLDER);
+}
+
+ipcMain.handle('get-staging-directory', async (event, options = {}) => {
+  const dir = resolveStagingDirectoryPath(options);
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    console.error('Failed to create staging directory', dir, err);
+    throw err;
+  }
+  return dir;
+});
+
 ipcMain.handle('copy-file', async (event, source, destination) => {
   return fs.copyFile(source, destination);
 });
@@ -1154,6 +1316,7 @@ ipcMain.handle('process-file', async (event, info) => {
 });
 
 ipcMain.handle('preview-metadata', async (event, info) => {
+  logMetadataPreview('ipc-in', summarizeMetadataPayload(info));
   return bridge.invoke('preview-metadata', info);
 });
 

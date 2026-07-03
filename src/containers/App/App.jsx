@@ -7,12 +7,17 @@ import store from '../../store/index';
 
 import * as modal_actions from '../../actions/modal';
 import { selectUploadReadiness } from '../../selectors/uploadRouting';
+import { selectOutputReadiness, summarizeDestinationDirectories } from '../../selectors/outputReadiness';
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
 
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
+import GridHoverTooltip from "../../components/AgGrid/GridHoverTooltip";
+import AddFilesControl from "../../components/AddFilesControl";
+import ApiLoadControl from "../../components/ApiLoadControl";
 import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
+import DeliveryPanel from "../../components/DeliveryPanel/DeliveryPanel";
 
 import './App.scss';
 import Modal from "../Modal/Modal";
@@ -28,85 +33,49 @@ function render_cancel_clear_button(disable_changes, file_count, processing, dis
   )
 }
 
-function render_output_dir_button(csv, disable_changes, processing, dispatch) {
-  if (csv.needs_output_dir) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
-  } else if (csv.needs_csv_output_dir) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_CSV_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
-  } else if (!csv.headers) {
-    return(
-      <button 
-        disabled={disable_changes || processing} 
-        className={disable_changes || processing? "__button _disabled" : "__button"}
-        onClick={() => dispatch({type: file_actions.CHOOSE_OUTPUT_DIR})}>Choose Output Dir
-      </button> 
-    )
+function getProcessBlockerMessage(count, outputReadiness) {
+  if (count === 0) {
+    return 'Select files to inspect and process';
   }
 
+  if (outputReadiness.patternValidation?.blocking) {
+    return outputReadiness.patternValidation.messages?.[0]
+      || 'Fix pattern column references before processing.';
+  }
+
+  if (!outputReadiness.anyDeliveryEnabled) {
+    return 'Configure output delivery — enable local save and/or upload';
+  }
+
+  if (outputReadiness.localEnabled && !outputReadiness.localConfigured) {
+    return 'Set Copy To for all files or choose a folder for all';
+  }
+
+  if (outputReadiness.uploadEnabled && !outputReadiness.uploadConfigured) {
+    const blocker = outputReadiness.uploadReadiness?.blockers?.[0];
+    return blocker || 'Finish upload connection setup before processing';
+  }
+
+  return '';
 }
 
-function render_output_dir_message(csv, output_dir) {
-  if (csv.needs_output_dir)
-    return (
-      <div className={"__display-dir"}>{output_dir ? <h3>{output_dir}</h3> : <h3>Select a directory to output files into. (required)</h3>}</div>
-    )
-  else if (csv.needs_csv_output_dir)
-    return (
-      <div className={"__display-dir"}>{csv.output_dir ? <h3>{csv.output_dir}</h3> : <h3>Select a directory to output CSV file into. (required)</h3>}</div>
-    )
-  else
-    return (
-      <div className={"__display-dir"}>{output_dir ? <h3>{output_dir}</h3> : <h3>Select a directory to output files into.</h3>}</div>
-    )
-}
-
-function render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch) {
-  let output_configured = false;
-  let message = "";
-
-  if (csv.needs_output_dir && output_dir) {
-    output_configured = true;
-  }
-    
-  else if (csv.needs_csv_output_dir && csv.output_dir) {
-    output_configured = true;
-  }
-
-  else if (!csv.needs_output_dir && !csv.needs_csv_output_dir && output_dir) {
-    output_configured = true;
-  } 
-
-  else {
-    message = "You need to select an output directory for your output files"
-  }
+function render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch) {
+  const message = getProcessBlockerMessage(count, outputReadiness);
+  const processBlocked = count === 0
+    || processing
+    || !outputReadiness.processReady
+    || disable_changes;
 
   const autoUp = !!uploadRouting?.auto_upload;
   const processLabel = autoUp ? 'Process and Upload' : 'Process Files';
 
   return (
     <div className="__process-files">
-      <button className={count === 0 || processing || !output_configured || disable_changes ? "__action-button _disabled" : "__action-button"}
-              disabled={count === 0 || processing || !output_configured || disable_changes}
+      <button className={processBlocked ? "__action-button _disabled" : "__action-button"}
+              disabled={processBlocked}
               onClick={() => dispatch({type: file_actions.PROCESS_FILES})}>
                 {processLabel}
       </button>
-      {autoUp && !uploadReadiness?.ready && (
-        <div className="__process-files-upload-hint" title={uploadReadiness?.blockers?.join(' ')}>
-          Open Network to finish connection — auto-upload is not ready yet.
-        </div>
-      )}
       {message.length > 0 && <div className="__process-files-message">{message}</div>}
     </div>
   )
@@ -118,20 +87,21 @@ const App = (props) => {
   let totalBytes = useSelector(state => state.files.totalBytes);
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
+  let metadata_updating = useSelector(state => state.files.metadata_updating);
   let disable_changes = useSelector(state => state.files.disable_changes);
   let debug_config = useSelector(state => state.config.debug);
   let csv = useSelector(state => state.files.csv);
+  let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
   let uploadReadiness = useSelector(selectUploadReadiness);
-  const networkGlobeClass =
-    !uploadRouting.auto_upload
-      ? '__button-icon'
-      : uploadReadiness.ready
-        ? '__button-icon _network-ready'
-        : '__button-icon _network-warning';
+  let outputReadiness = useSelector(selectOutputReadiness);
 
   const dispatch = useDispatch();
+  const destSummary = summarizeDestinationDirectories(file_rows);
+  const showOutputDirPanel = csv.needs_output_dir || !csv.headers;
+  const controlsDisabled = disable_changes || processing;
+  const showFileHeaderInfo = count > 0 || processing || metadata_updating;
   
   useEffect(() => {
     dispatch({type: file_actions.START_FILES_SAGA});
@@ -160,18 +130,20 @@ const App = (props) => {
             </div>
             <div className='__list-controls'>
               <div className={"__list-controls-group"}>
-                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"} onClick={() => dispatch({type: file_actions.ADD_FILES})}>Add File/Files
-                </button>
-                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"} onClick={() => dispatch({type: file_actions.ADD_FOLDERS})}>Add Folder
-                </button>
-                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"}
-                        onClick={() => dispatch({type: file_actions.SELECT_IMPORT_CSV_XSLX})}>
-                  CSV Import
-                </button>
-                <button disabled={disable_changes || processing} className={disable_changes || processing? "__button _disabled" : "__button"}
-                        onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'esm'}})}>
-                  eSlideManager
-                </button>
+                <AddFilesControl disabled={controlsDisabled} />
+                <GridHoverTooltip content="Load CSV" show="always" placement="below">
+                  <button
+                    disabled={disable_changes || processing}
+                    className={disable_changes || processing ? "__button __button--segmented _disabled" : "__button __button--segmented"}
+                    onClick={() => dispatch({ type: file_actions.SELECT_IMPORT_CSV_XSLX })}
+                  >
+                    <span className="__button__label">CSV Import</span>
+                    <span className="__button__icon" aria-hidden="true">
+                      <i className="fi fi-rr-table" />
+                    </span>
+                  </button>
+                </GridHoverTooltip>
+                <ApiLoadControl disabled={controlsDisabled} />
               </div>
               <div className={"__spacer"}/>
               {
@@ -185,14 +157,6 @@ const App = (props) => {
                   </button>
                 )
               }
-              <button className={networkGlobeClass}
-                      title={uploadRouting.auto_upload && !uploadReadiness.ready ? 'Network: auto-upload not ready' : 'Network'}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'network'}})}>
-                <i
-                  className=
-                    "fi fi-rr-globe"
-                ></i>
-              </button>
               <button className={"__button-icon"}
                       onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}>
                 <i
@@ -208,28 +172,40 @@ const App = (props) => {
                 ></i>
               </button>
             </div>
-            <div className={"__list-controls"}>
-              <div className={"__list-controls-group _bottom-border"}>
-                <FileHeaderInfo/>
+            {showFileHeaderInfo && (
+              <div className={"__list-controls"}>
+                <div className={"__list-controls-group _bottom-border"}>
+                  <FileHeaderInfo/>
+                </div>
               </div>
-            </div>
-            <div className={(!output_dir && csv.needs_output_dir) || (!csv.output_dir && csv.needs_csv_output_dir) ? "__list-controls _next-step" : "__list-controls"}>
-              {render_output_dir_button(csv, disable_changes, processing, dispatch)}
-              {render_output_dir_message(csv, output_dir)}
-            </div>
+            )}
+            {showOutputDirPanel && (
+              <div className="__list-controls __list-controls_output-dir">
+                <DeliveryPanel
+                      uploadRouting={uploadRouting}
+                      uploadReadiness={uploadReadiness}
+                      outputReadiness={outputReadiness}
+                      destSummary={destSummary}
+                      outputDir={output_dir}
+                      disabled={controlsDisabled}
+                      onChooseFolder={() => dispatch({
+                        type: file_actions.CHOOSE_OUTPUT_DIR,
+                      })}
+                    />
+              </div>
+            )}
           </div>
         </div>
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
-          {render_process_files_button(csv, uploadRouting, uploadReadiness, output_dir, disable_changes, count, processing, dispatch)}
+          {render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch)}
         </div>
         <div className={"__disclaimer"}>
           Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.
         </div>
         <div id='table'>
           <AppAgGrid
-            autoSizeStrategy={{type: 'fitCellContents'}}
             suppressMovableColumns={true}
             ensureDomOrder={true}
             suppressDragLeaveHidesColumns={true}

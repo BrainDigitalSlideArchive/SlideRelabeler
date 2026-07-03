@@ -72,12 +72,14 @@ function ensureGlobusUploadIpcSubscribed(dispatch) {
 const API = {
   // sendButtonClick: (text) => ipcRenderer.send('button-click', text),
   openFileIconDialog: () => ipcRenderer.invoke('open-icon-single-dialog'),
+  readLocalImagePreview: (filePath) => ipcRenderer.invoke('read-local-image-preview', filePath),
   openFileMultiDialog: () => ipcRenderer.invoke('open-file-multi-dialog'),
   openFileSingleDialog: () => ipcRenderer.invoke('open-file-single-dialog'),
   openFolderDialog: () => { return ipcRenderer.invoke('open-folder-dialog') },
   openFoldersDialog: () => { return ipcRenderer.invoke('open-folders-dialog') },
+  showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
   getAllWSIFilePaths: (folder_path) => { return ipcRenderer.invoke('get-all-wsi-file-paths', folder_path) },
-  openSaveFileDialog: (file_types) => ipcRenderer.invoke('open-save-file-dialog', file_types),
+  openSaveFileDialog: (file_types, defaultPath) => ipcRenderer.invoke('open-save-file-dialog', file_types, defaultPath),
   getMetadata: (file_path) => ipcRenderer.invoke('metadata', file_path),
   openViewer: (file, row_idx) => ipcRenderer.invoke('open-viewer', file, row_idx),
   openImage: image_url => ipcRenderer.invoke('open-image', image_url),
@@ -109,14 +111,16 @@ const API = {
   getDebugs: () => ipcRenderer.invoke('get-debugs'),
   clearDebugs: () => ipcRenderer.invoke('clear-debugs'),
   getOutputPath: (info) => ipcRenderer.invoke('get-output-path', info),
+  getStagingDirectory: (options) => ipcRenderer.invoke('get-staging-directory', options),
   deleteStore: () => ipcRenderer.invoke('delete-store'),
   deleteFile: (file_path) => ipcRenderer.invoke('delete-file', file_path),
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
   dsaUploadFile: (folder_id, file_row_idx, file_path) => ipcRenderer.invoke('dsa-upload-file', folder_id, file_row_idx, file_path),
-  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, file_row_idx) => {
-    dispatch({ type: dsa_actions.UPLOAD_FILE_COMPLETE, payload: file_row_idx });
+  dsaEnrichUploadedItem: (payload) => ipcRenderer.invoke('dsa-enrich-uploaded-item', payload),
+  dsaSetupUploadComplete: (dispatch) => ipcRenderer.on('dsa-upload-file-complete', (event, payload) => {
+    dispatch({ type: dsa_actions.UPLOAD_FILE_COMPLETE, payload });
   }),
   dsaSetupUploadFileProgress: (dispatch) => ipcRenderer.on('dsa-upload-file-progress', (event, progress) => {
     dispatch({ type: files_actions.UPDATE_FILE_UPLOAD_PROGRESS, payload: progress });
@@ -129,8 +133,8 @@ const API = {
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
   dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
   // eSlideManager API methods
-  esmLogin: (url, username, password) => ipcRenderer.invoke('esm-login', url, username, password),
-  esmSearchAccession: (url, username, password, accession) => ipcRenderer.invoke('esm-search-accession', url, username, password, accession),
+  esmLogin: (connection, username, password) => ipcRenderer.invoke('esm-login', connection, username, password),
+  esmSearchAccession: (connection, username, password, accession) => ipcRenderer.invoke('esm-search-accession', connection, username, password, accession),
   esmLogout: () => ipcRenderer.invoke('esm-logout'),
   globusCheckCliAvailable: () => ipcRenderer.invoke('globus-check-cli-available'),
   globusCheckAuth: () => ipcRenderer.invoke('globus-check-auth'),

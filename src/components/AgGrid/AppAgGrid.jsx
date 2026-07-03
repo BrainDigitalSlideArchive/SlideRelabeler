@@ -1,51 +1,51 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { useDispatch, useSelector } from "react-redux";
 
 // Setup the community module
-import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 import {
-  setupRemoveColumn,
-  setupThumbnailColumnCellRenderer,
-  setupThumbnailColumnOnCellClicked,
-  setupAssociatedImagesColumn,
-  setupDestinationDirectoryColumn,
-  setupProgressColumn,
-  setup_source_directory_cell_renderer,
-  setupSizeValueFormatter,
-  setupAssociatedImagesValueFormatter,
-  setupAssociatedImagesComparator,
-  setupDestinationDirectoryCellClass,
-  setupDestinationDirectoryColSpan,
-  setupDestinationDirectoryOnCellClicked,
-  setupRenameEditorColumn,
-  setupRenameCellEditable,
-  setupRenameCellClass,
-  setupRenameCellOnCellClicked,
-  setupRenameCellValueSetter,
-  setupRenameCellRenderer,
-  setupTooltipValueGetter
-
+  buildRowAfterNamingEdit,
+  EDITABLE_NAMING_FIELDS,
 } from "../../helpers/ag_grid_helpers";
 
-import './AppAgGrid.scss';
+import * as files_actions from '../../actions/files';
 
+import {
+  buildFileTableColumnDefs,
+  defaultColDef,
+  fileTableRowStyle,
+  fileTableTheme,
+  PATH_COLUMN_FIELDS,
+} from '../../helpers/file_table_column_defs.js';
+
+import { isCopyToColumnEnabled } from '../../helpers/staging_path.js';
 
 const AppAgGrid = (props) => {
   const file_rows = useSelector(state => state.files.file_rows);
   const reserved_cols = useSelector(state => state.files.reserved_columns);
   const file_cols = useSelector(state => state.files.file_columns);
-  const filename_config = useSelector(state => state.config.filename);
+  const config = useSelector(state => state.config);
+  const uploadRouting = useSelector(state => state.uploadRouting);
   const processing = useSelector(state => state.files.processing);
   const disable_changes = useSelector(state => state.files.disable_changes);
   const gridRef = useRef(null);
   const dispatch = useDispatch();
+  const pathColumnWidthsRef = useRef({});
+  const resizeRafRef = useRef(null);
+  const pendingResizeRefreshRef = useRef({ api: null, colIds: [] });
+
+  const copyToEnabled = isCopyToColumnEnabled(uploadRouting);
+
+  const gridContext = useMemo(() => ({
+    getPathColumnWidth: (colId) => pathColumnWidthsRef.current[colId],
+    copyToEnabled,
+  }), [copyToEnabled]);
 
   const [column_defs, set_column_defs] = useState([]);
 
-  // Validate and filter row data to prevent AG Grid errors
   const validateRowData = (rows) => {
     if (!Array.isArray(rows)) {
       console.warn('file_rows is not an array:', rows);
@@ -68,10 +68,8 @@ const AppAgGrid = (props) => {
   };
 
   const validatedFileRows = validateRowData(file_rows);
-  let all_cols = [...reserved_cols, ...file_cols];
 
   const {
-    autoSizeStrategy,
     suppressMovableColumns,
     ensureDomOrder,
     suppressDragLeaveHidesColumns,
@@ -81,30 +79,84 @@ const AppAgGrid = (props) => {
   } = props;
 
   useEffect(() => {
-    let column_defs = setupRemoveColumn(all_cols, processing, disable_changes, dispatch);
-    column_defs = setupThumbnailColumnCellRenderer(column_defs);
-    column_defs = setupThumbnailColumnOnCellClicked(column_defs);
-    column_defs = setupAssociatedImagesColumn(column_defs);
-    column_defs = setupDestinationDirectoryColumn(column_defs);
-    column_defs = setupProgressColumn(column_defs);
-    // column_defs = setupSourceDirValueFormater(column_defs);
-    column_defs = setup_source_directory_cell_renderer(column_defs);
-    column_defs = setupSizeValueFormatter(column_defs);
-    column_defs = setupAssociatedImagesValueFormatter(column_defs);
-    column_defs = setupAssociatedImagesComparator(column_defs);
-    // column_defs = setupDestinationDirectoryCellClass(column_defs);
-    column_defs = setupDestinationDirectoryColumn(column_defs);
-    // column_defs = setupDestinationDirectoryColSpan(column_defs);
-    column_defs = setupDestinationDirectoryOnCellClicked(column_defs);
-    column_defs = setupRenameCellEditable(column_defs, filename_config);
-    column_defs = setupRenameCellClass(column_defs);
-    column_defs = setupRenameCellOnCellClicked(column_defs);
-    column_defs = setupRenameCellValueSetter(column_defs, dispatch);
-    column_defs = setupRenameEditorColumn(column_defs, filename_config);
-    column_defs = setupRenameCellRenderer(column_defs, filename_config);
-    column_defs = setupTooltipValueGetter(column_defs);
+    const column_defs = buildFileTableColumnDefs({
+      reservedCols: reserved_cols,
+      fileCols: file_cols,
+      config,
+      mode: 'app',
+      processing,
+      disableChanges: disable_changes,
+      dispatch,
+    });
     set_column_defs(column_defs);
-  }, [file_cols, filename_config, reserved_cols]);
+  }, [file_cols, reserved_cols, config, uploadRouting, processing, disable_changes, dispatch]);
+
+  useEffect(() => {
+    const api = gridRef.current?.api;
+    if (!api) return;
+    api.refreshCells({
+      columns: ['__reserved.destinationDirectory'],
+      force: true,
+      suppressFlash: true,
+    });
+  }, [copyToEnabled]);
+
+  useEffect(() => () => {
+    if (resizeRafRef.current != null) {
+      cancelAnimationFrame(resizeRafRef.current);
+    }
+  }, []);
+
+  const schedulePathColumnRefresh = useCallback((api, colIds) => {
+    if (!api || !colIds.length) return;
+    pendingResizeRefreshRef.current = { api, colIds };
+    if (resizeRafRef.current != null) return;
+    resizeRafRef.current = requestAnimationFrame(() => {
+      resizeRafRef.current = null;
+      const { api: pendingApi, colIds: pendingColIds } = pendingResizeRefreshRef.current;
+      pendingApi?.refreshCells({
+        columns: pendingColIds,
+        force: true,
+        suppressFlash: true,
+      });
+    });
+  }, []);
+
+  const onColumnResized = useCallback((event) => {
+    const columns = event.columns?.length
+      ? event.columns
+      : (event.column ? [event.column] : []);
+
+    const pathCols = columns.filter((col) => PATH_COLUMN_FIELDS.has(col?.getColId?.()));
+    if (!pathCols.length) return;
+
+    const colIds = [];
+    for (const col of pathCols) {
+      const colId = col.getColId();
+      colIds.push(colId);
+      pathColumnWidthsRef.current[colId] = col.getActualWidth();
+    }
+
+    schedulePathColumnRefresh(event.api, colIds);
+  }, [schedulePathColumnRefresh]);
+
+  const onCellEditRequest = useCallback((event) => {
+    const field = event.colDef?.field;
+    if (!field || !EDITABLE_NAMING_FIELDS.has(field)) return;
+    if (event.data?.__reserved?.processed !== 0) return;
+
+    const row = buildRowAfterNamingEdit(event.data, field, event.newValue);
+    dispatch({
+      type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA,
+      payload: { idx: event.node.rowIndex, row },
+    });
+  }, [dispatch]);
+
+  const getRowId = useCallback((params) => {
+    return params.data?.__reserved?.uuid
+      ?? params.data?.__reserved?.source?.path
+      ?? String(params.node?.rowIndex ?? '');
+  }, []);
 
   function getRowStyle(params) {
     if (params.data.__reserved && params.data.__reserved.progress === 100) {
@@ -112,7 +164,7 @@ const AppAgGrid = (props) => {
         backgroundColor: 'lightgreen'
       }
     }
-    if (params.data.__reserved && params.data.__reserved.error) {
+    if (params.data.__reserved && params.data.__reserved.error != null && String(params.data.__reserved.error).trim()) {
       return {
         backgroundColor: 'lightcoral'
       }
@@ -126,13 +178,10 @@ const AppAgGrid = (props) => {
         ref={gridRef}
         rowData={validatedFileRows}
         columnDefs={column_defs}
-        theme={themeQuartz}
-        rowStyle={{
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-        }}
-        autoSizeStrategy={autoSizeStrategy}
+        defaultColDef={defaultColDef}
+        context={gridContext}
+        theme={fileTableTheme}
+        rowStyle={fileTableRowStyle}
         suppressMovableColumns={suppressMovableColumns}
         suppressScrollOnNewData={true}
         ensureDomOrder={ensureDomOrder}
@@ -140,13 +189,11 @@ const AppAgGrid = (props) => {
         enableCellTextSelection={enableCellTextSelection}
         undoRedoCellEditing={undoRedoCellEditing}
         undoRedoCellEditingLimit={undoRedoCellEditingLimit}
+        readOnlyEdit={true}
+        getRowId={getRowId}
         getRowStyle={getRowStyle}
-        tooltipShowDelay={100}
-      // suppressModelUpdateAfterUpdateTransaction={true}
-      // suppressRowTransform={true}
-      // suppressColumnVirtualisation={false}
-      // suppressRowVirtualisation={false}
-      // suppressAnimationFrame={false}
+        onCellEditRequest={onCellEditRequest}
+        onColumnResized={onColumnResized}
       />
     </div>
   )

@@ -12,12 +12,20 @@ import dsa from './dsa';
 import esm from './esm';
 import globus from './globus';
 
+import auditLogSaga from './auditLog';
+
 import watch_save_store from './bridge/save_store';
 import watch_delete_store from './bridge/delete_store';
 import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
+import choose_staging_dir from './uploadRouting/choose_staging_dir';
+import choose_default_local_output_dir from './uploadRouting/choose_default_local_output_dir';
+import sync_default_local_output_dir from './uploadRouting/sync_default_local_output_dir';
 
 function* sagas() {
     yield fork(watchSyncLegacyUpload);
+    yield fork(choose_staging_dir);
+    yield fork(choose_default_local_output_dir);
+    yield fork(sync_default_local_output_dir);
     yield fork(app);
     yield fork(files);
     yield fork(config);
@@ -37,6 +45,7 @@ function* sagas() {
 
     yield put({type: files_actions.NOT_PROCESSING});
 
+    yield fork(auditLogSaga);
     yield fork(watch_save_store);
     yield fork(watch_delete_store);
 };

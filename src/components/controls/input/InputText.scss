@@ -57,7 +57,7 @@
     color: $beige;
     padding: 0.6em 0.7em;
     border-radius: 0.5em;
-    z-index: 1000;
+    z-index: 2000;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-0.25em);
@@ -81,8 +81,21 @@
     }
 
     .__help-icon {
-      border-color: #334155;
-      color: #334155;
+      border-color: $darker-blue;
+      color: $darker-blue;
+      background: rgba($darker-blue, 0.12);
+      font-weight: 700;
+
+      &:hover:not(:disabled) {
+        border-color: darken($darker-blue, 6%);
+        color: darken($darker-blue, 6%);
+        background: rgba($darker-blue, 0.2);
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgba($darker-blue, 0.45);
+        outline-offset: 2px;
+      }
     }
 
     .__input-text {

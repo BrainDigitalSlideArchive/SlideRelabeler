@@ -21,6 +21,16 @@
         draft.frontend_error_messages = [];
       });
     });
+    builder.addCase(debug_actions.ADD_BACKEND_ERROR_MESSAGE, (state, action) => {
+      return produce(state, draft => {
+        const msg = typeof action.payload === "string"
+          ? action.payload
+          : action.payload?.message ?? String(action.payload ?? "");
+        if (msg) {
+          draft.backend_error_messages.push(msg);
+        }
+      });
+    });
     builder.addCase(debug_actions.SET_BACKEND_ERROR_MESSAGES, (state, action) => {
       return produce(state, draft => {
         draft.backend_error_messages = action.payload;

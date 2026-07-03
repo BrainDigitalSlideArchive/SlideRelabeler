@@ -69,11 +69,9 @@ export default function* add_csv(file) {
     }
 
     if (destination_dir_count === added_files_count) {
-      yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: false})
-      yield put({type: files_actions.SET_CSV_NEEDS_CSV_OUTPUT_DIR, payload: true})
+      yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: false});
     } else {
-      yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true})
-      yield put({type: files_actions.SET_CSV_NEEDS_CSV_OUTPUT_DIR, payload: false})
+      yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true});
     }
 
   } catch (error) {

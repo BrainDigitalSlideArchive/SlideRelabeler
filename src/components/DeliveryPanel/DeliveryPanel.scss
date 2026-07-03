@@ -1,0 +1,394 @@
+@import '../../styles/colors';
+
+.delivery-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 54rem;
+  border-radius: 0.5rem;
+  background: $config-callout-bg;
+  border: 1px solid $border-surface;
+  color: $on-surface;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    background-color: $darker-blue;
+    color: $beige;
+    padding: 0.55rem 0.75rem;
+    box-shadow: 0 1px 2px rgba($black, 0.12);
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    line-height: 1.3;
+    color: $beige;
+  }
+
+  &__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 9.5rem;
+    align-items: stretch;
+  }
+
+  &__column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+
+    &:first-child {
+      border-right: 1px solid $border-surface;
+    }
+
+    &._off .delivery-panel__column-title {
+      color: $on-surface-muted;
+    }
+  }
+
+  &__column-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0.35rem;
+    border-bottom: 1px solid rgba($border-surface, 0.65);
+  }
+
+  &__column-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: $on-surface;
+  }
+
+  &__column-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+
+    input[type='checkbox'] {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: $darker-blue;
+      cursor: pointer;
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  &__column-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-height: 0;
+    padding: 0.5rem 0.75rem 0.65rem;
+
+    &._disabled {
+      justify-content: flex-start;
+    }
+  }
+
+  &__column-off {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: $on-surface-muted;
+    font-style: italic;
+  }
+
+  &__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  &__field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    min-width: 0;
+  }
+
+  &__field-label {
+    flex-shrink: 0;
+    min-width: 2rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $on-surface;
+  }
+
+  &__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  &__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.5rem;
+    border: 1px solid $config-border;
+    border-radius: 0.35rem;
+    background: $config-panel-bg;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    input[type='radio'] {
+      margin: 0;
+      flex-shrink: 0;
+      accent-color: $darker-blue;
+    }
+
+    &:has(input:checked),
+    &._selected {
+      border-color: $config-text-primary;
+      background: $config-panel-surface;
+    }
+
+    &:has(input:focus-visible) {
+      outline: 2px solid rgba($config-accent, 0.45);
+      outline-offset: 1px;
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  &__pill-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: $config-text-primary;
+    white-space: nowrap;
+  }
+
+  &__status-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    min-width: 0;
+  }
+
+  &__status-text {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+
+    &._ready {
+      color: darken($green, 20%);
+      font-weight: 600;
+    }
+
+    &._blocked {
+      color: $surface-warning-text;
+    }
+
+    &._muted {
+      color: $on-surface-muted;
+      font-style: italic;
+    }
+  }
+
+  &__status-sep {
+    color: $on-surface-muted;
+    user-select: none;
+  }
+
+  &__blockers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+
+    li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0.4rem;
+    }
+  }
+
+  &__blockers-action {
+    margin-top: 0.1rem;
+  }
+
+  &__setup-button {
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: inherit;
+    font-weight: 600;
+    color: $darker-blue;
+    cursor: pointer;
+    text-decoration: underline;
+    white-space: nowrap;
+
+    &:hover:not(._disabled):not(:disabled) {
+      color: darken($darker-blue, 8%);
+    }
+
+    &._disabled,
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__helper {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: $on-surface-muted;
+  }
+
+  &__path-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  &__path {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.35rem;
+    background: $config-panel-bg;
+    border: 1px solid $border-surface;
+  }
+
+  &__path-icon {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    color: $darker-blue;
+  }
+
+  &__path-text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    color: $on-surface;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  &__progress {
+    flex: 1;
+    min-width: 0;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: rgba($black, 0.08);
+    overflow: hidden;
+  }
+
+  &__progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, $green 0%, darken($green, 8%) 100%);
+    transition: width 0.25s ease;
+  }
+
+  &__progress-label {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: $on-surface-muted;
+    white-space: nowrap;
+  }
+
+  &__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid $config-border;
+    border-radius: 0.35rem;
+    background: $config-panel-bg;
+    color: $config-text-primary;
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover:not(._disabled):not(:disabled) {
+      border-color: $config-text-primary;
+      background: $config-panel-surface;
+    }
+
+    &._disabled,
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    min-width: 7.5rem;
+    padding: 0.35rem 0.75rem;
+    white-space: nowrap;
+    border: none;
+    border-radius: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: $darker-blue;
+    color: $beige;
+    transition: background-color 0.2s, opacity 0.2s;
+
+    &:hover:not(._disabled):not(:disabled) {
+      background: darken($darker-blue, 6%);
+    }
+
+    &._disabled,
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
