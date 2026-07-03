@@ -10,6 +10,7 @@ export default function EsmProfileCard({
   disabled = false,
   expanded = false,
   onToggleExpand,
+  onClone,
   onDelete,
   deleteDisabled = false,
 }) {
@@ -82,9 +83,20 @@ export default function EsmProfileCard({
         <div className="esm-transform-rules-editor__rule-actions">
           <button
             type="button"
+            className="esm-transform-rules-editor__icon-btn"
+            disabled={disabled}
+            aria-label={`Clone profile "${profileLabel}"`}
+            title="Clone profile"
+            onClick={onClone}
+          >
+            ⎘
+          </button>
+          <button
+            type="button"
             className="esm-transform-rules-editor__icon-btn esm-transform-rules-editor__icon-btn--remove"
             disabled={disabled || deleteDisabled}
             aria-label={`Delete profile "${profileLabel}"`}
+            title={deleteDisabled ? 'At least one profile is required' : 'Delete profile'}
             onClick={onDelete}
           >
             ×

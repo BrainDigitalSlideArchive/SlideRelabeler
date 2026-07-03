@@ -7,8 +7,12 @@ import { isHiddenFileTableColumn } from '../../helpers/file_table_columns.js';
 import { average } from '../../helpers/math';
 import {
   normalizeSetOutputDirPayload,
-  resolveRowsAfterSetOutputDir,
 } from '../../selectors/outputReadiness.js';
+import {
+  markDestinationSource,
+  DESTINATION_SOURCE,
+  resolveRowsAfterSetOutputDir,
+} from '../../helpers/destination_directory.js';
 
 import * as files_actions from '../../actions/files';
 import * as app_actions from '../../actions/app';
@@ -54,12 +58,12 @@ function add_file_row(state, draft, input_file_row) {
     let reserved = Object.assign({}, input_file_row.__reserved, { processed: 0 });
     let file_row = Object.assign(input_file_row, { '__reserved': reserved });
 
-    if (!file_row.__reserved.destinationDirectory) {
-      if (state.output_dir) {
-        file_row.__reserved.destinationDirectory = state.output_dir;
-      } else if (state.csv.output_dir) {
-        file_row.__reserved.destinationDirectory = state.csv.output_dir;
-      }
+    if (!file_row.__reserved.destinationDirectory && state.output_dir) {
+      file_row.__reserved.destinationDirectory = state.output_dir;
+      file_row.__reserved = markDestinationSource(
+        file_row.__reserved,
+        DESTINATION_SOURCE.DEFAULT,
+      );
     }
 
     draft.file_rows.push(file_row);
@@ -222,11 +226,6 @@ const files_reducer = createReducer(default_state, (builder) => {
         const { folder, mode } = normalizeSetOutputDirPayload(action.payload);
         draft.output_dir = folder;
         draft.file_rows = resolveRowsAfterSetOutputDir(draft.file_rows, folder, mode);
-      })
-    })
-    .addCase(files_actions.SET_CSV_OUTPUT_DIR, (state, action) => {
-      return produce(state, draft => {
-        draft.csv.output_dir = action.payload;
       })
     })
     .addCase(files_actions.UPDATE_ROW, (state, action) => {
@@ -430,11 +429,6 @@ const files_reducer = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         draft.csv.header_cols_link[action.payload.header] = { field: action.payload.field, header_idx: action.payload.header_idx };
       });
-    })
-    .addCase(files_actions.SET_CSV_NEEDS_CSV_OUTPUT_DIR, (state, action) => {
-      return produce(state, draft => {
-        draft.csv.needs_csv_output_dir = action.payload;
-      })
     })
     .addCase(files_actions.SET_CSV_NEEDS_OUTPUT_DIR, (state, action) => {
       return produce(state, draft => {

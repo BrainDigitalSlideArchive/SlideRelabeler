@@ -189,15 +189,19 @@ def bootstrap_env() -> Dict[str, Any]:
 
 
 def _maybe_install_patchlibtiff_guard() -> None:
-  """Opt-in Mac metadata preview workaround (SLIDERELABELER_PATCH_LIBTIFF=1)."""
-  if os.environ.get("SLIDERELABELER_PATCH_LIBTIFF", "").strip() != "1":
+  """Install tiff_reader guard on darwin/arm64 (auto) or when SLIDERELABELER_PATCH_LIBTIFF=1."""
+  from patch_libtiff_platform import patch_libtiff_mode, should_patch_libtiff
+
+  if not should_patch_libtiff():
     return
-  from libtiff_guard import install_patchlibtiff_guard, is_guard_active
+  from libtiff_guard import install_patchlibtiff_guard
 
   install_patchlibtiff_guard()
+  mode = patch_libtiff_mode()
+  mode_label = "auto-enabled (darwin/arm64)" if mode == "auto" else "forced (SLIDERELABELER_PATCH_LIBTIFF=1)"
   print(
-    "[engine] SLIDERELABELER_PATCH_LIBTIFF=1: tiff_reader patches registered "
-    "(patchLibtiff + _getJpegTables)",
+    f"[engine] libtiff guard {mode_label}: tiff_reader patches registered "
+    "(patchLibtiff + _getJpegTables + _getJpegFrameSize)",
     file=sys.stderr,
     flush=True,
   )
@@ -213,10 +217,12 @@ import base64  # noqa: E402 (still used internally if needed)
 import large_image  # noqa: E402
 from DeidTools import DeidTools  # noqa: E402
 
-if os.environ.get("SLIDERELABELER_PATCH_LIBTIFF", "").strip() == "1":
+from patch_libtiff_platform import should_patch_libtiff
+
+if should_patch_libtiff():
   from libtiff_guard import is_guard_active
   print(
-    f"[engine] SLIDERELABELER_PATCH_LIBTIFF=1: guard_executed={is_guard_active()}",
+    f"[engine] libtiff guard active: guard_executed={is_guard_active()}",
     file=sys.stderr,
     flush=True,
   )

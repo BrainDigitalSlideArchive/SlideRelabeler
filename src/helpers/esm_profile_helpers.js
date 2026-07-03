@@ -70,6 +70,51 @@ export function makeEsmProfile(partial = {}) {
 }
 
 /**
+ * Deep-copy a profile with fresh top-level and nested ids for independent editing.
+ * @param {ReturnType<typeof makeEsmProfile> | null | undefined} source
+ */
+export function cloneEsmProfile(source) {
+  if (!source) return makeEsmProfile();
+
+  const presetIdMap = new Map();
+  const stainPresets = (source.stainPresets || []).filter(Boolean).map((p) => {
+    const next = makeEsmStainPreset({ matchValue: p.matchValue, label: p.label });
+    if (p.id) presetIdMap.set(p.id, next.id);
+    return next;
+  });
+
+  const defaultStainPresetId = source.defaultStainPresetId
+    ? (presetIdMap.get(source.defaultStainPresetId) ?? null)
+    : null;
+
+  const transformRules = (source.transformRules || []).filter(Boolean).map((r) => ({
+    ...r,
+    id: makeId(),
+    steps: (r.steps || []).map((s) => ({ ...s })),
+  }));
+
+  return makeEsmProfile({
+    name: `Copy of ${source.name?.trim() || 'Profile'}`,
+    description: source.description,
+    url: source.url,
+    proxyUrl: source.proxyUrl,
+    transformRules,
+    stainPresets,
+    defaultStainPresetId,
+    duplicateStrategy: source.duplicateStrategy,
+    outputNameMapping: source.outputNameMapping ? { ...source.outputNameMapping } : undefined,
+    labelTextMapping: source.labelTextMapping ? { ...source.labelTextMapping } : undefined,
+    extraColumnMappings: (source.extraColumnMappings || []).filter(Boolean).map((m) =>
+      makeEsmColumnMapping({
+        enabled: m.enabled,
+        targetColumn: m.targetColumn,
+        pattern: m.pattern,
+      }),
+    ),
+  });
+}
+
+/**
  * @param {import('../reducers/esm/default_state').default} esmState
  */
 export function getActiveProfile(esmState) {

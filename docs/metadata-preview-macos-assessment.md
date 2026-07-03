@@ -259,7 +259,7 @@ Runnable scripts outside the app: [`debug/mac-metadata-sigbus/`](../debug/mac-me
 
 Standalone bug report for large_image (self-contained; inline repro scripts): [`debug/mac-metadata-sigbus/UPSTREAM_BRIEF.md`](../debug/mac-metadata-sigbus/UPSTREAM_BRIEF.md).
 
-**Manual app test (Mac):** `./scripts/dev-mac-metadata.sh` enables both tiff_reader patches via `SLIDERELABELER_PATCH_LIBTIFF=1`. Metadata preview verified on CMU-2-backup.svs. Upstream fix: two changes in `tiff_reader.py` — see [`UPSTREAM_BRIEF.md`](../debug/mac-metadata-sigbus/UPSTREAM_BRIEF.md).
+**Manual app test (Mac arm64):** `npm run dev` auto-enables the guard via [`patch_libtiff_platform.py`](../../src/python/patch_libtiff_platform.py). `./scripts/dev-patch-libtiff.sh` forces `SLIDERELABELER_PATCH_LIBTIFF=1`. Full Aperio processing and metadata preview verified on CMU-2-backup.svs with all three `tiff_reader` patches — see [`UPSTREAM_BRIEF.md`](../debug/mac-metadata-sigbus/UPSTREAM_BRIEF.md).
 
 ---
 
@@ -279,5 +279,5 @@ Standalone bug report for large_image (self-contained; inline repro scripts): [`
 
 ## Conclusion
 
-- **Windows:** Metadata preview pipeline is functioning through gRPC and DeidTools for tested slides.
-- **macOS:** Root cause is two ctypes bugs in `large_image_source_tiff/tiff_reader.py` on Apple Silicon (see UPSTREAM_BRIEF). Opt-in workaround via `SLIDERELABELER_PATCH_LIBTIFF=1` / `./scripts/dev-mac-metadata.sh` restores metadata preview for tested slides; permanent fix belongs upstream.
+- **Windows:** Metadata preview and Aperio processing work without the guard.
+- **macOS arm64:** Root cause is ctypes misuse in `large_image_source_tiff/tiff_reader.py` conflicting with pylibtiff #189 (see UPSTREAM_BRIEF). Breaks all `TiffFileTileSource` paths including full redaction, not only metadata preview. Guard auto-enables on darwin/arm64 in [`engine.py`](../src/python/engine.py); override with `SLIDERELABELER_PATCH_LIBTIFF=0/1` or [`dev-patch-libtiff.sh`](../scripts/dev-patch-libtiff.sh). Permanent fix belongs upstream.

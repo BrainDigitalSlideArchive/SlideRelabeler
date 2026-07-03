@@ -10,6 +10,7 @@ import esm from './esm';
 import globus from './globus';
 import uploadRouting from './uploadRouting';
 import auditLog from './auditLog';
+import apiIntegrations from './apiIntegrations';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -23,6 +24,7 @@ export const root_reducer = combineReducers({
     globus: globus,
     uploadRouting: uploadRouting,
     auditLog: auditLog,
+    apiIntegrations: apiIntegrations,
 });
 
 export default root_reducer;

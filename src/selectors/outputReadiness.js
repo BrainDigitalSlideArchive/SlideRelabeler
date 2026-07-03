@@ -1,22 +1,29 @@
+import {
+  resolveRowsAfterSetOutputDir,
+  rowHasDestinationDirectory,
+  summarizeDestinationDirectories,
+} from '../helpers/destination_directory.js';
 import { selectPatternValidationFromState } from '../helpers/pattern_validation.js';
+import { selectUploadReadiness } from './uploadRouting.js';
+import { getSaveLocallyPanelCopy, SAVE_LOCALLY_CHOOSE_LABEL } from './saveLocallyPanelCopy.js';
 
-export function rowHasDestinationDirectory(row) {
-  const dest = row?.__reserved?.destinationDirectory;
-  return typeof dest === 'string' && dest.trim().length > 0;
-}
+export {
+  getSaveLocallyPanelCopy,
+  getSaveLocallyNeedsLocationHint,
+  getSaveLocallyTooltipCopy,
+  SAVE_LOCALLY_ALL_ROWS_OPTIONAL_HINT,
+  SAVE_LOCALLY_CHANGE_TOOLTIP,
+  SAVE_LOCALLY_CHOOSE_LABEL,
+  SAVE_LOCALLY_NEW_FILES_COMPLETE_HINT,
+  SAVE_LOCALLY_NEW_FILES_EMPTY_TABLE_HINT,
+  SAVE_LOCALLY_OFF_TEXT,
+} from './saveLocallyPanelCopy.js';
 
-export function summarizeDestinationDirectories(file_rows) {
-  const rows = file_rows ?? [];
-  const total = rows.length;
-  const filled = rows.filter(rowHasDestinationDirectory).length;
-  const empty = total - filled;
-  return {
-    total,
-    filled,
-    empty,
-    perRowComplete: total > 0 && empty === 0,
-  };
-}
+export {
+  resolveRowsAfterSetOutputDir,
+  rowHasDestinationDirectory,
+  summarizeDestinationDirectories,
+};
 
 export function allRowsHaveDestinationDirectory(file_rows) {
   return summarizeDestinationDirectories(file_rows).perRowComplete;
@@ -24,37 +31,32 @@ export function allRowsHaveDestinationDirectory(file_rows) {
 
 export function normalizeSetOutputDirPayload(payload) {
   if (typeof payload === 'string') {
-    return { folder: payload, mode: 'all' };
+    return { folder: payload, mode: 'fill_empty' };
   }
   return {
     folder: payload.folder,
-    mode: payload.mode ?? 'all',
+    mode: payload.mode ?? 'fill_empty',
   };
 }
 
-export function resolveRowsAfterSetOutputDir(file_rows, folder, mode) {
-  return (file_rows ?? []).map((row) => {
-    if (mode === 'empty_only' && rowHasDestinationDirectory(row)) {
-      return row;
-    }
-    return {
-      ...row,
-      __reserved: {
-        ...row.__reserved,
-        destinationDirectory: folder,
-      },
-    };
-  });
+/** @deprecated Use getSaveLocallyPanelCopy */
+export function getSaveLocallyInlineCopy(destSummary, outputDir, { localEnabled = true } = {}) {
+  return getSaveLocallyPanelCopy(destSummary, outputDir, { localEnabled }).hint;
 }
 
 export function selectOutputReadiness(state) {
   const { output_dir, file_rows, csv, file_cols } = state.files ?? {};
-  const config = state.config ?? {};
-  const perRowComplete = allRowsHaveDestinationDirectory(file_rows);
+  const ur = state.uploadRouting ?? {};
+  const localEnabled = !!ur.local_output_enabled;
+  const uploadEnabled = !!ur.auto_upload;
+  const anyDeliveryEnabled = localEnabled || uploadEnabled;
+  const uploadOnly = uploadEnabled && !localEnabled;
+  const rowCount = (file_rows ?? []).length;
+  const perRowComplete = rowCount > 0 && allRowsHaveDestinationDirectory(file_rows);
 
-  const slideOutputReady = Boolean(output_dir) || perRowComplete;
-
-  const csvOutputReady = !csv.needs_csv_output_dir || Boolean(csv.output_dir);
+  const uploadReadiness = selectUploadReadiness(state);
+  const localConfigured = !localEnabled || perRowComplete;
+  const uploadConfigured = !uploadEnabled || uploadReadiness.ready;
 
   const patternValidation = selectPatternValidationFromState({
     config: state.config,
@@ -62,90 +64,63 @@ export function selectOutputReadiness(state) {
     file_cols,
   });
 
+  const needsSlideDestination = localEnabled && (
+    csv.needs_output_dir || !csv.headers
+  );
+
   return {
+    localEnabled,
+    uploadEnabled,
+    anyDeliveryEnabled,
+    uploadOnly,
     perRowComplete,
-    slideOutputReady,
-    csvOutputReady,
+    localConfigured,
+    uploadConfigured,
+    uploadReadiness,
     patternValidation,
-    processReady: slideOutputReady && csvOutputReady && !patternValidation.blocking,
-    outputDirRequired: csv.needs_output_dir && !output_dir && !perRowComplete,
-    csvOutputDirRequired: csv.needs_csv_output_dir && !csv.output_dir,
+    processReady:
+      anyDeliveryEnabled
+      && localConfigured
+      && uploadConfigured
+      && !patternValidation.blocking,
+    outputDirRequired: needsSlideDestination && !perRowComplete,
   };
 }
 
 /**
- * Copy strings and UI flags for OutputDirectoryPanel.
- * @returns {{ title: string, badge: string|null, body: string|null, path: string|null, buttonLabel: string, showProgress: boolean, optionalAction: boolean }}
+ * @deprecated Use getSaveLocallyPanelCopy
  */
-export function getOutputDirectoryPanelCopy(variant, destSummary, outputDir, required) {
-  const summary = destSummary ?? { total: 0, filled: 0, empty: 0, perRowComplete: false };
-
-  if (variant === 'csv') {
-    if (outputDir) {
-      return {
-        title: 'Output CSV location',
-        badge: 'Folder set',
-        body: null,
-        path: outputDir,
-        buttonLabel: 'Change folder…',
-        showProgress: false,
-        optionalAction: false,
-      };
-    }
-    return {
-      title: 'Output CSV location',
-      badge: required ? 'Required' : null,
-      body: 'Select where to write the output CSV.',
-      path: null,
-      buttonLabel: 'Choose folder…',
-      showProgress: false,
-      optionalAction: false,
-    };
-  }
-
-  if (outputDir) {
-    return {
-      title: 'Output Destination',
-      badge: 'Folder set',
-      body: null,
-      path: outputDir,
-      buttonLabel: 'Change folder…',
-      showProgress: summary.total > 0,
-      optionalAction: false,
-    };
-  }
-
-  if (summary.perRowComplete) {
-    return {
-      title: 'Output Destination',
-      badge: 'All ready',
-      body: 'All files have an output path.',
-      path: null,
-      buttonLabel: 'Choose folder…',
-      showProgress: true,
-      optionalAction: true,
-    };
-  }
-
-  if (summary.filled > 0) {
-    return {
-      title: 'Output Destination',
-      badge: `${summary.filled} of ${summary.total} ready`,
-      body: 'Set the rest individually in the Copy To column in the table below, or choose a destination folder for the remaining files.',
-      path: null,
-      buttonLabel: 'Choose folder…',
-      showProgress: true,
-      optionalAction: false,
-    };
-  }
-
+export function getDeliveryLocalColumnCopy(destSummary, outputDir, { localEnabled = false } = {}) {
+  const panel = getSaveLocallyPanelCopy(destSummary, outputDir, { localEnabled });
   return {
-    title: 'Output Destination',
-    badge: required ? 'Required' : null,
-    body: 'Set Copy To per file in the table below, or choose one folder for all.',
-    path: null,
-    buttonLabel: 'Choose folder…',
-    showProgress: summary.total > 0,
-    optionalAction: !required,
+    helperText: panel.hint,
+    path: outputDir || null,
+    folderButtonLabel: outputDir ? 'Change folder' : SAVE_LOCALLY_CHOOSE_LABEL,
+    showProgress: false,
+    offText: panel.offText,
   };
+}
+
+/** @deprecated Use getDeliveryLocalColumnCopy */
+export function getDeliveryPanelCopy(destSummary, outputDir, options = {}) {
+  return getDeliveryLocalColumnCopy(destSummary, outputDir, {
+    localEnabled: options.localEnabled ?? (!options.uploadOnly && (options.keepLocalCopy || !options.autoUpload)),
+  });
+}
+
+export function getDeliveryUploadStatusCopy(uploadReadiness) {
+  if (!uploadReadiness) return null;
+  if (uploadReadiness.ready) return 'Upload connection ready';
+  const blocker = uploadReadiness.blockers?.[0];
+  if (blocker) return `Upload connection: ${blocker}`;
+  return 'Upload connection not ready';
+}
+
+export function getDeliverySetupModalType(destination) {
+  return destination === 'globus' ? 'globusUpload' : 'dsaUpload';
+}
+
+export function getDeliverySetupButtonLabel(destination, ready = false) {
+  const name = destination === 'globus' ? 'Globus' : 'DSA';
+  return ready ? `Review ${name} upload settings…` : `Set up ${name} upload…`;
 }

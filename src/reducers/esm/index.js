@@ -125,6 +125,8 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.loading = false;
         draft.error = false;
         draft.errorMessage = null;
+        draft.profileSwitchOpen = false;
+        draft.switchOriginProfileId = null;
       });
     })
     .addCase(esm_actions.ESM_LOGIN_ERROR, (state, action) => {
@@ -134,6 +136,8 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.loading = false;
         draft.error = true;
         draft.errorMessage = action.payload;
+        draft.profileSwitchOpen = false;
+        draft.switchOriginProfileId = null;
       });
     })
     .addCase(esm_actions.ESM_LOGOUT_SUCCESS, (state) => {
@@ -145,6 +149,35 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.errorMessage = null;
         draft.password = '';
         if (!draft.rememberUsername) draft.username = '';
+      });
+    })
+    .addCase(esm_actions.ESM_OPEN_PROFILE_SWITCH, (state) => {
+      return produce(state, (draft) => {
+        draft.profileSwitchOpen = true;
+        draft.switchOriginProfileId = draft.activeProfileId ?? null;
+        draft.error = false;
+        draft.errorMessage = null;
+      });
+    })
+    .addCase(esm_actions.ESM_CLOSE_PROFILE_SWITCH, (state) => {
+      return produce(state, (draft) => {
+        draft.profileSwitchOpen = false;
+        draft.switchOriginProfileId = null;
+        draft.error = false;
+        draft.errorMessage = null;
+      });
+    })
+    .addCase(esm_actions.ESM_CONFIRM_PROFILE_SWITCH, (state, action) => {
+      return produce(state, (draft) => {
+        const id = action.payload ?? draft.activeProfileId;
+        if (id) {
+          const exists = (draft.profiles || []).some((p) => p && p.id === id);
+          if (exists) draft.activeProfileId = id;
+        }
+        draft.profileSwitchOpen = false;
+        draft.switchOriginProfileId = null;
+        draft.error = false;
+        draft.errorMessage = null;
       });
     })
     .addCase(esm_actions.ESM_SET_LOADING, (state, action) => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test both tiff_reader patches (patchLibtiff + _getJpegTables) with validate=True."""
+"""Test all three tiff_reader patches with validate=True."""
 from __future__ import annotations
 
 import uuid

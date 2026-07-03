@@ -1,43 +1,58 @@
 import { take, put, select, call } from 'redux-saga/effects';
 
 import * as files_actions from '../../actions/files';
-import { summarizeDestinationDirectories } from '../../selectors/outputReadiness.js';
+import { summarizeDestinationBySource } from '../../helpers/destination_directory.js';
 
 function isValidFolder(folder) {
   return folder && typeof folder === 'string';
 }
 
-function* promptOutputDirApplyMode({ filled, empty, total }) {
-  if (filled > 0 && empty > 0) {
-    const response = yield call(electronAPI.showMessageBox, {
-      type: 'question',
-      title: 'Apply output directory',
-      message: 'Some files already have a Copy To path',
-      detail: `${filled} of ${total} files have a destination. Choose how to apply the new directory.`,
-      buttons: ['Fill empty rows only', 'Replace all Copy To paths', 'Cancel'],
-      defaultId: 0,
-      cancelId: 2,
-    });
-    if (response.response === 0) return 'empty_only';
-    if (response.response === 1) return 'all';
-    return null;
+function* promptChangeOutputDirApplyMode({ defaultSourced, empty, csvSourced, userSourced }) {
+  const protectedCount = csvSourced + userSourced;
+  const detailParts = [];
+  if (defaultSourced > 0) {
+    detailParts.push(`${defaultSourced} file${defaultSourced === 1 ? '' : 's'} use the current default folder`);
+  }
+  if (empty > 0) {
+    detailParts.push(`${empty} file${empty === 1 ? '' : 's'} have no Copy To path`);
+  }
+  if (protectedCount > 0) {
+    detailParts.push(`${protectedCount} file${protectedCount === 1 ? '' : 's'} have CSV or manual paths that will not change`);
   }
 
-  if (empty === 0 && filled > 0) {
-    const response = yield call(electronAPI.showMessageBox, {
-      type: 'question',
-      title: 'Apply output directory',
-      message: 'All files already have a Copy To path',
-      detail: `Replace Copy To on all ${total} files with the new directory?`,
-      buttons: ['Replace all Copy To paths', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-    });
-    if (response.response === 0) return 'all';
-    return null;
+  const response = yield call(electronAPI.showMessageBox, {
+    type: 'question',
+    title: 'Change output folder',
+    message: 'Use the new output folder for which files?',
+    detail: detailParts.join('. ') + '.',
+    buttons: ['Apply to all files except those defined by CSV or manually selected', 'Current files keep existing output folder; new files use the new folder', 'Cancel'],
+    defaultId: 0,
+    cancelId: 2,
+  });
+
+  if (response.response === 0) return 'update_default_sourced';
+  if (response.response === 1) return 'default_only';
+  return null;
+}
+
+function* resolveApplyMode({ currentOutputDir, summary }) {
+  const { total, empty, filled, defaultSourced } = summary;
+
+  if (total === 0) {
+    return 'default_only';
   }
 
-  return 'all';
+  if (!currentOutputDir) {
+    if (empty > 0) return 'fill_empty';
+    if (filled > 0) return 'default_only';
+    return 'fill_empty';
+  }
+
+  if (defaultSourced === 0 && empty === 0) {
+    return 'default_only';
+  }
+
+  return yield* promptChangeOutputDirApplyMode(summary);
 }
 
 export default function* choose_output_dir() {
@@ -52,12 +67,10 @@ export default function* choose_output_dir() {
       }
 
       const file_rows = yield select((state) => state.files.file_rows);
-      const { total, filled, empty } = summarizeDestinationDirectories(file_rows);
-      if (total === 0) {
-        continue;
-      }
+      const currentOutputDir = yield select((state) => state.files.output_dir);
+      const summary = summarizeDestinationBySource(file_rows);
 
-      const mode = yield* promptOutputDirApplyMode({ filled, empty, total });
+      const mode = yield* resolveApplyMode({ currentOutputDir, summary });
       if (!mode) {
         continue;
       }

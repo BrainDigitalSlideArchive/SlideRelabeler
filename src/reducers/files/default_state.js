@@ -20,7 +20,7 @@ export const default_state = {
     errors: [],
     disable_changes: false,
     metadata_updating: false,
-    csv: {file: null,headers: null, rows: [], output_dir: null, needs_output_dir: false, needs_csv_output_dir: false, csv_file_path: null, reserved_path_column: null, reserved_rename_column: null, reserved_destination_directory_column: null},
+    csv: {file: null,headers: null, rows: [], needs_output_dir: false, csv_file_path: null, reserved_path_column: null, reserved_rename_column: null, reserved_destination_directory_column: null},
     processing_files: [],
     progress_infos: [],
     transfer_rate: null, // in bytes per second

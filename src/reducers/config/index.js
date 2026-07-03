@@ -107,11 +107,6 @@ const config_reducer  = createReducer(default_state, (builder) => {
         syncFilenameLegacyFields(draft);
       })
     })
-    .addCase(config_actions.TOGGLE_SAVE_CSV, (state, action) => {
-      return produce(state, draft => {
-        draft.csv.save_csv = !state.csv.save_csv;
-      })
-    })
     .addCase(config_actions.CHANGE_QR_MODE, (state, action) => {
       return produce(state, draft => {
         draft.label.qr_mode = action.payload;

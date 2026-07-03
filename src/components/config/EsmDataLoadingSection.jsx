@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import * as esm_actions from '../../actions/esm';
-import { makeEsmProfile } from '../../helpers/esm_profile_helpers';
+import { cloneEsmProfile, makeEsmProfile } from '../../helpers/esm_profile_helpers';
 import EsmProfileCard from './EsmProfileCard';
 
 export default function EsmDataLoadingSection({ disabled = false }) {
@@ -14,6 +14,12 @@ export default function EsmDataLoadingSection({ disabled = false }) {
     const profile = makeEsmProfile({ name: 'New profile', url: '' });
     dispatch({ type: esm_actions.ESM_ADD_PROFILE, payload: profile });
     setExpandedProfileId(profile.id);
+  }
+
+  function cloneProfile(source) {
+    const clone = cloneEsmProfile(source);
+    dispatch({ type: esm_actions.ESM_ADD_PROFILE, payload: clone });
+    setExpandedProfileId(clone.id);
   }
 
   function deleteProfile(id) {
@@ -34,7 +40,7 @@ export default function EsmDataLoadingSection({ disabled = false }) {
     <div className="esm-data-loading-section" id="config-esm-api">
       <p className="esm-data-loading-section__lead">
         Saved eSlideManager connection profiles. Open <strong>eSlideManager</strong> from the toolbar
-        to log in, pick a profile, and load slides.
+        to log in, pick a profile, and load slides—or <strong>clone</strong> a profile to save a search preset variant.
       </p>
 
       <div className="esm-profiles-section">
@@ -51,6 +57,7 @@ export default function EsmDataLoadingSection({ disabled = false }) {
                 disabled={disabled}
                 expanded={expandedProfileId === p.id}
                 onToggleExpand={() => toggleProfileExpanded(p.id)}
+                onClone={() => cloneProfile(p)}
                 onDelete={() => deleteProfile(p.id)}
                 deleteDisabled={profiles.length <= 1}
               />

@@ -1,4 +1,4 @@
-import { isGlobusEndpointUuid } from '../helpers/globus_helpers';
+import { isGlobusEndpointUuid } from '../helpers/globus_helpers.js';
 
 /**
  * Connection readiness for the active auto-upload destination.

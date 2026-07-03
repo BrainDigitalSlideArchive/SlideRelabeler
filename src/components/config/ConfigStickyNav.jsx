@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 const NAV_ITEMS = [
   { id: 'config-overview', label: 'Overview' },
   { id: 'config-output-filename', label: 'Output name' },
+  { id: 'config-output-delivery', label: 'Output delivery' },
   { id: 'config-slide-label', label: 'Slide label' },
   { id: 'config-audit-logging', label: 'Audit logging' },
   { id: 'config-data-loading', label: 'Data loading' },

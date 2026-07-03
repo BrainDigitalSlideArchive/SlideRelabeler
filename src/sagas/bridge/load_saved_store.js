@@ -15,6 +15,7 @@ import { migrateUploadRoutingFromLegacy } from '../../helpers/uploadRouting_migr
 import { migrateConfigV2 } from '../../helpers/config_v2_migration.js';
 import { migrateAuditLogFromStore } from '../../helpers/audit_log_migration.js';
 import * as auditLog_actions from '../../actions/auditLog';
+import * as api_integrations_actions from '../../actions/apiIntegrations';
 
 let lastPersistedSnapshotJson = null;
 
@@ -101,6 +102,13 @@ function* load_saved_store() {
 
   const auditLogState = migrateAuditLogFromStore(store.auditLog, store.config);
   yield put({ type: auditLog_actions.RESTORE_AUDIT_LOG, payload: auditLogState });
+
+  if (store.apiIntegrations) {
+    yield put({
+      type: api_integrations_actions.RESTORE_API_INTEGRATIONS,
+      payload: store.apiIntegrations,
+    });
+  }
 
   if (store.files?.file_rows?.length > 0) {
     yield put({ type: config_actions.RECOMPUTE_ALL_NAMING });

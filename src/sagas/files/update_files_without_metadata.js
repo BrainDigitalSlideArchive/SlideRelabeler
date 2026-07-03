@@ -3,6 +3,7 @@ import { take, put, call, fork, delay, select, cancel } from 'redux-saga/effects
 import * as files_actions from '../../actions/files';
 import * as debug_actions from '../../actions/debug';
 import { buildFileRowErrorFromBackend } from '../../helpers/grpc_helpers';
+import { initDestinationSource } from '../../helpers/destination_directory.js';
 
 function isMetadataTerminal(file_row) {
     const reserved = file_row?.__reserved;
@@ -32,6 +33,7 @@ export function* update_file_metadata(file_row_idx, file_row) {
 
         if (output_dir) {
             metadata.destinationDirectory = output_dir;
+            metadata = initDestinationSource(metadata);
         }
 
         let updated_file_row = Object.assign({}, file_row, { '__reserved': metadata })

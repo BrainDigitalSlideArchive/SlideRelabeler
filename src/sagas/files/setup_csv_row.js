@@ -9,6 +9,11 @@ import {
   markNamingFieldSource,
   NAMING_SOURCE,
 } from '../../helpers/row_naming_defaults.js';
+import {
+  DESTINATION_SOURCE,
+  initDestinationSource,
+  markDestinationSource,
+} from '../../helpers/destination_directory.js';
 
 function trimCell(value) {
   if (value == null) return '';
@@ -79,9 +84,18 @@ export default function* setup_csv_row(headers, row) {
     const output_dir = yield select((state) => state.files.output_dir);
 
     if (reserved_destination_directory_column) {
-      output_row.__reserved.destinationDirectory = row[reserved_destination_directory_column.header_idx];
-    } else {
+      const raw = row[reserved_destination_directory_column.header_idx];
+      const value = trimCell(raw);
+      if (value) {
+        output_row.__reserved.destinationDirectory = value;
+        output_row.__reserved = markDestinationSource(
+          output_row.__reserved,
+          DESTINATION_SOURCE.CSV,
+        );
+      }
+    } else if (output_dir) {
       output_row.__reserved.destinationDirectory = output_dir;
+      output_row.__reserved = initDestinationSource(output_row.__reserved);
     }
 
     output_row = initRowNamingSources(output_row);

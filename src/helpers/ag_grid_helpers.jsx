@@ -3,6 +3,7 @@ import { displayBytesCompact } from "./fe_helpers";
 import * as files_actions from "../actions/files";
 import { resolveOutputFilenameStem } from './output_filename.js';
 import { markNamingFieldSource, NAMING_SOURCE } from './row_naming_defaults.js';
+import { DESTINATION_SOURCE, markDestinationSource } from './destination_directory.js';
 import AssociatedImagesIcons from '../components/AgGrid/AssociatedImagesIcons.jsx';
 import RenameCellEditor from '../components/AgGrid/RenameCellEditor.jsx';
 import OverflowTitle from '../components/AgGrid/OverflowTitle.jsx';
@@ -157,6 +158,7 @@ export function setupDestinationDirectoryColumn(file_cols) {
     file_cols,
     '__reserved.destinationDirectory',
     params => {
+      const copyToEnabled = params.context?.copyToEnabled !== false;
       const iconMode = isPathColumnIconMode(params.column, params.context);
       if (params.data?.__reserved?.processed !== 0) {
         const path = params.data.__reserved.destinationDirectory ?? '';
@@ -170,6 +172,13 @@ export function setupDestinationDirectoryColumn(file_cols) {
           );
         }
         return <OverflowTitle text={path} className="__copy-to" />;
+      }
+      if (!copyToEnabled) {
+        const disabledLabel = iconMode ? '' : '—';
+        if (iconMode) {
+          return <span className="__copy-to __copy-to--disabled" title="Upload staging">—</span>;
+        }
+        return <OverflowTitle text={disabledLabel} className="__copy-to __copy-to--disabled" />;
       }
       const fullPath = params.value || '';
       if (iconMode) {
@@ -369,14 +378,18 @@ export function setupDestinationDirectoryCellClass(file_cols) {
     file_cols,
     '__reserved.destinationDirectory',
     (params) => {
+      const copyToEnabled = params.context?.copyToEnabled !== false;
       const parts = ['cell-container', 'directory', 'left-ellipsis'];
       if (isPathColumnIconMode(params.column, params.context)) {
         parts.push('__cell-icon');
       } else {
         parts.push('__cell');
       }
-      if (isUnprocessedRow(params.data)) {
+      if (copyToEnabled && isUnprocessedRow(params.data)) {
         parts.push('editable');
+      }
+      if (!copyToEnabled && isUnprocessedRow(params.data)) {
+        parts.push('__copy-to-disabled');
       }
       return parts.join(' ');
     }
@@ -395,7 +408,8 @@ export function setupDestinationDirectoryOnCellClicked(file_cols, dispatch) {
   return addOnCellClicked(
     file_cols,
     '__reserved.destinationDirectory',
-    async ({ data, node }) => {
+    async ({ data, node, context }) => {
+      if (context?.copyToEnabled === false) return;
       if (!canOpenViewerForRow(data)) return;
       if (data.__reserved.processed === 1 && !data.__reserved.deleted_after) {
         electronAPI.openViewer(data.__reserved.output_path, node.rowIndex);
@@ -410,10 +424,13 @@ export function setupDestinationDirectoryOnCellClicked(file_cols, dispatch) {
         return;
       }
       const replace_row = { ...data };
-      const reserved = {
-        ...replace_row.__reserved,
-        destinationDirectory: folder,
-      };
+      const reserved = markDestinationSource(
+        {
+          ...replace_row.__reserved,
+          destinationDirectory: folder,
+        },
+        DESTINATION_SOURCE.USER,
+      );
       replace_row.__reserved = reserved;
       dispatch({
         type: files_actions.UPDATE_FILE_ROW_WITHOUT_METADATA,

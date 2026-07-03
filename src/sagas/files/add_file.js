@@ -5,11 +5,18 @@ import {
   applyRowNamingDefaults,
   initRowNamingSources,
 } from '../../helpers/row_naming_defaults.js';
+import {
+  DESTINATION_SOURCE,
+  initDestinationSource,
+} from '../../helpers/destination_directory.js';
 
 export function* make_file_row(file) {
   const output_dir = yield select(state => state.files.output_dir);
 
   let metadata = Object.assign({}, file, { destinationDirectory: output_dir });
+  if (output_dir) {
+    metadata = initDestinationSource(metadata);
+  }
 
   // make reserved
   let file_row = {

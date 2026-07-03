@@ -278,7 +278,7 @@ export function headerInfo(
   }
 
   if (file_rows.length === 0) {
-    return <p>No Files Loaded</p>
+    return null;
   } else if (count < file_rows.length) {
     return <p>Found info for {count} of {file_rows.length} files; {file_rows.length - count} remaining.</p>
   } else {

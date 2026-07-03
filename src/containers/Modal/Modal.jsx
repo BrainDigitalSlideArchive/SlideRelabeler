@@ -10,7 +10,8 @@ import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
 import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
-import ModalNetwork from './ModalNetwork';
+import ModalDsaUploadSetup from './ModalDsaUploadSetup';
+import ModalGlobusUploadSetup from './ModalGlobusUploadSetup';
 import ModalESlideManager from './ModalESlideManager';
 import AuditLogViewerModal from './AuditLogViewerModal';
 
@@ -28,8 +29,10 @@ function render_modal(type, props) {
       return <ModalError/>;
     case 'warning':
       return <ModalWarning/>;
-    case 'network':
-      return <ModalNetwork />;
+    case 'dsaUpload':
+      return <ModalDsaUploadSetup />;
+    case 'globusUpload':
+      return <ModalGlobusUploadSetup />;
     case 'metadata':
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
     case 'esm':

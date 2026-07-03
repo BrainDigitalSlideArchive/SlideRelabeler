@@ -154,7 +154,7 @@ function* process_files_worker() {
 
       const ur = yield select((state) => state.uploadRouting);
       const upload_throttle_limit = ur.max_local_pending || 2;
-      const should_throttle = ur.auto_upload && ur.delete_local_after;
+      const should_throttle = ur.auto_upload && !ur.keep_local_copy;
 
       let processed_files_count = 0;
       let metadata_pending_count = 0;

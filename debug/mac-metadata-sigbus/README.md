@@ -78,16 +78,17 @@ Steps 07–08 need `PYTHONPATH` via `repro_common.ensure_deidtools_path()` (repo
 | 04, 05 | Usually same as 02 (tifftools order rarely changes outcome) |
 | 06 | OK — OpenSlide path works |
 | 07, 08, 09 | SIGBUS (same native fault as DeidTools preview path) |
-| 10 | OK — both patches; `validate=True`, `TiffFileTileSource`, `preview_metadata` pass |
+| 10 | OK — all three patches; `validate=True`, `TiffFileTileSource`, `preview_metadata` pass |
 
 If 01 passes but 02/03 fail, the fault is in **pylibtiff inside `large_image_source_tiff`**, not tifftools or app logic.
 
 ## tiff_reader patches (local testing / Mac app)
 
-[`src/python/libtiff_guard.py`](../../src/python/libtiff_guard.py) applies both upstream fixes via an import hook (must run before `large_image_source_tiff.tiff_reader` loads):
+[`src/python/libtiff_guard.py`](../../src/python/libtiff_guard.py) applies all three upstream fixes via an import hook (must run before `large_image_source_tiff.tiff_reader` loads):
 
 1. **`patchLibtiff()`** — preserve pylibtiff #189 two-arg `TIFFGetField.argtypes`
 2. **`_getJpegTables()`** — remove argtypes extension; pass output pointers as variadic args
+3. **`_getJpegFrameSize()`** — same for tile byte-count reads (`getTile()` path)
 
 See [`UPSTREAM_BRIEF.md`](UPSTREAM_BRIEF.md) for exact diffs to send large_image maintainers.
 
@@ -98,15 +99,18 @@ install_patchlibtiff_guard()
 import large_image_source_tiff.tiff_reader  # patched load
 ```
 
-End-to-end app testing (opt-in):
+End-to-end app testing:
 
 ```bash
-chmod +x scripts/dev-mac-metadata.sh
-./scripts/dev-mac-metadata.sh
-# or: SLIDERELABELER_PATCH_LIBTIFF=1 ./scripts/dev.sh
+chmod +x scripts/dev-patch-libtiff.sh
+./scripts/dev-patch-libtiff.sh   # force guard on (optional on macOS arm64)
+# or: npm run dev                # auto-enables guard on darwin/arm64
+# or: SLIDERELABELER_PATCH_LIBTIFF=0 ./scripts/dev.sh   # reproduce crash
 ```
 
-Check stderr for `tiff_reader patches registered`. **Windows:** leave the flag unset.
+On **macOS arm64**, [`engine.py`](../../src/python/engine.py) auto-installs the guard when `SLIDERELABELER_PATCH_LIBTIFF` is unset. Check stderr for `libtiff guard auto-enabled`. **Windows / Intel Mac:** leave the flag unset; guard stays off.
+
+`dev-mac-metadata.sh` is deprecated; it forwards to `dev-patch-libtiff.sh`.
 
 ## Phase 2: narrowing steps
 

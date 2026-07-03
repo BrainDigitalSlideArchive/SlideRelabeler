@@ -3,17 +3,35 @@ import assert from 'node:assert/strict';
 
 import {
   allRowsHaveDestinationDirectory,
-  getOutputDirectoryPanelCopy,
+  getDeliveryLocalColumnCopy,
+  getDeliveryPanelCopy,
+  getDeliverySetupButtonLabel,
+  getDeliverySetupModalType,
+  getDeliveryUploadStatusCopy,
+  SAVE_LOCALLY_NEW_FILES_COMPLETE_HINT,
   normalizeSetOutputDirPayload,
   resolveRowsAfterSetOutputDir,
   rowHasDestinationDirectory,
   selectOutputReadiness,
   summarizeDestinationDirectories,
 } from './outputReadiness.js';
+import { DESTINATION_SOURCE } from '../helpers/destination_directory.js';
 
-const rowWithDest = (dest) => ({
-  __reserved: { destinationDirectory: dest },
+const rowWithDest = (dest, source) => ({
+  __reserved: {
+    destinationDirectory: dest,
+    ...(source != null ? { destinationDirectorySource: source } : {}),
+  },
 });
+
+const baseConfig = { filename: { source: 'uuid' }, label: {}, csv: {}, dsa_upload: {} };
+
+const dsaReadyState = {
+  dsa: {
+    api_auth: { authToken: 'token' },
+    folder_id: 'folder-1',
+  },
+};
 
 const baseState = {
   files: {
@@ -21,10 +39,12 @@ const baseState = {
     file_rows: [],
     csv: {
       needs_output_dir: true,
-      needs_csv_output_dir: false,
-      output_dir: null,
       headers: null,
     },
+  },
+  uploadRouting: {
+    local_output_enabled: false,
+    auto_upload: false,
   },
 };
 
@@ -106,178 +126,182 @@ describe('normalizeSetOutputDirPayload', () => {
   it('coerces legacy string payload', () => {
     assert.deepEqual(normalizeSetOutputDirPayload('/global/out'), {
       folder: '/global/out',
-      mode: 'all',
+      mode: 'fill_empty',
     });
   });
 
   it('preserves explicit mode', () => {
     assert.deepEqual(normalizeSetOutputDirPayload({
       folder: '/global/out',
-      mode: 'empty_only',
+      mode: 'update_default_sourced',
     }), {
       folder: '/global/out',
-      mode: 'empty_only',
+      mode: 'update_default_sourced',
     });
   });
 });
 
 describe('resolveRowsAfterSetOutputDir', () => {
-  it('updates all rows in all mode', () => {
-    const rows = [rowWithDest('/old/a'), { __reserved: {} }];
-    const result = resolveRowsAfterSetOutputDir(rows, '/new', 'all');
+  it('updates default-sourced rows in update_default_sourced mode', () => {
+    const rows = [
+      rowWithDest('/old/a', DESTINATION_SOURCE.DEFAULT),
+      rowWithDest('/csv/a', DESTINATION_SOURCE.CSV),
+      { __reserved: {} },
+    ];
+    const result = resolveRowsAfterSetOutputDir(rows, '/new', 'update_default_sourced');
     assert.equal(result[0].__reserved.destinationDirectory, '/new');
-    assert.equal(result[1].__reserved.destinationDirectory, '/new');
+    assert.equal(result[1].__reserved.destinationDirectory, '/csv/a');
+    assert.equal(result[2].__reserved.destinationDirectory, '/new');
   });
 
-  it('updates only empty rows in empty_only mode', () => {
-    const rows = [rowWithDest('/old/a'), { __reserved: {} }];
-    const result = resolveRowsAfterSetOutputDir(rows, '/new', 'empty_only');
+  it('updates only empty rows in fill_empty mode', () => {
+    const rows = [rowWithDest('/old/a', DESTINATION_SOURCE.USER), { __reserved: {} }];
+    const result = resolveRowsAfterSetOutputDir(rows, '/new', 'fill_empty');
     assert.equal(result[0].__reserved.destinationDirectory, '/old/a');
     assert.equal(result[1].__reserved.destinationDirectory, '/new');
   });
-});
 
-describe('getOutputDirectoryPanelCopy', () => {
-  it('partial slide state uses ready badge and short body', () => {
-    const copy = getOutputDirectoryPanelCopy(
-      'slide',
-      { total: 2, filled: 1, empty: 1, perRowComplete: false },
-      null,
-      true,
-    );
-    assert.equal(copy.badge, '1 of 2 ready');
-    assert.equal(copy.body, 'Set the rest individually in the Copy To column in the table below, or choose a destination folder for the remaining files.');
-    assert.equal(copy.showProgress, true);
-    assert.equal(copy.body.includes('asked'), false);
-  });
-
-  it('none set required slide state', () => {
-    const copy = getOutputDirectoryPanelCopy(
-      'slide',
-      { total: 3, filled: 0, empty: 3, perRowComplete: false },
-      null,
-      true,
-    );
-    assert.equal(copy.badge, 'Required');
-    assert.equal(copy.body, 'Set Copy To per file in the table below, or choose one folder for all.');
-    assert.equal(copy.buttonLabel, 'Choose folder…');
-  });
-
-  it('all ready slide state', () => {
-    const copy = getOutputDirectoryPanelCopy(
-      'slide',
-      { total: 2, filled: 2, empty: 0, perRowComplete: true },
-      null,
-      false,
-    );
-    assert.equal(copy.badge, 'All ready');
-    assert.equal(copy.optionalAction, true);
-  });
-
-  it('global path set shows path row', () => {
-    const copy = getOutputDirectoryPanelCopy(
-      'slide',
-      { total: 2, filled: 2, empty: 0, perRowComplete: true },
-      '/Users/out/deid',
-      false,
-    );
-    assert.equal(copy.badge, 'Folder set');
-    assert.equal(copy.path, '/Users/out/deid');
-    assert.equal(copy.body, null);
-    assert.equal(copy.buttonLabel, 'Change folder…');
-  });
-
-  it('csv required state', () => {
-    const copy = getOutputDirectoryPanelCopy('csv', null, null, true);
-    assert.equal(copy.title, 'Output CSV location');
-    assert.equal(copy.badge, 'Required');
-    assert.equal(copy.body, 'Select where to write the output CSV.');
+  it('leaves rows unchanged in default_only mode', () => {
+    const rows = [rowWithDest('/old/a'), { __reserved: {} }];
+    const result = resolveRowsAfterSetOutputDir(rows, '/new', 'default_only');
+    assert.equal(result[0].__reserved.destinationDirectory, '/old/a');
+    assert.equal(result[1].__reserved.destinationDirectory, undefined);
   });
 });
 
 describe('selectOutputReadiness', () => {
-  it('slideOutputReady via global output_dir', () => {
+  it('processReady false when both delivery toggles are off', () => {
     const result = selectOutputReadiness({
+      ...baseState,
+      config: baseConfig,
+    });
+    assert.equal(result.anyDeliveryEnabled, false);
+    assert.equal(result.localEnabled, false);
+    assert.equal(result.uploadEnabled, false);
+    assert.equal(result.processReady, false);
+  });
+
+  it('local on with all rows having Copy To is configured and processReady', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: false },
+      files: {
+        ...baseState.files,
+        file_rows: [rowWithDest('/out/a'), rowWithDest('/out/b')],
+      },
+      config: baseConfig,
+    });
+    assert.equal(result.localEnabled, true);
+    assert.equal(result.localConfigured, true);
+    assert.equal(result.uploadEnabled, false);
+    assert.equal(result.processReady, true);
+  });
+
+  it('local on with global folder set but rows incomplete is not configured', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: false },
       files: {
         ...baseState.files,
         output_dir: '/global/out',
         file_rows: [{ __reserved: {} }],
       },
+      config: baseConfig,
     });
-    assert.equal(result.slideOutputReady, true);
-    assert.equal(result.processReady, true);
-    assert.equal(result.outputDirRequired, false);
+    assert.equal(result.localConfigured, false);
+    assert.equal(result.processReady, false);
+    assert.equal(result.outputDirRequired, true);
   });
 
-  it('slideOutputReady via per-row destinations when needs_output_dir', () => {
+  it('upload on with local off and DSA ready is configured', () => {
     const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: false, auto_upload: true },
+      files: {
+        ...baseState.files,
+        file_rows: [{ __reserved: {} }],
+      },
+      config: baseConfig,
+      ...dsaReadyState,
+    });
+    assert.equal(result.uploadOnly, true);
+    assert.equal(result.uploadConfigured, true);
+    assert.equal(result.localConfigured, true);
+    assert.equal(result.processReady, true);
+  });
+
+  it('upload on without credentials is not configured', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: false, auto_upload: true },
+      files: {
+        ...baseState.files,
+        file_rows: [{ __reserved: {} }],
+      },
+      config: baseConfig,
+      dsa: {},
+    });
+    assert.equal(result.uploadConfigured, false);
+    assert.equal(result.processReady, false);
+  });
+
+  it('both on requires local and upload configuration', () => {
+    const incomplete = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: true },
+      files: {
+        ...baseState.files,
+        file_rows: [{ __reserved: {} }],
+      },
+      config: baseConfig,
+      ...dsaReadyState,
+    });
+    assert.equal(incomplete.localConfigured, false);
+    assert.equal(incomplete.uploadConfigured, true);
+    assert.equal(incomplete.processReady, false);
+
+    const ready = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: true, keep_local_copy: true },
+      files: {
+        ...baseState.files,
+        file_rows: [rowWithDest('/out/a')],
+      },
+      config: baseConfig,
+      ...dsaReadyState,
+    });
+    assert.equal(ready.localConfigured, true);
+    assert.equal(ready.uploadConfigured, true);
+    assert.equal(ready.processReady, true);
+  });
+
+  it('processReady when CSV import has per-row destinations and local enabled', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: false },
       files: {
         ...baseState.files,
         file_rows: [rowWithDest('/out/a'), rowWithDest('/out/b')],
+        csv: {
+          needs_output_dir: false,
+          headers: ['path', 'copyTo'],
+        },
       },
+      config: baseConfig,
     });
-    assert.equal(result.perRowComplete, true);
-    assert.equal(result.slideOutputReady, true);
+    assert.equal(result.localConfigured, true);
     assert.equal(result.processReady, true);
     assert.equal(result.outputDirRequired, false);
-  });
-
-  it('processReady blocked when needs_csv_output_dir and no csv.output_dir', () => {
-    const result = selectOutputReadiness({
-      files: {
-        ...baseState.files,
-        file_rows: [rowWithDest('/out/a')],
-        csv: {
-          needs_output_dir: false,
-          needs_csv_output_dir: true,
-          output_dir: null,
-          headers: ['path'],
-        },
-      },
-    });
-    assert.equal(result.slideOutputReady, true);
-    assert.equal(result.csvOutputReady, false);
-    assert.equal(result.processReady, false);
-    assert.equal(result.csvOutputDirRequired, true);
-  });
-
-  it('outputDirRequired true when needs_output_dir and no global or per-row dest', () => {
-    const result = selectOutputReadiness({
-      files: {
-        ...baseState.files,
-        file_rows: [rowWithDest('/out/a'), { __reserved: {} }],
-      },
-    });
-    assert.equal(result.perRowComplete, false);
-    assert.equal(result.outputDirRequired, true);
-    assert.equal(result.slideOutputReady, false);
-    assert.equal(result.processReady, false);
-  });
-
-  it('slideOutputReady via per-row when no csv headers (dialog-only workflow)', () => {
-    const result = selectOutputReadiness({
-      files: {
-        ...baseState.files,
-        csv: {
-          needs_output_dir: false,
-          needs_csv_output_dir: false,
-          output_dir: null,
-          headers: null,
-        },
-        file_rows: [rowWithDest('/out/a')],
-      },
-      config: { filename: { source: 'uuid' }, label: {}, csv: {}, dsa_upload: {} },
-    });
-    assert.equal(result.slideOutputReady, true);
-    assert.equal(result.processReady, true);
   });
 
   it('processReady blocked when pattern rows missing columns', () => {
     const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: false },
       files: {
         ...baseState.files,
         file_rows: [
-          { __reserved: { renameSource: 'default', uuid: 'u1' } },
+          { __reserved: { renameSource: 'default', uuid: 'u1', destinationDirectory: '/out' } },
         ],
         file_cols: [],
         csv: { ...baseState.files.csv, needs_output_dir: false },
@@ -291,5 +315,67 @@ describe('selectOutputReadiness', () => {
     });
     assert.equal(result.patternValidation.blocking, true);
     assert.equal(result.processReady, false);
+  });
+});
+
+describe('getDeliveryLocalColumnCopy', () => {
+  it('returns off text when local is disabled', () => {
+    const copy = getDeliveryLocalColumnCopy(null, null, { localEnabled: false });
+    assert.equal(copy.offText, 'Off — enable to configure');
+    assert.equal(copy.helperText, null);
+  });
+
+  it('returns path when folder is set', () => {
+    const copy = getDeliveryLocalColumnCopy(
+      { total: 2, filled: 2, empty: 0, perRowComplete: true },
+      '/out',
+      { localEnabled: true },
+    );
+    assert.equal(copy.path, '/out');
+    assert.equal(copy.helperText, SAVE_LOCALLY_NEW_FILES_COMPLETE_HINT);
+    assert.equal(copy.showProgress, false);
+  });
+});
+
+describe('getDeliveryPanelCopy', () => {
+  it('delegates to local column copy when local enabled', () => {
+    const copy = getDeliveryPanelCopy(null, null, { localEnabled: true });
+    assert.equal(copy.folderButtonLabel, 'Choose folder…');
+  });
+});
+
+describe('getDeliveryUploadStatusCopy', () => {
+  it('returns ready message when upload connection is ready', () => {
+    assert.equal(
+      getDeliveryUploadStatusCopy({ ready: true, blockers: [] }),
+      'Upload connection ready',
+    );
+  });
+
+  it('returns first blocker when not ready', () => {
+    assert.equal(
+      getDeliveryUploadStatusCopy({ ready: false, blockers: ['Log in to DSA.'] }),
+      'Upload connection: Log in to DSA.',
+    );
+  });
+});
+
+describe('getDeliverySetupModalType', () => {
+  it('maps globus to globusUpload modal', () => {
+    assert.equal(getDeliverySetupModalType('globus'), 'globusUpload');
+  });
+
+  it('maps dsa to dsaUpload modal', () => {
+    assert.equal(getDeliverySetupModalType('dsa'), 'dsaUpload');
+  });
+});
+
+describe('getDeliverySetupButtonLabel', () => {
+  it('returns setup label when not ready', () => {
+    assert.equal(getDeliverySetupButtonLabel('dsa', false), 'Set up DSA upload…');
+  });
+
+  it('returns review label when ready', () => {
+    assert.equal(getDeliverySetupButtonLabel('globus', true), 'Review Globus upload settings…');
   });
 });

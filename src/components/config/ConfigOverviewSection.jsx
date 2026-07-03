@@ -43,7 +43,7 @@ export default function ConfigOverviewSection({ hasLoadedFiles = false }) {
           <h3 className="config-overview__card-title">Auto-upload alias (optional)</h3>
           <p className="config-overview__card-desc">
             Optional item title when uploading to a <strong>Digital Slide Archive</strong> (does not have to be the same as the filename on disk).
-            Configure DSA in the <strong>Network</strong> settings panel.
+            Configure DSA upload connection from the main <strong>delivery panel</strong> or in <strong>Output delivery</strong> below.
           </p>
           <p className="config-overview__card-aside" role="note">
             <strong>Note:</strong> <strong>Globus</strong> uploads always use the output filename; there is no separate alias.

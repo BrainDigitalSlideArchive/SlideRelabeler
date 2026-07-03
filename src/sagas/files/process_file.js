@@ -19,10 +19,26 @@ export default function* process_file(file_row_idx, file_row) {
     const config = yield select(state => state.config);
     const file_cols = yield select(state => state.files.file_columns);
     const runId = yield select(state => state.auditLog?.currentRunId);
+    const ur = yield select((state) => state.uploadRouting);
+
+    let rowForProcess = file_row;
+    if (ur.auto_upload && !ur.keep_local_copy) {
+      const stagingDir = yield call(electronAPI.getStagingDirectory, {
+        mode: ur.staging_dir_mode || 'system',
+        customPath: ur.staging_dir_custom || '',
+      });
+      rowForProcess = {
+        ...file_row,
+        __reserved: {
+          ...file_row.__reserved,
+          destinationDirectory: stagingDir,
+        },
+      };
+    }
 
     let info = {
       config: config,
-      ...file_row
+      ...rowForProcess
     };
 
     let output_path = yield call(electronAPI.getOutputPath, info);
@@ -60,7 +76,6 @@ export default function* process_file(file_row_idx, file_row) {
       status: AUDIT_STATUS.SUCCESS,
     }));
 
-    const ur = yield select((state) => state.uploadRouting);
     const folder_id = yield select((state) => state.dsa.folder_id);
     const api_auth = yield select((state) => state.dsa.api_auth);
     if (ur.auto_upload && ur.destination === 'dsa' && api_auth && api_auth.authToken) {

@@ -12,6 +12,7 @@ import {
   profileMappingHeaderName,
   ESM_OUTPUT_NAME_TARGET,
   collectEsmImportColumnFields,
+  cloneEsmProfile,
 } from './esm_profile_helpers.js';
 
 describe('migrateEsmStateToProfiles', () => {
@@ -133,6 +134,51 @@ describe('collectEsmImportColumnFields', () => {
     const fields = collectEsmImportColumnFields(profile, [{ Assembly: 'A1_HE', Accession: 'X' }]);
     assert.ok(fields.includes('Assembly'));
     assert.ok(fields.includes('Accession'));
+  });
+});
+
+describe('cloneEsmProfile', () => {
+  it('creates a new profile with Copy of name and fresh ids', () => {
+    const source = makeEsmProfile({
+      id: 'source-id',
+      name: 'UPMC eSM',
+      url: 'https://esm.example.org',
+      description: 'Production',
+      transformRules: [
+        {
+          id: 'rule-1',
+          name: 'Trim',
+          enabled: true,
+          steps: [{ find: ' ', replace: '', matchMode: 'all', caseSensitive: true }],
+        },
+      ],
+      stainPresets: [{ id: 'preset-1', matchValue: 'H&E', label: 'H&E' }],
+      defaultStainPresetId: 'preset-1',
+      extraColumnMappings: [
+        { id: 'map-1', enabled: true, targetColumn: 'Assembly', pattern: '{blockId}' },
+      ],
+      outputNameMapping: { enabled: true, pattern: '{blockId}' },
+    });
+
+    const clone = cloneEsmProfile(source);
+
+    assert.notEqual(clone.id, source.id);
+    assert.equal(clone.name, 'Copy of UPMC eSM');
+    assert.equal(clone.url, 'https://esm.example.org');
+    assert.equal(clone.description, 'Production');
+    assert.notEqual(clone.transformRules[0].id, 'rule-1');
+    assert.equal(clone.transformRules[0].steps[0].find, ' ');
+    assert.notEqual(clone.stainPresets[0].id, 'preset-1');
+    assert.equal(clone.defaultStainPresetId, clone.stainPresets[0].id);
+    assert.notEqual(clone.extraColumnMappings[0].id, 'map-1');
+    assert.equal(clone.extraColumnMappings[0].pattern, '{blockId}');
+    assert.equal(clone.outputNameMapping.pattern, '{blockId}');
+  });
+
+  it('returns empty profile when source is missing', () => {
+    const clone = cloneEsmProfile(null);
+    assert.ok(clone.id);
+    assert.equal(clone.name, 'New profile');
   });
 });
 

@@ -20,6 +20,8 @@ incorporates modified code from https://github.com/DigitalSlideArchive/DSA-WSI-D
 
 `npm run dev` resolves the `sliderelabeler` conda environment and sets `PYTHON` to that env’s interpreter directly (bypassing pyenv or other shims on PATH). Use `npm start` only if your shell already points `python` at the correct interpreter.
 
+On **macOS Apple Silicon**, the Python engine auto-enables a `libtiff` / `tiff_reader` compatibility guard at startup (ARM64 variadic ctypes fix; see `debug/mac-metadata-sigbus/README.md`). Plain `npm run dev` is sufficient for processing Aperio slides. To force the guard on or off explicitly: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or use `./scripts/dev-patch-libtiff.sh` (force on). The old `dev-mac-metadata.sh` name is deprecated and forwards to `dev-patch-libtiff.sh`.
+
 If the Python backend fails to start, verify dependencies in the conda env:
 
 ```bash

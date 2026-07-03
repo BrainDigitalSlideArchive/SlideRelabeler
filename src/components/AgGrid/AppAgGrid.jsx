@@ -21,13 +21,14 @@ import {
   PATH_COLUMN_FIELDS,
 } from '../../helpers/file_table_column_defs.js';
 
-import './AppAgGrid.scss';
+import { isCopyToColumnEnabled } from '../../helpers/staging_path.js';
 
 const AppAgGrid = (props) => {
   const file_rows = useSelector(state => state.files.file_rows);
   const reserved_cols = useSelector(state => state.files.reserved_columns);
   const file_cols = useSelector(state => state.files.file_columns);
   const config = useSelector(state => state.config);
+  const uploadRouting = useSelector(state => state.uploadRouting);
   const processing = useSelector(state => state.files.processing);
   const disable_changes = useSelector(state => state.files.disable_changes);
   const gridRef = useRef(null);
@@ -36,9 +37,12 @@ const AppAgGrid = (props) => {
   const resizeRafRef = useRef(null);
   const pendingResizeRefreshRef = useRef({ api: null, colIds: [] });
 
+  const copyToEnabled = isCopyToColumnEnabled(uploadRouting);
+
   const gridContext = useMemo(() => ({
     getPathColumnWidth: (colId) => pathColumnWidthsRef.current[colId],
-  }), []);
+    copyToEnabled,
+  }), [copyToEnabled]);
 
   const [column_defs, set_column_defs] = useState([]);
 
@@ -85,7 +89,17 @@ const AppAgGrid = (props) => {
       dispatch,
     });
     set_column_defs(column_defs);
-  }, [file_cols, reserved_cols, config, processing, disable_changes, dispatch]);
+  }, [file_cols, reserved_cols, config, uploadRouting, processing, disable_changes, dispatch]);
+
+  useEffect(() => {
+    const api = gridRef.current?.api;
+    if (!api) return;
+    api.refreshCells({
+      columns: ['__reserved.destinationDirectory'],
+      force: true,
+      suppressFlash: true,
+    });
+  }, [copyToEnabled]);
 
   useEffect(() => () => {
     if (resizeRafRef.current != null) {

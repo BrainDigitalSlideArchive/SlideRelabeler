@@ -14,6 +14,7 @@ import { selectPatternValidationFromState } from '../../helpers/pattern_validati
 import ConfigStickyNav from '../../components/config/ConfigStickyNav';
 import ConfigOverviewSection from '../../components/config/ConfigOverviewSection';
 import OutputFilenameSection from '../../components/config/OutputFilenameSection';
+import OutputDeliverySection from '../../components/config/OutputDeliverySection';
 import LabelGuidedSteps from '../../components/config/LabelGuidedSteps';
 import AuditLoggingSection from '../../components/config/AuditLoggingSection';
 import DataLoadingSection from '../../components/config/DataLoadingSection';
@@ -198,6 +199,10 @@ function ModalConfig() {
                 placeholderCatalog={placeholderCatalogs.outputName}
                 patternValidationMessages={patternValidation.messages}
               />
+
+          <div className={"__divider"} />
+
+          <OutputDeliverySection disabled={controlsDisabled} />
 
           <div className={"__divider"} />
 

@@ -1,4 +1,4 @@
-"""Import-hook guard for large_image tiff_reader — Mac ARM64 pylibtiff #189 compatibility."""
+"""Import-hook guard for large_image tiff_reader — ARM64 pylibtiff #189 compatibility."""
 from __future__ import annotations
 
 import importlib.abc
@@ -20,8 +20,42 @@ _GET_JPEG_TABLES_ARGTYPES_EXTEND = """        if libtiff_ctypes.libtiff.TIFFGetF
         if libtiff_ctypes.libtiff.TIFFGetField("""
 _GET_JPEG_TABLES_NO_EXTEND = """        if libtiff_ctypes.libtiff.TIFFGetField("""
 
+# Fix 3: _getJpegFrameSize() — same pattern for TIFFTAG_TILEBYTECOUNTS tile reads.
+_GET_JPEG_FRAME_SIZE_ARGTYPES_EXTEND = """        if libtiff_ctypes.libtiff.TIFFGetField.argtypes:
+            libtiff_ctypes.libtiff.TIFFGetField.argtypes = \\
+                libtiff_ctypes.libtiff.TIFFGetField.argtypes[:2] + \\
+                [ctypes.POINTER(ctypes.POINTER(rawTileSizesType))]
+        if libtiff_ctypes.libtiff.TIFFGetField("""
+_GET_JPEG_FRAME_SIZE_NO_EXTEND = """        if libtiff_ctypes.libtiff.TIFFGetField("""
+
 _GUARD_INSTALLED = False
 _GUARD_EXECUTED = False
+
+
+def apply_tiff_reader_patches(source: str, path: Path | str = "tiff_reader.py") -> str:
+    """Return tiff_reader source with patchLibtiff + variadic argtypes fixes applied."""
+    return _apply_tiff_reader_patches(source, Path(path))
+
+
+def _apply_tiff_reader_patches(source: str, path: Path) -> str:
+    if _PATCHLIBTIFF_CLEAR_ARGTYPES not in source:
+        raise RuntimeError(
+            f"patchLibtiff guard: expected patchLibtiff line not found in {path}; "
+            "large_image_source_tiff version may have changed"
+        )
+    modified = source.replace(_PATCHLIBTIFF_CLEAR_ARGTYPES, _PATCHLIBTIFF_OPTION_A)
+    if _GET_JPEG_TABLES_ARGTYPES_EXTEND not in modified:
+        raise RuntimeError(
+            f"patchLibtiff guard: expected _getJpegTables block not found in {path}; "
+            "large_image_source_tiff version may have changed"
+        )
+    modified = modified.replace(_GET_JPEG_TABLES_ARGTYPES_EXTEND, _GET_JPEG_TABLES_NO_EXTEND)
+    if _GET_JPEG_FRAME_SIZE_ARGTYPES_EXTEND in modified:
+        modified = modified.replace(
+            _GET_JPEG_FRAME_SIZE_ARGTYPES_EXTEND,
+            _GET_JPEG_FRAME_SIZE_NO_EXTEND,
+        )
+    return modified
 
 
 class _TiffReaderGuardFinder(importlib.abc.MetaPathFinder):
@@ -46,19 +80,7 @@ class _TiffReaderGuardLoader(importlib.abc.Loader):
     def exec_module(self, module):
         global _GUARD_EXECUTED
         path = Path(self._orig_spec.origin)
-        source = path.read_text()
-        if _PATCHLIBTIFF_CLEAR_ARGTYPES not in source:
-            raise RuntimeError(
-                f"patchLibtiff guard: expected patchLibtiff line not found in {path}; "
-                "large_image_source_tiff version may have changed"
-            )
-        modified = source.replace(_PATCHLIBTIFF_CLEAR_ARGTYPES, _PATCHLIBTIFF_OPTION_A)
-        if _GET_JPEG_TABLES_ARGTYPES_EXTEND not in modified:
-            raise RuntimeError(
-                f"patchLibtiff guard: expected _getJpegTables block not found in {path}; "
-                "large_image_source_tiff version may have changed"
-            )
-        modified = modified.replace(_GET_JPEG_TABLES_ARGTYPES_EXTEND, _GET_JPEG_TABLES_NO_EXTEND)
+        modified = _apply_tiff_reader_patches(path.read_text(), path)
         module.__file__ = str(path)
         module.__package__ = "large_image_source_tiff"
         exec(compile(modified, str(path), "exec"), module.__dict__)

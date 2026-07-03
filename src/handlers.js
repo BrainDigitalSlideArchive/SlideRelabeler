@@ -4,7 +4,7 @@ import { logMetadataPreview, summarizeMetadataPayload } from './helpers/metadata
 import path, { join, extname } from 'path';
 import fs from 'fs/promises';
 import { open, read, close } from 'fs';
-import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, accessSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { registerRoute } from './routers/main-electron-router';
 import { readCSV, readExcel, writeCSV } from "./utilities/csv_excel_helpers";
 import walk from 'fs-walk';
@@ -1282,6 +1282,28 @@ ipcMain.handle('clear-debugs', async (event) => {
 
 ipcMain.handle('get-output-path', async (event, info) => {
   return bridge.invoke('get-output-path', info);
+});
+
+const STAGING_SUBFOLDER = path.join('SlideRelabeler', 'staging');
+
+function resolveStagingDirectoryPath(options = {}) {
+  const mode = options.mode === 'custom' ? 'custom' : 'system';
+  const custom = typeof options.customPath === 'string' ? options.customPath.trim() : '';
+  if (mode === 'custom' && custom) {
+    return custom;
+  }
+  return path.join(app.getPath('temp'), STAGING_SUBFOLDER);
+}
+
+ipcMain.handle('get-staging-directory', async (event, options = {}) => {
+  const dir = resolveStagingDirectoryPath(options);
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    console.error('Failed to create staging directory', dir, err);
+    throw err;
+  }
+  return dir;
 });
 
 ipcMain.handle('copy-file', async (event, source, destination) => {

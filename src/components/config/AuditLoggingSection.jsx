@@ -102,12 +102,7 @@ export default function AuditLoggingSection({
   }
 
   const retentionDisabled = disabled || !enabled;
-  const countSuffix = unlimited
-    ? '(unlimited).'
-    : `(limit ${formatLimit(maxEntries)}).`;
-  const countText = entryCount === 0
-    ? `No entries recorded yet ${unlimited ? '(unlimited).' : countSuffix}`
-    : `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} in history ${countSuffix}`;
+  const countText = `Current record count: ${entryCount}`;
 
   return (
     <section className="__config-control-section" id="config-audit-logging">
@@ -122,80 +117,85 @@ export default function AuditLoggingSection({
 
       <div className="config-section-panel">
         <div className="audit-logging-section config-filename-style config-filename-style--compact">
-          <div className="audit-logging-section__row">
+          <div className="audit-logging-section__rows">
             <span className="audit-logging-section__row-label" id="audit-logging-enabled-label">
               Audit logging:
             </span>
-            <div
-              className="config-filename-style__modes config-filename-style__modes--compact"
-              role="radiogroup"
-              aria-labelledby="audit-logging-enabled-label"
-            >
-              <label className="config-filename-style__option">
-                <input
-                  type="radio"
-                  name="audit-logging-enabled"
-                  disabled={disabled}
-                  checked={enabled}
-                  onChange={() => dispatch({
-                    type: auditLog_actions.SET_AUDIT_LOG_SETTINGS,
-                    payload: { enabled: true },
-                  })}
-                />
-                <span className="config-filename-style__label">Enabled</span>
-              </label>
-              <label className="config-filename-style__option">
-                <input
-                  type="radio"
-                  name="audit-logging-enabled"
-                  disabled={disabled}
-                  checked={!enabled}
-                  onChange={() => dispatch({
-                    type: auditLog_actions.SET_AUDIT_LOG_SETTINGS,
-                    payload: { enabled: false },
-                  })}
-                />
-                <span className="config-filename-style__label">Disabled</span>
-              </label>
+            <div className="audit-logging-section__controls">
+              <div
+                className="config-filename-style__modes config-filename-style__modes--compact"
+                role="radiogroup"
+                aria-labelledby="audit-logging-enabled-label"
+              >
+                <label className="config-filename-style__option">
+                  <input
+                    type="radio"
+                    name="audit-logging-enabled"
+                    disabled={disabled}
+                    checked={enabled}
+                    onChange={() => dispatch({
+                      type: auditLog_actions.SET_AUDIT_LOG_SETTINGS,
+                      payload: { enabled: true },
+                    })}
+                  />
+                  <span className="config-filename-style__label">Enabled</span>
+                </label>
+                <label className="config-filename-style__option">
+                  <input
+                    type="radio"
+                    name="audit-logging-enabled"
+                    disabled={disabled}
+                    checked={!enabled}
+                    onChange={() => dispatch({
+                      type: auditLog_actions.SET_AUDIT_LOG_SETTINGS,
+                      payload: { enabled: false },
+                    })}
+                  />
+                  <span className="config-filename-style__label">Disabled</span>
+                </label>
+              </div>
             </div>
-          </div>
 
-          <div
-            className={[
-              'audit-logging-section__row',
-              retentionDisabled ? 'audit-logging-section__row--inactive' : '',
-            ].filter(Boolean).join(' ')}
-          >
             <span className="audit-logging-section__row-label" id="audit-logging-retention-label">
               Max log entries:
             </span>
             <div
-              className="config-filename-style__modes config-filename-style__modes--compact audit-logging-section__retention-modes"
-              role="radiogroup"
-              aria-labelledby="audit-logging-retention-label"
+              className={[
+                'audit-logging-section__controls',
+                retentionDisabled ? 'audit-logging-section__controls--inactive' : '',
+              ].filter(Boolean).join(' ')}
             >
-              <label className="config-filename-style__option">
-                <input
-                  type="radio"
-                  name="audit-logging-retention"
-                  disabled={retentionDisabled}
-                  checked={unlimited}
-                  onChange={() => handleRetentionModeChange(true)}
-                />
-                <span className="config-filename-style__label">Unlimited</span>
-              </label>
-              <label className="config-filename-style__option audit-logging-section__limit-option">
-                <input
-                  type="radio"
-                  name="audit-logging-retention"
-                  disabled={retentionDisabled}
-                  checked={!unlimited}
-                  onChange={() => handleRetentionModeChange(false)}
-                />
-                <span className="config-filename-style__label">Max entries</span>
+              <div
+                className="config-filename-style__modes config-filename-style__modes--compact"
+                role="radiogroup"
+                aria-labelledby="audit-logging-retention-label"
+              >
+                <label className="config-filename-style__option">
+                  <input
+                    type="radio"
+                    name="audit-logging-retention"
+                    disabled={retentionDisabled}
+                    checked={unlimited}
+                    onChange={() => handleRetentionModeChange(true)}
+                  />
+                  <span className="config-filename-style__label">Unlimited</span>
+                </label>
+                <label className="config-filename-style__option">
+                  <input
+                    type="radio"
+                    name="audit-logging-retention"
+                    disabled={retentionDisabled}
+                    checked={!unlimited}
+                    onChange={() => handleRetentionModeChange(false)}
+                  />
+                  <span className="config-filename-style__label">Max entries</span>
+                </label>
+              </div>
+              <div className="audit-logging-section__limit-input">
                 <InputText
                   omitLabel
                   variant="onLight"
+                  compact
                   type="number"
                   inputId="audit-log-max-entries"
                   ariaLabel="Max audit log entries to keep"
@@ -205,11 +205,10 @@ export default function AuditLoggingSection({
                   onBlur={handleLimitBlur}
                   onKeyPress={handleLimitKeyPress}
                 />
-              </label>
+              </div>
+              <p className="audit-logging-section__count">{countText}</p>
             </div>
           </div>
-
-          <p className="audit-logging-section__count">{countText}</p>
 
           <div className="audit-logging-section__actions">
             <Button

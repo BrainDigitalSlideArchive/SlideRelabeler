@@ -19,6 +19,7 @@ import {
   collectEsmImportColumnFields,
 } from "../../helpers/esm_profile_helpers";
 import { applyRowNamingDefaults, initRowNamingSources } from "../../helpers/row_naming_defaults";
+import { initDestinationSource } from "../../helpers/destination_directory.js";
 
 function getFileExtFromPath(p) {
   const s = (p ?? "").toString();
@@ -74,6 +75,9 @@ function* slideToFileRow(slide, output_dir, criteriaDeid) {
   };
 
   file_row.__reserved.destinationDirectory = output_dir;
+  if (output_dir) {
+    file_row.__reserved = initDestinationSource(file_row.__reserved);
+  }
   return file_row;
 }
 

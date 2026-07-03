@@ -7,6 +7,9 @@ export const ESM_LOGIN_SUCCESS = 'ESM_LOGIN_SUCCESS';
 export const ESM_LOGIN_ERROR = 'ESM_LOGIN_ERROR';
 export const ESM_LOGOUT = 'ESM_LOGOUT';
 export const ESM_LOGOUT_SUCCESS = 'ESM_LOGOUT_SUCCESS';
+export const ESM_OPEN_PROFILE_SWITCH = 'ESM_OPEN_PROFILE_SWITCH';
+export const ESM_CLOSE_PROFILE_SWITCH = 'ESM_CLOSE_PROFILE_SWITCH';
+export const ESM_CONFIRM_PROFILE_SWITCH = 'ESM_CONFIRM_PROFILE_SWITCH';
 // Search criteria rows (accession / optional de-ID / optional stain)
 export const ESM_SET_SEARCH_ROWS = 'ESM_SET_SEARCH_ROWS';
 export const ESM_ADD_SEARCH_ROW = 'ESM_ADD_SEARCH_ROW';

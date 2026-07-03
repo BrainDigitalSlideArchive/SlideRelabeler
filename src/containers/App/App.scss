@@ -1,4 +1,5 @@
 @import '../../styles/colors';
+@import '../../styles/grid_hover_tooltip';
 @import url('https://cdn-uicons.flaticon.com/3.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css');
 
 .logo {
@@ -40,14 +41,126 @@
     width: 10em;
     border-radius: 0.5em;
     transition: background-color 0.25s;
+    color: $config-text-primary;
   &._disabled {
     background-color: #f0f0f0;
-    color: $black;
+    color: $config-text-primary;
     cursor: not-allowed;
     opacity: 0.5;
   }
   &._negative {
     background-color: $red;
+  }
+
+  &--segmented {
+    padding: 0;
+    overflow: hidden;
+    justify-content: stretch;
+    align-items: center;
+
+    .__button__label {
+      flex: 1;
+      min-width: 0;
+      padding: 0 0.35em;
+      text-align: center;
+    }
+
+    .__button__icon {
+      flex: 0 0 2.25em;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid #ccc;
+      font-size: 1.1em;
+    }
+  }
+}
+
+.toolbar-select-action {
+  display: inline-flex;
+  width: 12em;
+  height: 3em;
+  margin-right: 1em;
+  border-radius: 0.5em;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background: #fff;
+  box-sizing: border-box;
+  color-scheme: light;
+
+  &__select-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
+  &__action-wrap {
+    flex: 0 0 2.25em;
+    display: flex;
+    height: 100%;
+  }
+
+  &__select {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    padding: 0 1.5em 0 0.35em;
+    font-size: 1em;
+    font-family: inherit;
+    font-weight: 500;
+    appearance: none;
+    -webkit-appearance: none;
+    color-scheme: light;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212529' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.35em center;
+    background-size: 0.85em;
+    color: $config-text-primary;
+    -webkit-text-fill-color: $config-text-primary;
+    cursor: pointer;
+    text-overflow: ellipsis;
+
+    option {
+      color: $config-text-primary;
+      background: #fff;
+    }
+
+    &:disabled {
+      background-color: #f0f0f0;
+      color: $config-text-primary;
+      -webkit-text-fill-color: $config-text-primary;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  &__action {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-left: 1px solid #ccc;
+    border-radius: 0;
+    background: #fff;
+    color: $config-text-primary;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+    padding: 0;
+
+    &:disabled {
+      background-color: #f0f0f0;
+      color: $config-text-primary;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
   }
 }
 
@@ -140,7 +253,7 @@
 
       &.__list-controls_output-dir {
         align-items: stretch;
-        margin-bottom: 0.75em;
+        margin-bottom: 0.5em;
       }
 
       .__list-controls-group {
