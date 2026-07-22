@@ -189,4 +189,17 @@
       }
     }
   }
+
+  // onLight must win over compact / controlOnly beige borders on white panels.
+  &.InputText--onLight.InputText--compact .__input-text,
+  &.InputText--onLight.InputText--controlOnly.InputText--compact .InputText__control-row .__input-text {
+    color: #0f172a;
+    background-color: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 4px;
+
+    &::placeholder {
+      color: #64748b;
+    }
+  }
 }

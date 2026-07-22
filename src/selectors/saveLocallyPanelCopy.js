@@ -1,5 +1,5 @@
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_DESC =
-  'Optional folder used when Save locally is enabled and no session folder is set on the main page.';
+  'Used when Save locally is on and a row does not already have a folder.';
 
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_EMPTY =
   'No default folder configured.';

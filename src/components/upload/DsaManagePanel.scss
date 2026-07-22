@@ -1,0 +1,130 @@
+@import '../../styles/colors';
+
+.dsa-manage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dsa-manage__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  max-width: 36rem;
+}
+
+.dsa-manage__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 28rem;
+}
+
+.dsa-manage__error {
+  font-size: 0.85rem;
+  color: $surface-warning-text;
+}
+
+.dsa-manage__session {
+  gap: 0.5rem;
+}
+
+.dsa-manage__session-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.875rem;
+}
+
+.dsa-manage__label {
+  color: $config-text-tertiary;
+  font-weight: 600;
+}
+
+.dsa-manage__value {
+  color: $config-text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsa-manage__token-meta {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: $config-text-tertiary;
+}
+
+.dsa-manage__session-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+
+  .Button {
+    margin-bottom: 0;
+  }
+}
+
+.dsa-manage__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: $config-text-tertiary;
+}
+
+.dsa-manage__option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  // Override shared Checkbox form-label width (6em) for sentence options.
+  .Checkbox {
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+    margin-bottom: 0;
+    align-items: flex-start;
+    gap: 0.55rem;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+
+    label {
+      display: block;
+      width: auto;
+      flex: 1;
+      min-width: 0;
+      white-space: normal;
+      line-height: 1.35;
+      color: $config-text-primary;
+      font-size: 0.9rem;
+    }
+
+    .__checkbox {
+      margin-left: 0;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+  }
+}
+
+.dsa-manage__option-helper {
+  margin: 0 0 0 1.9rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: $config-text-tertiary;
+
+  code {
+    font-size: 0.85em;
+  }
+}
+
+.dsa-manage__foot {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: $config-text-tertiary;
+}

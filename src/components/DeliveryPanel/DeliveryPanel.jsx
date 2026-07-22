@@ -2,14 +2,10 @@ import React from 'react';
 import { useDispatch } from 'react-redux';
 
 import * as upload_routing_actions from '../../actions/uploadRouting';
-import * as modal_actions from '../../actions/modal';
 import GridHoverTooltip from '../AgGrid/GridHoverTooltip';
-import {
-  getDeliverySetupButtonLabel,
-  getDeliverySetupModalType,
-  getDeliveryUploadStatusCopy,
-  getSaveLocallyPanelCopy,
-} from '../../selectors/outputReadiness.js';
+import { getSaveLocallyPanelCopy } from '../../selectors/outputReadiness.js';
+import DsaDeliveryControls from './DsaDeliveryControls.jsx';
+import GlobusDeliveryControls from './GlobusDeliveryControls.jsx';
 
 import './DeliveryPanel.scss';
 
@@ -83,8 +79,6 @@ function SaveLocallyHint({ hint, hintTone }) {
 
 export default function DeliveryPanel({
   uploadRouting,
-  uploadReadiness,
-  outputReadiness,
   destSummary,
   outputDir,
   disabled = false,
@@ -94,22 +88,8 @@ export default function DeliveryPanel({
   const localEnabled = !!uploadRouting?.local_output_enabled;
   const uploadEnabled = !!uploadRouting?.auto_upload;
   const uploadDestination = uploadRouting?.destination === 'globus' ? 'globus' : 'dsa';
-  const uploadConfigured = outputReadiness?.uploadConfigured ?? true;
 
   const localCopy = getSaveLocallyPanelCopy(destSummary, outputDir, { localEnabled });
-  const uploadStatus = getDeliveryUploadStatusCopy(uploadReadiness);
-  const setupModalType = getDeliverySetupModalType(uploadDestination);
-  const setupButtonLabel = getDeliverySetupButtonLabel(uploadDestination, uploadReadiness?.ready);
-
-  const blockers = uploadReadiness?.blockers ?? [];
-  const multipleBlockers = blockers.length > 1;
-
-  function openSetupModal() {
-    dispatch({
-      type: modal_actions.TOGGLE_MODAL,
-      payload: { type: setupModalType },
-    });
-  }
 
   return (
     <section className="delivery-panel" role="region" aria-label="Output delivery">
@@ -196,55 +176,11 @@ export default function DeliveryPanel({
                   })}
                 />
 
-                <div className={`delivery-panel__status-line${uploadConfigured ? ' _ready' : ' _blocked'}`}>
-                  {uploadConfigured ? (
-                    <>
-                      <span className="delivery-panel__status-text _ready">{uploadStatus}</span>
-                      <span className="delivery-panel__status-sep" aria-hidden="true">·</span>
-                      <button
-                        type="button"
-                        className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                        disabled={disabled}
-                        onClick={openSetupModal}
-                      >
-                        {setupButtonLabel}
-                      </button>
-                    </>
-                  ) : multipleBlockers ? (
-                    <ul className="delivery-panel__blockers">
-                      {blockers.map((blocker) => (
-                        <li key={blocker}>
-                          <span className="delivery-panel__status-text _blocked">{blocker}</span>
-                        </li>
-                      ))}
-                      <li className="delivery-panel__blockers-action">
-                        <button
-                          type="button"
-                          className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                          disabled={disabled}
-                          onClick={openSetupModal}
-                        >
-                          {setupButtonLabel}
-                        </button>
-                      </li>
-                    </ul>
-                  ) : (
-                    <>
-                      <span className="delivery-panel__status-text _blocked">
-                        {blockers[0] || uploadStatus}
-                      </span>
-                      <span className="delivery-panel__status-sep" aria-hidden="true">·</span>
-                      <button
-                        type="button"
-                        className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                        disabled={disabled}
-                        onClick={openSetupModal}
-                      >
-                        {setupButtonLabel}
-                      </button>
-                    </>
-                  )}
-                </div>
+                {uploadDestination === 'dsa' ? (
+                  <DsaDeliveryControls disabled={disabled} />
+                ) : (
+                  <GlobusDeliveryControls disabled={disabled} />
+                )}
               </>
             )}
           </div>

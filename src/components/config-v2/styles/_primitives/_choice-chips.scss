@@ -1,0 +1,62 @@
+// ConfigChoiceChips — one recipe for all segmented radios
+@import '../tokens';
+@import '../typography';
+@import '../mixins';
+
+.config-v2 {
+  .cfg-choice-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $cfg-space-sm;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .cfg-choice-chips__option {
+    position: relative;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $cfg-space-sm;
+    padding: 0.3rem 0.35rem;
+    min-height: 0;
+    margin: 0;
+    border: 1px solid $cfg-border;
+    border-radius: 0.3rem;
+    background: $cfg-bg;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    @include cfg-focus-ring;
+
+    input {
+      margin: 0;
+      accent-color: $cfg-accent;
+    }
+
+    &--checked {
+      border-color: $cfg-accent;
+      background: rgba($cfg-accent, 0.06);
+
+      .cfg-choice-chips__label {
+        font-weight: 500;
+      }
+    }
+
+    &--disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .cfg-choice-chips__label {
+    font-size: $cfg-font-chip;
+    line-height: 1.25;
+    color: $cfg-ink-muted;
+    white-space: nowrap;
+  }
+
+  .cfg-choice-chips__option--checked .cfg-choice-chips__label {
+    color: $cfg-ink;
+  }
+}

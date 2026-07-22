@@ -4,7 +4,12 @@ import fs from 'fs';
 import path from 'path';
 
 import { GLOBUS_ENDPOINT_UUID_RE } from '../helpers/globus_helpers';
-import { interpretGlobusLsFailure } from '../helpers/globus_error_interpretation';
+import {
+    GLOBUS_LS_FAILURE_KIND,
+    formatGlobusLoginError,
+    interpretGlobusCliFailure,
+    interpretGlobusLsFailure,
+} from '../helpers/globus_error_interpretation';
 
 const execAsync = promisify(exec);
 
@@ -799,8 +804,9 @@ class GlobusAPI {
                 if (this._loginProcess === child) {
                     this._loginProcess = null;
                 }
+                const raw = error?.message || 'Failed to start login command';
                 resolve([false, {
-                    message: error.message || 'Failed to start login command',
+                    message: formatGlobusLoginError(raw),
                     error: error
                 }]);
             });
@@ -990,12 +996,21 @@ class GlobusAPI {
                 };
             }
 
-            // Otherwise return failure classification\n+            const msg = result?.[1]?.message || 'Login failed';
+            // Otherwise return failure classification
+            const rawMsg = result?.[1]?.message || 'Login failed';
+            const interpreted = interpretGlobusCliFailure(rawMsg);
+            const msg =
+                interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE
+                    ? `${interpreted.userSummary} ${interpreted.userDetail}`.trim()
+                    : rawMsg;
             const isNetwork = /GlobusConnectionError|ConnectionError on request/i.test(combined);
+            const isCliMissing = interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE;
             return {
                 ok: false,
                 isAuthenticated: false,
-                classification: isNetwork ? 'networkError' : 'unknownError',
+                classification: isCliMissing
+                    ? 'cliUnavailable'
+                    : (isNetwork ? 'networkError' : 'unknownError'),
                 message: msg,
                 raw: {
                     stdout: result?.[1]?.stdout || '',
@@ -1007,7 +1022,8 @@ class GlobusAPI {
                 }
             };
         } catch (error) {
-            return { ok: false, isAuthenticated: false, classification: 'unknownError', message: error.message || 'Login failed unexpectedly' };
+            const message = formatGlobusLoginError(error?.message || error || 'Login failed unexpectedly');
+            return { ok: false, isAuthenticated: false, classification: 'unknownError', message };
         } finally {
             globusApiVLog('[GlobusAPI] ===== login() complete =====');
         }

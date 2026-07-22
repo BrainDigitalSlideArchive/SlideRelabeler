@@ -1,6 +1,7 @@
 import { put, take, select, call, fork } from 'redux-saga/effects';
 
 import * as globus_actions from '../../actions/globus';
+import { formatGlobusLoginError } from '../../helpers/globus_error_interpretation.js';
 
 export function* login() {
     console.log('[Globus Login Saga] ===== LOGIN function called =====');
@@ -101,9 +102,12 @@ export function* login() {
         } else {
             console.log('[Globus Login Saga] Login command failed (ok=false or missing)');
             console.log('[Globus Login Saga] Error message:', login_response?.message || 'Unknown error');
-            console.log('[Globus Login Saga] Dispatching LOGIN_FAILURE with:', login_response?.message || 'Login failed');
+            const failureMessage = formatGlobusLoginError(
+                login_response?.message || 'Login failed',
+            );
+            console.log('[Globus Login Saga] Dispatching LOGIN_FAILURE with:', failureMessage);
             yield put({ type: globus_actions.SET_AUTH_CHECK_PENDING, payload: false });
-            yield put({ type: globus_actions.LOGIN_FAILURE, payload: login_response?.message || 'Login failed' });
+            yield put({ type: globus_actions.LOGIN_FAILURE, payload: failureMessage });
             
             const stateAfterFailure = yield select(state => state.globus);
             console.log('[Globus Login Saga] Redux state after LOGIN_FAILURE:', {

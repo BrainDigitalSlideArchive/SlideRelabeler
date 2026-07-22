@@ -1,0 +1,101 @@
+@import '../../styles/colors';
+
+.globus-login-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.globus-login-flow__step {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: $config-text-primary;
+}
+
+.globus-login-flow__hint,
+.globus-login-flow__status {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: $config-text-secondary;
+}
+
+.globus-login-flow__primary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.globus-login-flow__quiet-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.globus-login-flow__code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+
+  .InputText {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+}
+
+.globus-login-flow__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.globus-login-flow__text-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $darker-blue;
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:hover:not(:disabled) {
+    color: darken($darker-blue, 8%);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.globus-login-flow__error {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: $surface-warning-text;
+  background: rgba($surface-warning-text, 0.08);
+  border-radius: 0.35rem;
+}
+
+// Primary CTA inside light config chrome (Modal.scss skips .Button--filled).
+.globus-login-flow {
+  .Button--filled .__button {
+    background: $darker-blue;
+    border-color: $darker-blue;
+    color: #fff;
+
+    &:hover:not(:disabled):not(._disabled) {
+      background: darken($darker-blue, 6%);
+      border-color: darken($darker-blue, 6%);
+    }
+  }
+}

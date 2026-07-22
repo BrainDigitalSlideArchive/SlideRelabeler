@@ -5,7 +5,11 @@ import * as esm_actions from '../../actions/esm';
 import { cloneEsmProfile, makeEsmProfile } from '../../helpers/esm_profile_helpers';
 import EsmProfileCard from './EsmProfileCard';
 
-export default function EsmDataLoadingSection({ disabled = false }) {
+export default function EsmDataLoadingSection({
+  disabled = false,
+  showLead = true,
+  rootId = 'config-esm-api',
+}) {
   const dispatch = useDispatch();
   const profiles = useSelector((s) => s.esm?.profiles) || [];
   const [expandedProfileId, setExpandedProfileId] = useState(() => profiles[0]?.id ?? null);
@@ -37,11 +41,16 @@ export default function EsmDataLoadingSection({ disabled = false }) {
   }
 
   return (
-    <div className="esm-data-loading-section" id="config-esm-api">
-      <p className="esm-data-loading-section__lead">
-        Saved eSlideManager connection profiles. Open <strong>eSlideManager</strong> from the toolbar
-        to log in, pick a profile, and load slides—or <strong>clone</strong> a profile to save a search preset variant.
-      </p>
+    <div
+      className="esm-data-loading-section"
+      id={rootId || undefined}
+    >
+      {showLead ? (
+        <p className="esm-data-loading-section__lead">
+          Saved eSlideManager connection profiles. Open <strong>eSlideManager</strong> from the toolbar
+          to log in, pick a profile, and load slides—or <strong>clone</strong> a profile to save a search preset variant.
+        </p>
+      ) : null}
 
       <div className="esm-profiles-section">
         <div className="esm-profiles-section__header">

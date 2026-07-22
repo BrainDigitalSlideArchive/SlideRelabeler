@@ -116,6 +116,7 @@ const API = {
   deleteFile: (file_path) => ipcRenderer.invoke('delete-file', file_path),
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),
+  dsaCheckServerUrl: (api_url) => ipcRenderer.invoke('dsa-check-server-url', api_url),
   dsaLogout: () => ipcRenderer.invoke('dsa-logout'),
   dsaUploadFile: (folder_id, file_row_idx, file_path) => ipcRenderer.invoke('dsa-upload-file', folder_id, file_row_idx, file_path),
   dsaEnrichUploadedItem: (payload) => ipcRenderer.invoke('dsa-enrich-uploaded-item', payload),
@@ -132,6 +133,10 @@ const API = {
   dsaStopUploadComplete: () => ipcRenderer.removeAllListeners('dsa-upload-file-complete'),
   dsaStopUploadFileError: () => ipcRenderer.removeAllListeners('dsa-upload-file-error'),
   dsaCheckUploadFolder: (folder_id) => ipcRenderer.invoke('dsa-check-upload-folder', folder_id),
+  dsaGetResourcePath: (id, type = 'folder') => ipcRenderer.invoke('dsa-get-resource-path', id, type),
+  dsaListFolders: (parentId, parentType = 'folder') => ipcRenderer.invoke('dsa-list-folders', parentId, parentType),
+  dsaListCollections: () => ipcRenderer.invoke('dsa-list-collections'),
+  dsaGetCurrentUser: () => ipcRenderer.invoke('dsa-get-current-user'),
   // eSlideManager API methods
   esmLogin: (connection, username, password) => ipcRenderer.invoke('esm-login', connection, username, password),
   esmSearchAccession: (connection, username, password, accession) => ipcRenderer.invoke('esm-search-accession', connection, username, password, accession),

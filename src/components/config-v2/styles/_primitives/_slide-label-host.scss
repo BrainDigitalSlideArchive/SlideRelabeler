@@ -1,0 +1,331 @@
+// Transitional host: label schematic/mockup under config-v2.
+// Reuses LabelCompositionMockup + SlideLabelLayout mixins; kit tokens only.
+// Keep zone/caption layout in sync with Modal.scss mockup + OverviewLabelIllustration.
+@import '../tokens';
+@import '../typography';
+@import '../../../config/SlideLabelLayout.scss';
+
+.config-v2 {
+.label-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 40%);
+  gap: 0 0.75rem;
+  align-items: stretch;
+
+  @media (max-width: 48rem) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem 0;
+  }
+
+  &__features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    padding-right: 0.75rem;
+    border-right: 1px solid $cfg-border;
+
+    @media (max-width: 48rem) {
+      padding-right: 0;
+      border-right: none;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+
+  &__schematic {
+    min-width: 0;
+    min-height: 0;
+    padding-left: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    @media (max-width: 48rem) {
+      padding-left: 0;
+      padding-top: 0.75rem;
+      border-top: 1px solid $cfg-border;
+      overflow: visible;
+    }
+  }
+
+  &__schematic-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  &__schematic-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $cfg-ink-muted;
+  }
+
+  &__schematic .label-composition-mockup--compact {
+    flex-shrink: 0;
+  }
+
+  &__schematic .label-composition-mockup--compact .label-composition-mockup__card {
+    aspect-ratio: unset;
+    min-height: 6.5rem;
+  }
+
+  &__rendered-preview {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid $cfg-border;
+  }
+
+  &__rendered-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  &__rendered-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $cfg-ink-muted;
+  }
+
+  &__rendered-warnings {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: $cfg-warn;
+    line-height: 1.35;
+    flex-shrink: 0;
+  }
+
+  &__rendered-preview .label-thumbnail-preview--compact {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    margin-top: 0;
+
+    .label-thumbnail-preview__image {
+      flex: 0 1 auto;
+      width: auto;
+      height: auto;
+      max-width: 85%;
+      max-height: 100%;
+      aspect-ratio: unset;
+      object-fit: contain;
+      margin: 0 auto;
+    }
+
+    .label-thumbnail-preview__placeholder {
+      flex: 0 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  &__detail {
+    width: 100%;
+  }
+}
+
+.label-composition-mockup {
+  @media (min-width: 721px) {
+    padding-left: 1em;
+    border-left: 1px solid $cfg-border;
+  }
+
+  &--compact {
+    padding-left: 0;
+    border-left: none;
+    max-width: 100%;
+
+    .label-composition-mockup__card {
+      min-height: 0;
+      aspect-ratio: 1;
+      width: 100%;
+      padding: 0.35em;
+      gap: 0.2em;
+    }
+
+    .label-composition-mockup__zone {
+      font-size: 0.8125rem;
+      padding: 0.25em 0.4em;
+    }
+
+    .label-composition-mockup__zone--text {
+      word-break: normal;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 1.75em;
+      margin-bottom: 0.35em;
+      padding-bottom: 0.3em;
+    }
+
+    .label-composition-mockup__zone--text.label-composition-mockup__zone--on {
+      font-weight: 600;
+      font-size: 0.8125rem;
+    }
+
+    .label-composition-mockup__zone--text.label-composition-mockup__zone--template {
+      font-weight: 500;
+      font-style: italic;
+      color: $cfg-ink-muted;
+    }
+
+    .label-composition-mockup__qr-svg {
+      width: 1.75em;
+      height: 1.75em;
+    }
+
+    .label-composition-mockup__icon-svg {
+      width: 1.5em;
+      height: 1.5em;
+    }
+
+    .label-composition-mockup__icon-preview {
+      max-height: 2.5em;
+    }
+  }
+
+  &__title {
+    font-size: 0.9em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    color: $cfg-ink-muted;
+  }
+
+  &__card {
+    border: 1px solid $cfg-border;
+    border-radius: 0.5em;
+    padding: 0.75em;
+    background-color: $cfg-surface;
+    color: $cfg-ink;
+    box-shadow: none;
+    min-height: 10em;
+  }
+
+  &__row {
+    @include slide-label-layout-bottom-row;
+
+    &--single {
+      justify-content: center;
+
+      .label-composition-mockup__zone--icon,
+      .label-composition-mockup__zone--qr {
+        flex: 0 1 auto;
+        width: min(50%, 12em);
+      }
+    }
+  }
+
+  &__zone {
+    border-radius: 0.25em;
+    padding: 0.5em;
+    text-align: center;
+    font-size: 0.9em;
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+
+    &--off {
+      opacity: 1;
+      border: 1.5px dashed $cfg-ink-faint;
+      background: transparent;
+      color: $cfg-ink-faint;
+      font-style: italic;
+    }
+
+    &--on {
+      border: 2px solid $cfg-ink;
+      background: $cfg-bg;
+      color: $cfg-ink;
+      font-style: normal;
+    }
+
+    &--text {
+      @include slide-label-layout-text-band;
+      min-height: 2em;
+      margin-bottom: 0.5em;
+      padding-bottom: 0.45em;
+      border-bottom: 1px dashed $cfg-ink-faint;
+
+      &.label-composition-mockup__zone--on {
+        font-weight: 700;
+        border-bottom-color: $cfg-ink;
+      }
+
+      &.label-composition-mockup__zone--off {
+        border-bottom-style: dashed;
+      }
+    }
+
+    // Stack graphic + caption (shared layout mixin — same as v1 / overview illustration).
+    &--icon,
+    &--qr {
+      @include slide-label-layout-region-cell;
+    }
+  }
+
+  &__qr-svg {
+    width: 2.5em;
+    height: 2.5em;
+
+    rect {
+      fill: $cfg-ink;
+    }
+  }
+
+  &__icon-svg {
+    width: 2.25em;
+    height: 2.25em;
+  }
+
+  &__icon-preview {
+    max-width: 100%;
+    max-height: 3.5em;
+    object-fit: contain;
+  }
+
+  &__region-label {
+    @include slide-label-layout-region-label;
+    color: $cfg-ink-faint;
+
+    &--muted {
+      font-style: italic;
+      color: $cfg-warn;
+    }
+  }
+
+  &__zone--on &__region-label {
+    color: $cfg-ink-faint;
+  }
+
+  &__icon-caption {
+    font-size: 0.625rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: $cfg-ink-muted;
+    word-break: break-all;
+  }
+
+  &__zone--on &__icon-caption {
+    color: $cfg-ink-muted;
+  }
+}
+}

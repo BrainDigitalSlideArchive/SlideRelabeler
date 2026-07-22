@@ -361,21 +361,21 @@ describe('getDeliveryUploadStatusCopy', () => {
 });
 
 describe('getDeliverySetupModalType', () => {
-  it('maps globus to globusUpload modal', () => {
-    assert.equal(getDeliverySetupModalType('globus'), 'globusUpload');
+  it('returns null for globus (inline Delivery controls)', () => {
+    assert.equal(getDeliverySetupModalType('globus'), null);
   });
 
-  it('maps dsa to dsaUpload modal', () => {
-    assert.equal(getDeliverySetupModalType('dsa'), 'dsaUpload');
+  it('returns null for dsa (DSA settings live in Configuration)', () => {
+    assert.equal(getDeliverySetupModalType('dsa'), null);
   });
 });
 
 describe('getDeliverySetupButtonLabel', () => {
   it('returns setup label when not ready', () => {
-    assert.equal(getDeliverySetupButtonLabel('dsa', false), 'Set up DSA upload…');
+    assert.equal(getDeliverySetupButtonLabel('dsa', false), 'Set up DSA…');
   });
 
-  it('returns review label when ready', () => {
-    assert.equal(getDeliverySetupButtonLabel('globus', true), 'Review Globus upload settings…');
+  it('returns manage label when ready', () => {
+    assert.equal(getDeliverySetupButtonLabel('globus', true), 'Manage Globus…');
   });
 });

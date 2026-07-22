@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { migrateConfigV3, normalizeLabelConfig, migrateAffixesToPattern } from './computed_field_config.js';
+import { migrateConfigV3, normalizeLabelConfig, migrateAffixesToPattern, normalizeDsaUploadConfig } from './computed_field_config.js';
 
 describe('migrateAffixesToPattern', () => {
   it('folds uuid prefix into pattern', () => {
@@ -85,6 +85,36 @@ describe('migrateConfigV3', () => {
 
     assert.equal(config.dsa_upload.dsaAlias.mode, 'pattern');
     assert.equal(config.dsa_upload.dsaAlias.pattern, '{labelText}');
+  });
+
+  it('migrates rename + output_name to Same as file', () => {
+    const config = migrateConfigV3({
+      dsa_upload: {
+        rename_item_after_upload: true,
+        dsaAlias: { mode: 'output_name', pattern: '' },
+      },
+    });
+    assert.equal(config.dsa_upload.rename_item_after_upload, false);
+    assert.equal(config.dsa_upload.dsaAlias.mode, 'label_text');
+  });
+
+  it('migrates set_item_metadata true to all_deid', () => {
+    const config = migrateConfigV3({
+      dsa_upload: { set_item_metadata: true },
+    });
+    assert.equal(config.dsa_upload.itemMetadata.mode, 'all_deid');
+    assert.equal(config.dsa_upload.set_item_metadata, undefined);
+  });
+});
+
+describe('normalizeDsaUploadConfig', () => {
+  it('keeps label_text rename enabled', () => {
+    const dsa = normalizeDsaUploadConfig({
+      rename_item_after_upload: true,
+      dsaAlias: { mode: 'label_text', pattern: '' },
+    });
+    assert.equal(dsa.rename_item_after_upload, true);
+    assert.equal(dsa.dsaAlias.mode, 'label_text');
   });
 });
 

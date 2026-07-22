@@ -1,82 +1,153 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 
 import * as config_actions from '../../actions/config';
-import ComputedFieldEditor from './ComputedFieldEditor';
+import InputText from '../controls/input/InputText';
+import { PlaceholderChips } from './ComputedFieldEditor';
 
-const DSA_ALIAS_OPTIONS = [
+const ITEM_NAME_OPTIONS = [
   {
-    value: 'output_name',
-    label: 'Use Output name',
-    helper: 'Use each row\'s Output name as the DSA item display name.',
+    value: 'file',
+    label: 'Same as file (default)',
+    helper: 'Keep the Girder item name matching the uploaded file (from Output name).',
   },
   {
     value: 'label_text',
-    label: 'Use Label',
-    helper: 'Use each row\'s Label text as the DSA item display name.',
-  },
-  {
-    value: 'none',
-    label: 'Leave blank',
-    helper: 'Do not set a display name from computed defaults.',
+    label: 'Label text',
+    helper: "Use each row's Label text as the DSA item display name.",
   },
   {
     value: 'pattern',
-    label: 'Custom pattern',
-    helper: 'Build the DSA alias from placeholders and column values.',
-    hasPatternField: true,
-    patternPlaceholder: '{outputName}',
+    label: 'Column or custom pattern',
+    helper: 'Build the item name from placeholders and column values.',
+    patternPlaceholder: '{labelText}',
   },
 ];
 
+function selectedItemNameMode(dsaUploadConfig) {
+  if (!dsaUploadConfig?.rename_item_after_upload) return 'file';
+  const mode = dsaUploadConfig?.dsaAlias?.mode;
+  if (mode === 'pattern') return 'pattern';
+  if (mode === 'label_text') return 'label_text';
+  return 'file';
+}
+
+/**
+ * Compact Item name chips for Configuration → Output delivery.
+ * Renders as grid children of .dsa-after-upload__rows (label | chips | optional detail).
+ */
 export default function DsaAliasEditor({
   dsaUploadConfig,
   disabled,
   placeholderCatalog = [],
-  previewValue,
   onRecompute,
 }) {
   const dispatch = useDispatch();
-  const spec = dsaUploadConfig?.dsaAlias ?? { mode: 'output_name', pattern: '' };
-  const active = spec.mode ?? 'output_name';
+  const spec = dsaUploadConfig?.dsaAlias ?? { mode: 'label_text', pattern: '' };
+  const active = selectedItemNameMode(dsaUploadConfig);
+  const activeOpt = ITEM_NAME_OPTIONS.find((o) => o.value === active);
 
-  function onChange(partial) {
-    dispatch({
-      type: config_actions.SET_DSA_UPLOAD_CONFIG,
-      payload: { dsaAlias: partial },
-    });
-    if (onRecompute) onRecompute();
-  }
+  const applySelection = useCallback(
+    (value) => {
+      if (value === 'file') {
+        dispatch({
+          type: config_actions.SET_DSA_UPLOAD_CONFIG,
+          payload: { rename_item_after_upload: false },
+        });
+      } else {
+        dispatch({
+          type: config_actions.SET_DSA_UPLOAD_CONFIG,
+          payload: {
+            rename_item_after_upload: true,
+            dsaAlias: { mode: value, pattern: spec.pattern ?? '' },
+          },
+        });
+      }
+      if (onRecompute) onRecompute();
+    },
+    [dispatch, onRecompute, spec.pattern],
+  );
 
-  function select(value) {
-    onChange({ mode: value, pattern: spec.pattern ?? '' });
-  }
+  const onPatternChange = useCallback(
+    (value) => {
+      dispatch({
+        type: config_actions.SET_DSA_UPLOAD_CONFIG,
+        payload: {
+          rename_item_after_upload: true,
+          dsaAlias: { mode: 'pattern', pattern: value },
+        },
+      });
+      if (onRecompute) onRecompute();
+    },
+    [dispatch, onRecompute],
+  );
 
-  function onPatternChange(value) {
-    onChange({ mode: active, pattern: value });
-  }
-
-  if (!dsaUploadConfig?.rename_item_after_upload && !dsaUploadConfig?.set_item_metadata) {
-    return null;
-  }
+  const handlePatternInsert = useCallback(
+    (token) => {
+      onPatternChange(`${spec.pattern ?? ''}${token}`);
+    },
+    [onPatternChange, spec.pattern],
+  );
 
   return (
-    <div className="dsa-alias-editor">
-      <div className="__config-control-subsection-title">DSA alias</div>
-      <div className="__config-control-subsection-description">
-        Default for the Girder item display name when renaming after upload.
+    <>
+      <span className="dsa-after-upload__row-label" id="dsa-item-name-label">
+        Item name:
+      </span>
+      <div className="dsa-after-upload__controls config-filename-style config-filename-style--compact">
+        <div
+          className="config-filename-style__modes config-filename-style__modes--compact"
+          role="radiogroup"
+          aria-labelledby="dsa-item-name-label"
+        >
+          {ITEM_NAME_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className="config-filename-style__option"
+              title={opt.helper}
+            >
+              <input
+                type="radio"
+                name="dsa-item-name-mode"
+                disabled={disabled}
+                checked={active === opt.value}
+                onChange={() => applySelection(opt.value)}
+              />
+              <span className="config-filename-style__label">{opt.label}</span>
+              <span className="config-filename-style__helper config-filename-style__helper--sr-only">
+                {opt.helper}
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
-      <ComputedFieldEditor
-        name="dsa-alias"
-        options={DSA_ALIAS_OPTIONS}
-        active={active}
-        disabled={disabled}
-        onSelect={select}
-        patternValue={spec.pattern ?? ''}
-        onPatternChange={onPatternChange}
-        catalog={active === 'pattern' ? placeholderCatalog : []}
-        previewValue={previewValue}
-      />
-    </div>
+
+      {active === 'pattern' ? (
+        <div className="dsa-after-upload__detail" aria-live="polite">
+          <p className="dsa-after-upload__detail-label">
+            Values from one or more columns can be used by including the column name within curly
+            brackets
+          </p>
+          <InputText
+            disabled={disabled}
+            omitLabel
+            variant="onLight"
+            ariaLabel="DSA item name pattern"
+            placeholder={activeOpt?.patternPlaceholder ?? '{labelText}'}
+            value={spec.pattern ?? ''}
+            onChange={onPatternChange}
+          />
+          <div className="computed-field-editor">
+            <PlaceholderChips
+              catalog={placeholderCatalog}
+              disabled={disabled}
+              catalogLabel="Columns"
+              helpText="Click a column to insert it into the pattern."
+              onInsert={handlePatternInsert}
+            />
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

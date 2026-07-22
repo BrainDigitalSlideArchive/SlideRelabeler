@@ -1,0 +1,44 @@
+// ConfigLabeledRow — single label | controls grid
+@import '../tokens';
+@import '../typography';
+
+.config-v2 {
+  .cfg-labeled-row {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 9rem) minmax(0, 1fr);
+    gap: $cfg-space-md $cfg-space-lg;
+    align-items: start;
+    margin-bottom: $cfg-space-md;
+  }
+
+  .cfg-labeled-row__label {
+    padding-top: 0.35rem; // optical align with chip tops
+    font-size: $cfg-font-row-label;
+    font-weight: 500;
+    color: $cfg-ink-muted;
+    line-height: 1.25;
+  }
+
+  .cfg-labeled-row__controls {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+    align-items: flex-start;
+  }
+
+  // Audit / similar: chips + field on one wrap row, helpers below
+  .cfg-labeled-row__cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+    min-width: 0;
+  }
+
+  .cfg-labeled-row--inactive {
+    .cfg-labeled-row__controls {
+      opacity: 0.55;
+    }
+  }
+}

@@ -7,6 +7,8 @@ export const STOP_VIEWER = "STOP_VIEWER";
 
 export const DELETE_STORE = "DELETE_STORE";
 export const RESET_STORE = "RESET_STORE";
+/** In-session restore: RESET_STORE + rewrite persisted defaults (does not exit). */
+export const RESTORE_DEFAULTS = "RESTORE_DEFAULTS";
 
 // Moved to here so it isn't in files to prevent from constant updates
 export const UPDATE_FILES = "UPDATE_FILES";

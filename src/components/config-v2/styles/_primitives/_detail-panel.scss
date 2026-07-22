@@ -1,0 +1,36 @@
+// ConfigDetailPanel — dependent UI under controls; left rail
+@import '../tokens';
+@import '../typography';
+@import '../mixins';
+
+.config-v2 {
+  .cfg-detail-panel {
+    @include cfg-detail-rail;
+    width: 100%;
+    margin-top: $cfg-space-sm;
+    padding-top: $cfg-space-xs;
+    padding-bottom: $cfg-space-xs;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.4;
+  }
+
+  .cfg-detail-panel__text {
+    margin: 0;
+  }
+
+  .cfg-pattern-field {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+    width: 100%;
+    min-width: 0;
+    margin-bottom: $cfg-space-sm;
+  }
+
+  .cfg-pattern-field__label {
+    font-size: $cfg-font-row-label;
+    font-weight: 500;
+    color: $cfg-ink-muted;
+  }
+}

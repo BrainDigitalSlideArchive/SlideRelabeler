@@ -61,15 +61,22 @@ export const default_state = {
     },
   },
   dsa_upload: {
+    default_api_url: '',
     rename_item_after_upload: false,
-    set_item_metadata: false,
-    dsaAlias: { mode: 'output_name', pattern: '' },
+    dsaAlias: { mode: 'label_text', pattern: '' },
+    itemMetadata: { mode: 'none', column: '' },
     item_name_assembly: {
       mode: 'same_as_label',
       template: '',
       fieldsOrder: [],
       separator: '_',
     },
+  },
+  globus_upload: {
+    default_target_endpoint_id: '',
+    default_target_endpoint_label: '',
+    source_endpoint: '',
+    disable_ssl_verification: false,
   },
   debug: {
     enable_debug: false

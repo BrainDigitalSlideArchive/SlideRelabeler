@@ -128,11 +128,16 @@ export function interpretGlobusLsFailure(rawMessage) {
     };
   }
 
-  if (/globus cli not available/i.test(lower) || !raw.trim()) {
+  if (
+    /globus cli not available/i.test(lower)
+    || /spawn\s+globus\s+enoent/i.test(lower)
+    || /enoent/i.test(lower) && /globus/i.test(lower)
+    || !raw.trim()
+  ) {
     return {
       kind: GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE,
       userSummary: 'Globus CLI is not available.',
-      userDetail: 'Install or enable globus-cli in your environment, then try again.',
+      userDetail: 'Install Globus CLI (globus-cli) or use a packaged build, then try again.',
       technical,
     };
   }
@@ -159,4 +164,93 @@ export function interpretGlobusLsFailure(rawMessage) {
     userDetail: firstLine.length < 120 ? firstLine : '',
     technical,
   };
+}
+
+/**
+ * Map Globus CLI / search spawn errors to user-facing copy (ENOENT, etc.).
+ * Avoids directory-listing summaries — those belong to interpretGlobusLsFailure only.
+ * @param {string|Error|null|undefined} rawMessage
+ * @returns {{ kind: string, userSummary: string, userDetail: string, technical: string }}
+ */
+export function interpretGlobusCliFailure(rawMessage) {
+  const raw =
+    rawMessage && typeof rawMessage === 'object' && rawMessage.message != null
+      ? String(rawMessage.message)
+      : (rawMessage || '').toString();
+  const technical = stripGlobusCliNoise(raw) || raw.trim();
+  const lower = raw.toLowerCase();
+
+  if (
+    /globus cli not available/i.test(lower)
+    || /spawn\s+globus\s+enoent/i.test(lower)
+    || (/enoent/i.test(lower) && /globus/i.test(lower))
+    || /command not found/i.test(lower)
+    || /failed to start login command/i.test(lower)
+  ) {
+    return {
+      kind: GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE,
+      userSummary: 'Globus CLI is not available.',
+      userDetail: 'Install Globus CLI (globus-cli) or use a packaged build, then try again.',
+      technical,
+    };
+  }
+
+  // Reuse ls classifier only for CLI-unavailable (incl. empty spawn output).
+  const fromLs = interpretGlobusLsFailure(raw);
+  if (fromLs.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE) {
+    return fromLs;
+  }
+
+  if (fromLs.kind === GLOBUS_LS_FAILURE_KIND.NETWORK) {
+    return {
+      kind: GLOBUS_LS_FAILURE_KIND.NETWORK,
+      userSummary: 'A network error occurred while contacting Globus.',
+      userDetail: 'Check your connection and try again.',
+      technical,
+    };
+  }
+
+  const firstLine =
+    technical
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find(Boolean) || '';
+  const listFolderNoise = /list folders|list this folder|list directory|matching endpoints/i;
+  const detail =
+    firstLine
+    && firstLine.length < 120
+    && !listFolderNoise.test(firstLine)
+    && !/^globus could not/i.test(firstLine)
+      ? firstLine
+      : '';
+
+  return {
+    kind: GLOBUS_LS_FAILURE_KIND.UNKNOWN,
+    userSummary: 'Globus request failed.',
+    userDetail: detail,
+    technical,
+  };
+}
+
+/**
+ * Single user-facing string for Globus login failures (never list-folder copy).
+ * @param {string|Error|null|undefined} rawMessage
+ * @returns {string}
+ */
+export function formatGlobusLoginError(rawMessage) {
+  const interpreted = interpretGlobusCliFailure(rawMessage);
+  if (interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE) {
+    return `${interpreted.userSummary} ${interpreted.userDetail}`.trim();
+  }
+  if (interpreted.kind === GLOBUS_LS_FAILURE_KIND.NETWORK) {
+    return 'Globus sign-in failed due to a network error. Check your connection and try again.';
+  }
+  const tech = interpreted.technical || '';
+  if (/ssl|certificate|tls/i.test(tech)) {
+    return 'Globus sign-in failed due to an SSL/certificate problem. Check Disable SSL Verification in Globus settings.';
+  }
+  if (interpreted.userDetail) {
+    return `Globus sign-in failed. ${interpreted.userDetail}`;
+  }
+  return 'Globus sign-in failed. Try again, or check that Globus CLI is installed and working.';
 }

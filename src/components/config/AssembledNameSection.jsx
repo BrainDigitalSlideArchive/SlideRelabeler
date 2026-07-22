@@ -142,6 +142,7 @@ export default function AssembledNameSection({
             />
             <div className="__config-control-section-group _top-margin">
               <Button
+                variant="onLight"
                 disabled={disabled}
                 text="Use assembled name for label text"
                 onClick={useAssembledNameForLabel}

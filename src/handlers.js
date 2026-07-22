@@ -11,7 +11,7 @@ import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 import GlobusAPI from './api/GlobusAPI';
-import { buildDeidUploadMetadata } from './helpers/dsa_upload_metadata.js';
+import { buildDsaItemMetadata } from './helpers/dsa_upload_metadata.js';
 import {
   checkSlidePathAccessible,
   buildPathErrorForIpc,
@@ -99,6 +99,12 @@ ipcMain.handle('dsa-login', async (event, api_url, username, password) => {
   dsa_client = new DSAAPI(api_url);
   let response = await dsa_client.login(username, password);
   return response;
+});
+
+/** Unauthenticated reachability check; does not touch the logged-in dsa_client. */
+ipcMain.handle('dsa-check-server-url', async (event, api_url) => {
+  const client = new DSAAPI(api_url);
+  return client.checkServerReachable();
 });
 
 ipcMain.handle('dsa-logout', async (event) => {
@@ -297,11 +303,7 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
 
   try {
     if (opts.renameItem) {
-      const stem =
-        reserved.dsaAlias ||
-        reserved.labelText ||
-        reserved.rename ||
-        '';
+      const stem = reserved.dsaAlias || '';
       const fileName = opts.fileName || '';
       const ext = extname(fileName) || reserved.source?.parsed?.ext || '';
       if (stem && ext) {
@@ -314,12 +316,18 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
       }
     }
     if (opts.setMetadata) {
-      const metadata = buildDeidUploadMetadata(fileRow);
-      const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
-      if (!metaResp[0]) {
-        return [false, metaResp[1] || { message: 'Metadata update failed' }];
+      const metadata = buildDsaItemMetadata(
+        fileRow,
+        opts.itemMetadata,
+        opts.csvConfig,
+      );
+      if (metadata && Object.keys(metadata).length > 0) {
+        const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
+        if (!metaResp[0]) {
+          return [false, metaResp[1] || { message: 'Metadata update failed' }];
+        }
+        results.metadata = metaResp[1];
       }
-      results.metadata = metaResp[1];
     }
     return [true, results];
   } catch (err) {
@@ -328,13 +336,44 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
 });
 
 ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {
+  if (!dsa_client) {
+    return { message: 'Not logged in to DSA' };
+  }
   let response = await dsa_client.get_folder_by_id(folder_id);
   if (response[0]) {
     return response[1];
   } else {
     return response[1];
   }
-})
+});
+
+ipcMain.handle('dsa-get-resource-path', async (event, id, type = 'folder') => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_resource_path(id, type);
+});
+
+ipcMain.handle('dsa-list-folders', async (event, parentId, parentType = 'folder') => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_folder(parentId, parentType);
+});
+
+ipcMain.handle('dsa-list-collections', async (event) => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_collections();
+});
+
+ipcMain.handle('dsa-get-current-user', async (event) => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_current_user();
+});
 
 // Globus IPC handlers
 ipcMain.handle('globus-check-cli-available', async (event) => {

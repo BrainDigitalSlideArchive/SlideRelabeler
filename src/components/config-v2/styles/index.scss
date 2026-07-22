@@ -1,0 +1,55 @@
+// Config v2 styles — public entry. See docs/config-ui-v2-style-spec.md
+@import './tokens';
+@import './typography';
+@import './mixins';
+
+@import './_primitives/shell';
+@import './_primitives/section';
+@import './_primitives/choice-chips';
+@import './_primitives/labeled-row';
+@import './_primitives/detail-panel';
+@import './_primitives/field';
+@import './_primitives/path-chip';
+@import './_primitives/status-field';
+@import './_primitives/boolean-row';
+@import './_primitives/feedback';
+@import './_primitives/actions';
+@import './_primitives/preview';
+@import './_primitives/feature-block';
+@import './_primitives/collapsible';
+@import './_primitives/info-card';
+@import './_primitives/data-loading';
+@import './_primitives/esm-host';
+@import './_primitives/slide-label-host';
+
+.config-v2 {
+  // Root scope for all v2 config UI (avoids Modal.scss mega-nesting).
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  color: $cfg-ink;
+  box-sizing: border-box;
+
+  // Light control skins inside the panel (Checkbox / InputText help already handled in primitives).
+  .HelpIconPopover--onLight .HelpIconPopover__icon,
+  .InputText .__help-icon {
+    border-color: $cfg-accent;
+    color: $cfg-accent;
+    background: rgba($cfg-accent, 0.12);
+    font-weight: 700;
+
+    &:hover:not(:disabled) {
+      border-color: darken($cfg-accent, 6%);
+      color: darken($cfg-accent, 6%);
+      background: rgba($cfg-accent, 0.2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($cfg-accent, 0.45);
+      outline-offset: 2px;
+    }
+  }
+}

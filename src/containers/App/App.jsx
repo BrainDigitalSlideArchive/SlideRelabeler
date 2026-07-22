@@ -6,7 +6,6 @@ import {Provider} from "react-redux";
 import store from '../../store/index';
 
 import * as modal_actions from '../../actions/modal';
-import { selectUploadReadiness } from '../../selectors/uploadRouting';
 import { selectOutputReadiness, summarizeDestinationDirectories } from '../../selectors/outputReadiness';
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
@@ -94,7 +93,6 @@ const App = (props) => {
   let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
-  let uploadReadiness = useSelector(selectUploadReadiness);
   let outputReadiness = useSelector(selectOutputReadiness);
 
   const dispatch = useDispatch();
@@ -164,12 +162,23 @@ const App = (props) => {
                     "fi fi-rr-interrogation"
                 ></i>
               </button>
-              <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'config'}})}>
-                <i
-                  className=
-                    "fi fi-rr-settings"
-                ></i>
+              <button
+                className={"__button-icon"}
+                type="button"
+                aria-label="Configuration"
+                title="Configuration"
+                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'config'}})}
+              >
+                <i className="fi fi-rr-settings"></i>
+              </button>
+              <button
+                className={"__button-icon __button-icon--config-v2"}
+                type="button"
+                aria-label="Configuration v2 preview"
+                title="Configuration v2 preview"
+                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'configV2'}})}
+              >
+                <i className="fi fi-rr-settings"></i>
               </button>
             </div>
             {showFileHeaderInfo && (
@@ -183,8 +192,6 @@ const App = (props) => {
               <div className="__list-controls __list-controls_output-dir">
                 <DeliveryPanel
                       uploadRouting={uploadRouting}
-                      uploadReadiness={uploadReadiness}
-                      outputReadiness={outputReadiness}
                       destSummary={destSummary}
                       outputDir={output_dir}
                       disabled={controlsDisabled}

@@ -40,10 +40,10 @@ export default function ConfigOverviewSection({ hasLoadedFiles = false }) {
           <OverviewLabelIllustration />
         </article>
         <article className="config-overview__card">
-          <h3 className="config-overview__card-title">Auto-upload alias (optional)</h3>
+          <h3 className="config-overview__card-title">DSA item name (optional)</h3>
           <p className="config-overview__card-desc">
-            Optional item title when uploading to a <strong>Digital Slide Archive</strong> (does not have to be the same as the filename on disk).
-            Configure DSA upload connection from the main <strong>delivery panel</strong> or in <strong>Output delivery</strong> below.
+            By default the DSA item name matches the uploaded file. You can set it to Label text or a custom pattern instead.
+            Sign in and choose a folder on the main <strong>delivery panel</strong>. Default server URL, item naming, metadata, and staging limits are in <strong>Output delivery</strong> below.
           </p>
           <p className="config-overview__card-aside" role="note">
             <strong>Note:</strong> <strong>Globus</strong> uploads always use the output filename; there is no separate alias.

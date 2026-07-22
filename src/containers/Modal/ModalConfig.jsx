@@ -200,65 +200,65 @@ function ModalConfig() {
                 patternValidationMessages={patternValidation.messages}
               />
 
-          <div className={"__divider"} />
+              <div className={"__divider"} />
 
-          <OutputDeliverySection disabled={controlsDisabled} />
+              <section className="__config-control-section" id="config-slide-label">
+                <div className={"__config-control-section-title"}>Slide label</div>
+                <div className={"__config-control-section-description"}>
+                  Choose which components appear on the new, deidentified slide labels.
+                  {' '}
+                  <HelpIconPopover helpLabel="Slide label defaults help" variant="onLight">
+                    {SLIDE_LABEL_HELP}
+                  </HelpIconPopover>
+                </div>
+                <div className="config-section-panel label-config-section">
+                  <LabelGuidedSteps
+                    config={enrichedConfig}
+                    labelConfig={label_config}
+                    disabled={controlsDisabled}
+                    previewRow={activePreviewRow}
+                    previewRowMode={previewRowMode}
+                    previewFilePath={previewFilePath}
+                    resolvedPreview={resolvedPreview}
+                    schematicPreview={schematicPreview}
+                    hasLoadedFiles={hasLoadedFiles}
+                    reservedColumns={reserved_columns}
+                    fileCols={file_cols}
+                    onPreviewRowChange={handlePreviewRowChange}
+                    onLoadPreviewFromFirstRow={handleLoadPreviewFromFirstRow}
+                    onResetPreviewRow={handleResetPreviewRow}
+                    onRecompute={triggerRecompute}
+                    placeholderCatalogs={placeholderCatalogs}
+                    patternValidationMessages={patternValidation.messages}
+                  />
+                </div>
+              </section>
 
-          <div className={"__divider"} />
+              <div className={"__divider"} />
 
-          <section className="__config-control-section" id="config-slide-label">
-            <div className={"__config-control-section-title"}>Slide label</div>
-            <div className={"__config-control-section-description"}>
-              Choose which components appear on the new, deidentified slide labels.
-              {' '}
-              <HelpIconPopover helpLabel="Slide label defaults help" variant="onLight">
-                {SLIDE_LABEL_HELP}
-              </HelpIconPopover>
-            </div>
-            <div className="config-section-panel label-config-section">
-              <LabelGuidedSteps
-                config={enrichedConfig}
-                labelConfig={label_config}
+              <DataLoadingSection
+                csvConfig={csv_config}
                 disabled={controlsDisabled}
-                previewRow={activePreviewRow}
-                previewRowMode={previewRowMode}
-                previewFilePath={previewFilePath}
-                resolvedPreview={resolvedPreview}
-                schematicPreview={schematicPreview}
-                hasLoadedFiles={hasLoadedFiles}
-                reservedColumns={reserved_columns}
-                fileCols={file_cols}
-                onPreviewRowChange={handlePreviewRowChange}
-                onLoadPreviewFromFirstRow={handleLoadPreviewFromFirstRow}
-                onResetPreviewRow={handleResetPreviewRow}
-                onRecompute={triggerRecompute}
-                placeholderCatalogs={placeholderCatalogs}
-                patternValidationMessages={patternValidation.messages}
               />
-            </div>
-          </section>
 
-          <div className={"__divider"} />
+              <div className={"__divider"} />
 
-          <AuditLoggingSection
-            disabled={controlsDisabled}
-          />
+              <OutputDeliverySection disabled={controlsDisabled} />
 
-          <div className={"__divider"} />
+              <div className={"__divider"} />
 
-          <DataLoadingSection
-            csvConfig={csv_config}
-            disabled={controlsDisabled}
-          />
+              <AuditLoggingSection
+                disabled={controlsDisabled}
+              />
 
-          <div className={"__divider"} />
+              <div className={"__divider"} />
 
-          <ConfigAdvancedSection
-            wsiConfig={wsi_config}
-            copyConfig={copy_config}
-            debugConfig={debug_config}
-            disabled={controlsDisabled}
-          />
+              <ConfigAdvancedSection
+                wsiConfig={wsi_config}
+                copyConfig={copy_config}
+                debugConfig={debug_config}
+                disabled={controlsDisabled}
+              />
             </div>
           </div>
         </div>

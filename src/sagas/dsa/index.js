@@ -5,6 +5,7 @@ import logout from './logout';
 import upload from './upload';
 import progress from './progress';
 import check from './check';
+import { watchDsaDefaultUrlSync } from './sync_default_url';
 
 function* dsa() {
     const watch_login = yield fork(login);
@@ -12,6 +13,7 @@ function* dsa() {
     const watch_upload = yield fork(upload);
     const watch_progress = yield fork(progress);
     const watch_check = yield fork(check);
+    yield fork(watchDsaDefaultUrlSync);
 }
 
 export default dsa;

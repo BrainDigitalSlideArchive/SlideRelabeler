@@ -16,7 +16,10 @@ function ModalHeader(props) {
         <Switch label="Changed Only" checked={display_changed_only} onChange={() => dispatch({type: modal_actions.TOGGLE_DISPLAY_CHANGED_ONLY})} />
       }
       <button className={"__button-icon __close"}
-              onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: type}}) && onClose && onClose()}>
+              onClick={() => {
+                dispatch({ type: modal_actions.CLOSE_MODAL });
+                onClose?.();
+              }}>
         <i className={"fi fi-rr-cross"}></i>
       </button>
     </div>

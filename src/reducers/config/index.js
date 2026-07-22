@@ -221,21 +221,41 @@ const config_reducer  = createReducer(default_state, (builder) => {
     .addCase(config_actions.SET_DSA_UPLOAD_CONFIG, (state, action) => {
       return produce(state, draft => {
         const p = action.payload || {};
-        if (p.item_name_assembly) {
-          Object.assign(draft.dsa_upload.item_name_assembly, p.item_name_assembly);
-          const { item_name_assembly, ...rest } = p;
-          Object.assign(draft.dsa_upload, rest);
-        } else {
-          Object.assign(draft.dsa_upload, p);
+        const {
+          item_name_assembly,
+          dsaAlias,
+          itemMetadata,
+          ...rest
+        } = p;
+        Object.assign(draft.dsa_upload, rest);
+        if (item_name_assembly) {
+          Object.assign(draft.dsa_upload.item_name_assembly, item_name_assembly);
         }
-        if (p.dsaAlias !== undefined) {
-          if (!draft.dsa_upload.dsaAlias) draft.dsa_upload.dsaAlias = { mode: 'output_name', pattern: '' };
-          Object.assign(draft.dsa_upload.dsaAlias, p.dsaAlias);
+        if (dsaAlias !== undefined) {
+          if (!draft.dsa_upload.dsaAlias) draft.dsa_upload.dsaAlias = { mode: 'label_text', pattern: '' };
+          Object.assign(draft.dsa_upload.dsaAlias, dsaAlias);
+        }
+        if (itemMetadata !== undefined) {
+          if (!draft.dsa_upload.itemMetadata) draft.dsa_upload.itemMetadata = { mode: 'none', column: '' };
+          Object.assign(draft.dsa_upload.itemMetadata, itemMetadata);
         }
         if (p.rename_item_after_upload !== undefined) {
           draft.routing.dsaItemName.enabled = Boolean(p.rename_item_after_upload);
         }
       })
+    })
+    .addCase(config_actions.SET_GLOBUS_UPLOAD_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.globus_upload) {
+          draft.globus_upload = {
+            default_target_endpoint_id: '',
+            default_target_endpoint_label: '',
+            source_endpoint: '',
+            disable_ssl_verification: false,
+          };
+        }
+        Object.assign(draft.globus_upload, action.payload || {});
+      });
     })
     .addCase(config_actions.SET_ASSEMBLY_CONFIG, (state, action) => {
       return produce(state, draft => {

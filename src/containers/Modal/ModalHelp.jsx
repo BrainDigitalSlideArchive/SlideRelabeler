@@ -8,7 +8,7 @@ function ModalHelp(props) {
   const dispatch = useDispatch();
   return (
     <div className="__modal">
-      <ModalHeader title={"Help"} type={"config"}/>
+      <ModalHeader title={"Help"} type={"help"}/>
       <div className={"__content"}>
         <div className={"__content-section"}>
           <h2>Application</h2>

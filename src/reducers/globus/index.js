@@ -2,10 +2,12 @@ import { createReducer } from "@reduxjs/toolkit";
 
 import default_state from './default_state';
 import * as globus_actions from '../../actions/globus';
+import * as app_actions from '../../actions/app';
 import { produce } from "immer";
 
 const globus_reducer = createReducer(default_state, (builder) => {
   builder
+    .addCase(app_actions.RESET_STORE, () => ({ ...default_state }))
     .addCase(globus_actions.RESTORE_GLOBUS_PERSISTED, (state, action) => {
       const persisted = action.payload || {};
       const allowlist = [
@@ -289,6 +291,17 @@ const globus_reducer = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         draft.disable_ssl_verification = !draft.disable_ssl_verification;
       })
+    })
+    .addCase(globus_actions.SET_DISABLE_SSL_VERIFICATION, (state, action) => {
+      return produce(state, draft => {
+        draft.disable_ssl_verification = Boolean(action.payload);
+      });
+    })
+    .addCase(globus_actions.SET_GLOBUS_ENDPOINT_PICKER_MODE, (state, action) => {
+      return produce(state, draft => {
+        const mode = action.payload === 'durable' ? 'durable' : 'session';
+        draft.endpoint_picker_mode = mode;
+      });
     })
 })
 

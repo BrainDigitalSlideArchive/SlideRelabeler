@@ -1,0 +1,206 @@
+// ConfigTestPreview + hosted ConfigPreviewRowEditor (single-row AgGrid)
+@import '../tokens';
+@import '../typography';
+
+.config-v2 {
+  .cfg-test-preview {
+    margin-top: $cfg-space-lg;
+    padding: $cfg-space-md;
+    border: 1px solid $cfg-border;
+    border-radius: 0.35rem;
+    background: $cfg-surface;
+    box-sizing: border-box;
+  }
+
+  .cfg-test-preview__header {
+    margin-bottom: $cfg-space-sm;
+  }
+
+  .cfg-test-preview__title {
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    color: $cfg-ink;
+  }
+
+  .cfg-test-preview__hint-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $cfg-space-sm $cfg-space-md;
+    margin-bottom: $cfg-space-md;
+  }
+
+  .cfg-test-preview__hint {
+    flex: 1 1 12rem;
+    min-width: 0;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.45;
+  }
+
+  .cfg-test-preview__actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs $cfg-space-sm;
+    flex: 0 0 auto;
+  }
+
+  .cfg-test-preview__action-sep {
+    color: $cfg-ink-faint;
+  }
+
+  .cfg-test-preview__body {
+    min-width: 0;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink;
+  }
+
+  // ConfigPreviewRowEditor is shared with v1; height must be owned here because
+  // Modal.scss rules only nest under .config-panel / .__config-controls.
+  // Explicit header+row height — AgGrid's height:100% otherwise collapses.
+  .config-preview-row-editor__grid {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid $cfg-border;
+    border-radius: 0.35rem;
+    background: $cfg-bg;
+
+    &--output-filename {
+      position: relative;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+
+    &--has-override-callout {
+      padding-bottom: 3.25rem;
+    }
+  }
+
+  .config-preview-row-editor__grid-mount {
+    width: fit-content;
+    height: calc(var(--ag-header-height) + var(--ag-row-height));
+    overflow: hidden;
+
+    &.__ag-grid {
+      width: auto;
+      height: calc(var(--ag-header-height) + var(--ag-row-height));
+    }
+
+    .ag-root-wrapper,
+    .ag-root-wrapper-body,
+    .ag-body-viewport,
+    .ag-center-cols-viewport {
+      min-height: unset;
+    }
+
+    .ag-body-viewport {
+      overflow-y: hidden;
+    }
+
+    .ag-body-vertical-scroll,
+    .ag-body-vertical-scroll-viewport {
+      display: none;
+    }
+
+    .ag-row {
+      max-height: var(--ag-row-height);
+    }
+
+    .ag-cell:not(.ag-cell-inline-editing) {
+      overflow: hidden;
+    }
+
+    .ag-cell-wrapper,
+    .ag-cell-value {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .ag-cell.naming-field:not(.ag-cell-inline-editing) {
+      overflow: hidden;
+    }
+  }
+
+  .ag-header-cell.preview-column-highlight,
+  .ag-cell.preview-column-highlight {
+    background-color: #fff9db;
+    border: 2px solid #c53030;
+  }
+
+  .ag-header-cell.preview-column-highlight {
+    font-weight: 600;
+  }
+
+  .ag-cell.preview-column-highlight.ag-cell-inline-editing {
+    background-color: #fff9db;
+  }
+
+  .preview-see-below-placeholder {
+    color: $cfg-ink-muted;
+    font-style: italic;
+  }
+
+  .preview-rename-override-callout {
+    position: absolute;
+    z-index: 2;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $cfg-space-sm;
+    max-width: 14rem;
+    padding: $cfg-space-md $cfg-space-md;
+    background: $cfg-callout-bg;
+    border: 1px solid $cfg-callout-border;
+    border-radius: 0.35rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    pointer-events: auto;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 6px solid $cfg-callout-border;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid $cfg-callout-bg;
+    }
+
+    &__text {
+      margin: 0;
+      font-size: $cfg-font-detail;
+      line-height: 1.35;
+      text-align: center;
+      color: $cfg-ink;
+    }
+
+    &__clear {
+      border: none;
+      background: none;
+      padding: 0;
+      font-size: $cfg-font-detail;
+      font-weight: 600;
+      color: $cfg-accent;
+      cursor: pointer;
+      text-decoration: underline;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+  }
+}

@@ -75,6 +75,7 @@ export default function LabelCompositionPanel({
           {!routingConfig?.labelText?.enabled && (
             <div className="label-guided-steps__shortcut">
               <Button
+                variant="onLight"
                 disabled={disabled}
                 text="Use assembled name column"
                 onClick={() => {
@@ -115,12 +116,14 @@ export default function LabelCompositionPanel({
       return (
         <div className="__config-control-section-group">
           <Button
+            variant="onLight"
             disabled={disabled}
             text="Select icon (file)"
             onClick={() => dispatch({ type: config_actions.SELECT_ICON_FILE })}
             result={labelConfig.icon_file && labelConfig.icon_file.source.path}
           />
           <Button
+            variant="onLight"
             disabled={disabled || !labelConfig.icon_file}
             text="Clear"
             onClick={() => dispatch({ type: config_actions.CHANGE_ICON_FILE, payload: null })}

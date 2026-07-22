@@ -1,0 +1,207 @@
+// ConfigSection, SectionPanel, Divider, Category, Subsection, SettingHeader
+@import '../tokens';
+@import '../typography';
+@import '../mixins';
+
+.config-v2 {
+  .cfg-section {
+    margin-bottom: 0;
+    padding-top: 1.25em;
+  }
+
+  .cfg-section__title {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-section;
+    font-weight: 700;
+    color: $cfg-ink;
+    line-height: 1.25;
+  }
+
+  .cfg-section__description {
+    margin: 0 0 $cfg-space-lg;
+    font-size: $cfg-font-helper;
+    line-height: 1.45;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-section-panel {
+    background: $cfg-surface;
+    border: 1px solid $cfg-border;
+    border-radius: 0.4rem;
+    padding: $cfg-space-lg;
+    box-sizing: border-box;
+  }
+
+  .cfg-divider {
+    margin: $cfg-space-lg 0;
+    border: none;
+    border-top: 1px solid $cfg-border;
+  }
+
+  .cfg-category {
+    margin-bottom: $cfg-space-xl;
+
+    &--rail {
+      @include cfg-detail-rail;
+      padding-top: $cfg-space-xs;
+      padding-bottom: $cfg-space-xs;
+    }
+  }
+
+  .cfg-category__title {
+    margin: 0 0 $cfg-space-sm;
+    font-size: $cfg-font-category;
+    font-weight: 600;
+    color: $cfg-ink;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs;
+  }
+
+  .cfg-category__description {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.4;
+  }
+
+  .cfg-subsection {
+    margin-bottom: $cfg-space-lg;
+
+    &--rail {
+      @include cfg-detail-rail;
+      padding-top: $cfg-space-xs;
+      padding-bottom: $cfg-space-xs;
+    }
+
+    &--location {
+      margin-top: $cfg-space-md;
+      margin-bottom: $cfg-space-lg;
+      padding: $cfg-space-md $cfg-space-lg;
+      border: 1px solid $cfg-border;
+      border-radius: 0.35rem;
+      background: $cfg-bg;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: $cfg-space-md;
+
+      > .cfg-labeled-row,
+      > .cfg-status-field,
+      > .cfg-inline-field,
+      > .cfg-warn-text,
+      > .cfg-helper-text,
+      > .cfg-path-chip,
+      > .cfg-panel-actions,
+      > .cfg-location-secondary {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+    }
+    
+  }
+
+  .cfg-subsection__title {
+    margin: 0 0 $cfg-space-sm;
+    font-size: $cfg-font-category;
+    font-weight: 600;
+    color: $cfg-ink;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs;
+  }
+
+  .cfg-subsection__description {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.4;
+  }
+
+  .cfg-panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+    margin-top: $cfg-space-md;
+  }
+
+  .cfg-inline-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+    margin-top: $cfg-space-md;
+
+    .cfg-field,
+    .InputText {
+      margin-bottom: 0;
+    }
+  }
+
+  .cfg-inline-field__label {
+    font-size: $cfg-font-row-label;
+    font-weight: 500;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-setting-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $cfg-space-md;
+
+    > .cfg-panel-actions {
+      margin-top: 0;
+    }
+  }
+
+  .cfg-location-secondary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $cfg-space-sm;
+    margin-top: $cfg-space-xs;
+    width: 100%;
+    min-width: 0;
+
+    > .cfg-inline-field,
+    > .cfg-boolean-row,
+    > .cfg-warn-text {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  .cfg-setting-header {
+    margin-bottom: $cfg-space-md;
+
+    &--quiet {
+      .cfg-setting-header__title {
+        font-weight: 500;
+        color: $cfg-ink-muted;
+      }
+    }
+  }
+
+  // Stacked settings: later SettingHeaders (after another header + controls) get top gap.
+  .cfg-setting-header ~ .cfg-setting-header {
+    margin-top: $cfg-space-lg;
+  }
+
+  .cfg-setting-header__title {
+    margin: 0 0 $cfg-space-xs;
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    color: $cfg-ink;
+  }
+
+  .cfg-setting-header__description {
+    margin: 0;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-faint;
+    line-height: 1.4;
+  }
+}

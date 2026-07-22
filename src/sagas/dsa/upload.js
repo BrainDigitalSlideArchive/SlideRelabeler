@@ -2,6 +2,7 @@ import { select, take, put, call, fork, delay, join } from 'redux-saga/effects';
 
 import * as dsa_actions from '../../actions/dsa';
 import * as files_actions from '../../actions/files';
+import { isDsaItemMetadataEnabled } from '../../helpers/dsa_upload_metadata.js';
 
 function* watch_complete_upload(row_idx) {
     while (true) {
@@ -23,13 +24,16 @@ function* watch_complete_upload(row_idx) {
         const fileName = typeof payload === 'object' ? payload.fileName : null;
 
         const dsaUpload = config?.dsa_upload || {};
-        if (itemId && file_row && (dsaUpload.rename_item_after_upload || dsaUpload.set_item_metadata)) {
+        const setMetadata = isDsaItemMetadataEnabled(dsaUpload.itemMetadata);
+        if (itemId && file_row && (dsaUpload.rename_item_after_upload || setMetadata)) {
             const enrichResult = yield call(electronAPI.dsaEnrichUploadedItem, {
                 itemId,
                 fileRow: file_row,
                 options: {
                     renameItem: !!dsaUpload.rename_item_after_upload,
-                    setMetadata: !!dsaUpload.set_item_metadata,
+                    setMetadata,
+                    itemMetadata: dsaUpload.itemMetadata,
+                    csvConfig: config?.csv,
                     fileName,
                 },
             });

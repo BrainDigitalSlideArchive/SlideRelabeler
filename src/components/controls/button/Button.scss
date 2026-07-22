@@ -1,5 +1,6 @@
 @import '../../../styles/colors';
 @import '../../../styles/variables';
+@import './button_on_light';
 
 .Button {
   display: flex;
@@ -41,6 +42,16 @@
     color: $beige;
     &._disabled {
       opacity: 0.5;
+    }
+  }
+
+  &.Button--onLight {
+    .__button {
+      @include button-on-light-skin;
+    }
+
+    .__button-result {
+      color: $config-text-secondary;
     }
   }
 }

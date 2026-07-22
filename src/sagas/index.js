@@ -15,7 +15,7 @@ import globus from './globus';
 import auditLogSaga from './auditLog';
 
 import watch_save_store from './bridge/save_store';
-import watch_delete_store from './bridge/delete_store';
+import watch_delete_store, { watch_restore_defaults } from './bridge/delete_store';
 import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
 import choose_staging_dir from './uploadRouting/choose_staging_dir';
 import choose_default_local_output_dir from './uploadRouting/choose_default_local_output_dir';
@@ -48,6 +48,7 @@ function* sagas() {
     yield fork(auditLogSaga);
     yield fork(watch_save_store);
     yield fork(watch_delete_store);
+    yield fork(watch_restore_defaults);
 };
 
 export default sagas;

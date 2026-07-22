@@ -227,6 +227,13 @@
   &._network-warning {
     background-color: #e6a800;
   }
+  // Temporary dual-gear comparison: v2 preview opener (remove at cutover).
+  &--config-v2 {
+    color: $darker-blue;
+    i {
+      color: $darker-blue;
+    }
+  }
 }
 
 .App {

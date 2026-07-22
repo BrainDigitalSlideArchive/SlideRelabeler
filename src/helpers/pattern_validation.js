@@ -18,8 +18,7 @@ const FIELD_LABELS = {
 };
 
 function dsaAliasActive(config) {
-  return Boolean(config?.dsa_upload?.rename_item_after_upload)
-    || Boolean(config?.dsa_upload?.set_item_metadata);
+  return Boolean(config?.dsa_upload?.rename_item_after_upload);
 }
 
 function rowFilterForField(field) {

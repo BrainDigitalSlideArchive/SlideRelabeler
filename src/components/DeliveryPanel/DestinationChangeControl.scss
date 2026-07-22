@@ -1,0 +1,125 @@
+@import '../../styles/colors';
+
+/* Shared destination-change pencil popover (DSA URL / Globus endpoint). */
+.destination-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.destination-change__host {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $on-surface;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.destination-change__popover {
+  position: fixed;
+  z-index: 2000;
+  min-width: 14rem;
+  max-width: 18rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.45rem;
+  background: #fff;
+  border: 1px solid $border-surface;
+  box-shadow: 0 6px 20px rgba($black, 0.18);
+  color: $on-surface;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.2rem);
+  transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
+
+  &._visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
+
+.destination-change__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.destination-change__menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.45rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: $on-surface;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba($darker-blue, 0.1);
+  }
+}
+
+.destination-change__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: $on-surface-muted;
+}
+
+.destination-change__temp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.destination-change__temp-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $on-surface-muted;
+}
+
+.destination-change__temp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid $border-surface;
+  border-radius: 0.3rem;
+  font-size: 0.8125rem;
+  color: $on-surface;
+}
+
+.destination-change__temp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.destination-change__text-btn {
+  border: none;
+  background: none;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $darker-blue;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.destination-change__apply-btn {
+  border: 1px solid $darker-blue;
+  background: $darker-blue;
+  color: #fff;
+  border-radius: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}

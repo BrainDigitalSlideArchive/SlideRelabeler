@@ -1,0 +1,107 @@
+// ConfigWarnText / ConfigHelperText / ConfigCallout
+@import '../tokens';
+@import '../typography';
+
+.config-v2 {
+  .cfg-warn-text {
+    margin: $cfg-space-sm 0 0;
+    font-size: $cfg-font-warn;
+    color: $cfg-warn;
+    line-height: 1.4;
+  }
+
+  .cfg-pattern-validation {
+    margin: 0 0 $cfg-space-md;
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-xs;
+  }
+
+  .cfg-helper-text {
+    margin: 0;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.45;
+  }
+
+  .cfg-callout {
+    margin: 0 0 $cfg-space-lg;
+    padding: $cfg-space-md $cfg-space-lg;
+    border-radius: 0.35rem;
+    font-size: $cfg-font-helper;
+    line-height: 1.45;
+    color: $cfg-ink-muted;
+    box-sizing: border-box;
+
+    &--accent {
+      border-left: 3px solid $cfg-accent;
+      background: $cfg-surface;
+      border-top: 1px solid $cfg-border;
+      border-right: 1px solid $cfg-border;
+      border-bottom: 1px solid $cfg-border;
+    }
+
+    &--tinted {
+      background: $cfg-callout-bg;
+      border: 1px solid $cfg-callout-border;
+      color: $cfg-ink;
+    }
+
+    &--flush {
+      margin-bottom: $cfg-space-md;
+    }
+  }
+
+  // Shared host styles for PlaceholderChips reused from config/
+  .computed-field-editor__catalog {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs;
+    margin-top: $cfg-space-xs;
+    width: 100%;
+  }
+
+  .computed-field-editor__catalog-header {
+    display: inline-flex;
+    align-items: center;
+    gap: $cfg-space-sm;
+    flex-shrink: 0;
+    padding-right: $cfg-space-sm;
+  }
+
+  .computed-field-editor__catalog-label {
+    font-size: $cfg-font-row-label;
+    font-weight: 600;
+    line-height: 1.3;
+    color: $cfg-ink;
+  }
+
+  .computed-field-editor__placeholders {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs;
+  }
+
+  .computed-field-editor__chip {
+    font-size: $cfg-font-detail;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    padding: 0.15em 0.4em;
+    border-radius: 0.25em;
+    border: 1px solid $cfg-border;
+    background: $cfg-bg;
+    color: $cfg-ink-muted;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: $cfg-accent;
+      color: $cfg-ink;
+    }
+  }
+}

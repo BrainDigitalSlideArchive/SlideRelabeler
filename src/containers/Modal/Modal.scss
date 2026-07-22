@@ -1,6 +1,7 @@
 @import '../../styles/colors.scss';
 @import '../../styles/variables.scss';
 @import '../../components/config/SlideLabelLayout.scss';
+@import '../../components/controls/button/button_on_light';
 
 .Modal {
   position: absolute;
@@ -144,6 +145,16 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
+
+        // Outlined light-surface Button skin for all light modals.
+        // Intentional filled CTAs use .Button--filled or more-specific overrides (e.g. Globus auth).
+        .Button:not(.Button--filled) .__button {
+          @include button-on-light-skin;
+        }
+
+        .Button:not(.Button--filled) .__button-result {
+          color: $config-text-secondary;
+        }
       }
 
       .config-panel {
@@ -1527,16 +1538,15 @@
               border: 0;
             }
 
-            .config-filename-style__modes--compact {
-              gap: 0.35rem;
-              grid-template-columns: repeat(3, max-content);
-              justify-content: start;
-            }
-
+            .config-filename-style__modes--compact,
             .config-filename-style__modes--compact-four {
               display: flex;
               flex-wrap: nowrap;
               gap: 0.35rem;
+              justify-content: flex-start;
+              width: max-content;
+              max-width: 100%;
+              grid-template-columns: none;
 
               .config-filename-style__option {
                 flex: 0 0 auto;
@@ -3701,6 +3711,14 @@
             &__body {
               margin-top: 0.75em;
             }
+
+            &__reset-actions {
+              display: flex;
+              flex-wrap: wrap;
+              align-items: center;
+              gap: 0.5em 0.75em;
+              margin-top: 0.5em;
+            }
           }
 
           .label-content-builder {
@@ -4052,6 +4070,59 @@
           min-height: 0;
         }
       }
+    }
+  }
+
+  // Compact dialog (login) — content-sized; higher specificity beats default 85vw×85vh chrome.
+  .__modal.__modal--compact {
+    width: min(32rem, 92vw);
+    height: auto;
+    max-height: min(90vh, 36rem);
+    border-radius: 1em;
+    overflow: hidden;
+
+    .__header {
+      position: relative;
+      width: 100%;
+      padding: 0.75rem 1rem;
+
+      .__title {
+        font-size: 1.25rem;
+      }
+
+      .__close {
+        width: 1.75rem;
+        height: 1.75rem;
+      }
+    }
+
+    .__content {
+      top: 0;
+      height: auto;
+      max-height: none;
+      overflow: visible;
+      padding: 0.85rem 1rem 1rem;
+
+      &--config {
+        overflow: visible;
+      }
+
+      .config-panel {
+        flex: none;
+        min-height: 0;
+        box-shadow: none;
+        border-radius: 0.4em;
+      }
+
+      .config-panel__body {
+        flex: none;
+        overflow: visible;
+        padding: 0.85rem 1rem 1rem;
+      }
+    }
+
+    .__footer {
+      display: none;
     }
   }
 

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import './Button.scss';
 
 function Button(props) {
-  const { onClick, text, label, result, disabled, extra_class_name, tooltip } = props;
+  const { onClick, text, label, result, disabled, extra_class_name, tooltip, variant } = props;
 
   const [hover, set_hover] = useState(false);
 
@@ -15,8 +15,14 @@ function Button(props) {
     return class_name;
   }
 
+  const rootClass = [
+    'Button',
+    variant === 'onLight' ? 'Button--onLight' : '',
+    extra_class_name || '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={extra_class_name ? `Button ${extra_class_name}` : "Button"} onMouseOver={() => set_hover(true)} onMouseLeave={() => set_hover(false)}>
+    <div className={rootClass} onMouseOver={() => set_hover(true)} onMouseLeave={() => set_hover(false)}>
       {
         label &&
         <button className={get_button_class_name()}>

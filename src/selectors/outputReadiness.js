@@ -116,11 +116,12 @@ export function getDeliveryUploadStatusCopy(uploadReadiness) {
   return 'Upload connection not ready';
 }
 
-export function getDeliverySetupModalType(destination) {
-  return destination === 'globus' ? 'globusUpload' : 'dsaUpload';
+/** Modal for destination setup CTAs. DSA/Globus use inline Delivery controls + Config. */
+export function getDeliverySetupModalType(_destination) {
+  return null;
 }
 
 export function getDeliverySetupButtonLabel(destination, ready = false) {
   const name = destination === 'globus' ? 'Globus' : 'DSA';
-  return ready ? `Review ${name} upload settings…` : `Set up ${name} upload…`;
+  return ready ? `Manage ${name}…` : `Set up ${name}…`;
 }

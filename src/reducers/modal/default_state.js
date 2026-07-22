@@ -1,7 +1,6 @@
 // Desc: default state for the modal reducer
 export const default_state = {
-  active: false,
-  type: 'help',
+  stack: [],
   network_type: 'dsa',
   error_messages: [],
   warning_messages: [],

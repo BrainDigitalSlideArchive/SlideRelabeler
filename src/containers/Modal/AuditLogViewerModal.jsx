@@ -219,24 +219,28 @@ export default function AuditLogViewerModal() {
             </div>
             <div className="audit-log-panel__actions">
               <Button
+                variant="onLight"
                 extra_class_name="audit-log-panel__btn audit-log-panel__btn--primary"
                 text="Export filtered…"
                 disabled={displayedCount === 0}
                 onClick={handleExport}
               />
               <Button
+                variant="onLight"
                 extra_class_name="audit-log-panel__btn audit-log-panel__btn--secondary"
                 text="Reset filters"
                 disabled={!hasColumnFilters}
                 onClick={handleResetFilters}
               />
               <Button
+                variant="onLight"
                 extra_class_name="audit-log-panel__btn audit-log-panel__btn--destructive"
                 text="Delete checked entries"
                 disabled={selectedCount === 0}
                 onClick={handleDeleteChecked}
               />
               <Button
+                variant="onLight"
                 extra_class_name="audit-log-panel__btn audit-log-panel__btn--destructive"
                 text="Delete all"
                 disabled={entries.length === 0}

@@ -40,7 +40,10 @@ export const CHECK_AUTH = 'globus/CHECK_AUTH';
 export const SET_AUTHORIZATION_CODE_INPUT = 'globus/SET_AUTHORIZATION_CODE_INPUT';
 export const SUBMIT_AUTHORIZATION_CODE = 'globus/SUBMIT_AUTHORIZATION_CODE';
 export const TOGGLE_SSL_VERIFICATION = 'globus/TOGGLE_SSL_VERIFICATION';
+export const SET_DISABLE_SSL_VERIFICATION = 'globus/SET_DISABLE_SSL_VERIFICATION';
 export const RESTORE_GLOBUS_PERSISTED = 'globus/RESTORE_GLOBUS_PERSISTED';
 export const BUMP_GLOBUS_DIRECTORY_REFRESH = 'globus/BUMP_GLOBUS_DIRECTORY_REFRESH';
+/** 'session' | 'durable' — intent when ModalGlobusEndpointPicker confirms */
+export const SET_GLOBUS_ENDPOINT_PICKER_MODE = 'globus/SET_GLOBUS_ENDPOINT_PICKER_MODE';
 /** Internal: keep globus.upload / delete_after aligned with uploadRouting slice */
 export const SYNC_UPLOAD_PREFS_FROM_ROUTING = 'globus/SYNC_UPLOAD_PREFS_FROM_ROUTING';

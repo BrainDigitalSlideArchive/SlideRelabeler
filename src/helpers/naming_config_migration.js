@@ -27,13 +27,21 @@ const DEFAULT_QR_ASSEMBLY = {
 
 const DEFAULT_DSA_UPLOAD = {
   rename_item_after_upload: false,
-  set_item_metadata: false,
+  dsaAlias: { mode: 'label_text', pattern: '' },
+  itemMetadata: { mode: 'none', column: '' },
   item_name_assembly: {
     mode: 'same_as_label',
     template: '',
     fieldsOrder: [],
     separator: '_',
   },
+};
+
+const DEFAULT_GLOBUS_UPLOAD = {
+  default_target_endpoint_id: '',
+  default_target_endpoint_label: '',
+  source_endpoint: '',
+  disable_ssl_verification: false,
 };
 
 /**
@@ -89,10 +97,27 @@ export function migrateNamingConfig(loadedConfig, loadedEsm) {
     config.dsa_upload = {
       ...DEFAULT_DSA_UPLOAD,
       ...config.dsa_upload,
+      dsaAlias: {
+        ...DEFAULT_DSA_UPLOAD.dsaAlias,
+        ...(config.dsa_upload.dsaAlias || {}),
+      },
+      itemMetadata: {
+        ...DEFAULT_DSA_UPLOAD.itemMetadata,
+        ...(config.dsa_upload.itemMetadata || {}),
+      },
       item_name_assembly: {
         ...DEFAULT_DSA_UPLOAD.item_name_assembly,
         ...(config.dsa_upload.item_name_assembly || {}),
       },
+    };
+  }
+
+  if (!config.globus_upload || typeof config.globus_upload !== 'object') {
+    config.globus_upload = { ...DEFAULT_GLOBUS_UPLOAD };
+  } else {
+    config.globus_upload = {
+      ...DEFAULT_GLOBUS_UPLOAD,
+      ...config.globus_upload,
     };
   }
 
@@ -104,4 +129,5 @@ export {
   DEFAULT_LABEL_TEXT_ASSEMBLY,
   DEFAULT_QR_ASSEMBLY,
   DEFAULT_DSA_UPLOAD,
+  DEFAULT_GLOBUS_UPLOAD,
 };

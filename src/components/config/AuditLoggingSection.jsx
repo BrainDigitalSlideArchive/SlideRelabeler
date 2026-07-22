@@ -212,6 +212,7 @@ export default function AuditLoggingSection({
 
           <div className="audit-logging-section__actions">
             <Button
+              variant="onLight"
               extra_class_name="audit-logging-section__view-btn"
               text="View audit log…"
               disabled={disabled}
