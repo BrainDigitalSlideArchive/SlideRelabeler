@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 
 import * as dsa_actions from '../../actions/dsa';
-import { openConfigSettings } from '../config/ConfigStickyNav';
+import { openConfigSettings } from '../config-v2/ConfigV2Nav';
 import DestinationChangeControl from './DestinationChangeControl.jsx';
 
 /**

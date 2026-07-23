@@ -1,10 +1,10 @@
-# Configuration UI v2 — style system specification
+# Configuration UI — style system specification
 
-**Gate:** Complete and accept this doc (and stub SCSS map) before implementing Phase 1 primitives or Phase 2 sections. Progressive migration must **compose** this kit, not invent CSS per section.
+Kit for the live Configuration dialog under `src/components/config-v2/`. Compose this kit; do not invent CSS per section.
 
-**Inputs:** [config-ui-reference.md](./config-ui-reference.md), current Modal.scss / OutputDeliverySection.scss / InputText compact behavior.
+**Inputs:** [config-ui-reference.md](./config-ui-reference.md) (behavior), Modal shell chrome for `__content--config`.
 
-**Related:** [config-ui-migration.md](./config-ui-migration.md).
+**Related:** [config-ui-migration.md](./config-ui-migration.md) (cutover complete).
 
 ---
 
@@ -187,7 +187,7 @@ src/components/config-v2/
 
 ## 7. Control skinning policy
 
-- Root wrapper: `.config-v2` inside ModalConfigV2 content.
+- Root wrapper: `.config-v2` inside ModalConfig content.
 - Buttons: existing onLight / filled patterns; prefer kit TextButton for tertiary actions.
 - Inputs: onLight + ConfigField size; no Modal nested InputText width patches for v2.
 - Checkboxes/Dropdowns: inherit config light skins; avoid beige legacy note/infobox styles inside v2.

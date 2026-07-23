@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 
 import * as globus_actions from '../../actions/globus';
 import * as modal_actions from '../../actions/modal';
-import { openConfigSettings } from '../config/ConfigStickyNav';
+import { openConfigSettings } from '../config-v2/ConfigV2Nav';
 import DestinationChangeControl from './DestinationChangeControl.jsx';
 
 /**

@@ -8,7 +8,7 @@ import {
   isGlobusEndpointUuid,
 } from '../../helpers/globus_helpers';
 import GridHoverTooltip from '../AgGrid/GridHoverTooltip';
-import { openConfigSettings } from '../config/ConfigStickyNav';
+import { openConfigSettings } from '../config-v2/ConfigV2Nav';
 import GlobusDeliveryAuth from './GlobusDeliveryAuth.jsx';
 import GlobusEndpointChangeControl, {
   openGlobusSessionEndpointPicker,

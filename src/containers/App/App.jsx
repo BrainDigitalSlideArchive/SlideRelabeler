@@ -171,15 +171,6 @@ const App = (props) => {
               >
                 <i className="fi fi-rr-settings"></i>
               </button>
-              <button
-                className={"__button-icon __button-icon--config-v2"}
-                type="button"
-                aria-label="Configuration v2 preview"
-                title="Configuration v2 preview"
-                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'configV2'}})}
-              >
-                <i className="fi fi-rr-settings"></i>
-              </button>
             </div>
             {showFileHeaderInfo && (
               <div className={"__list-controls"}>

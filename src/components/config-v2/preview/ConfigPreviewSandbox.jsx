@@ -23,7 +23,7 @@ const ConfigPreviewSandboxContext = createContext(null);
 
 /**
  * Dialog-scoped “Test it out” preview row (shared by Output name and Slide label).
- * Not Redux — ephemeral UI state mirroring ModalConfig’s sandbox.
+ * Not Redux — ephemeral UI state for naming/label preview.
  */
 export function useConfigPreviewSandbox() {
   const ctx = useContext(ConfigPreviewSandboxContext);

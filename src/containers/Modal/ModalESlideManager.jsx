@@ -9,7 +9,7 @@ import ESMSearchCriteriaGrid from '../../components/esm/ESMSearchCriteriaGrid';
 import ESMStagingPanel from '../../components/esm/ESMStagingPanel';
 import ESMLoginCard from '../../components/esm/ESMLoginCard';
 import ESMSessionBar from '../../components/esm/ESMSessionBar';
-import { scrollConfigSectionIntoView } from '../../components/config/ConfigStickyNav';
+import { scrollConfigSectionIntoView } from '../../components/config-v2/ConfigV2Nav';
 import { getActiveProfile, getEsmConnectionConfig } from '../../helpers/esm_profile_helpers';
 import { selectedProfileSharesSwitchOriginHost } from '../../helpers/esm_session_helpers';
 

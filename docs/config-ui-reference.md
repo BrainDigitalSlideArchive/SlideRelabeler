@@ -1,8 +1,8 @@
-# Configuration UI reference (v1 — frozen oracle)
+# Configuration UI reference (behavioral oracle)
 
-This document describes the **live Configuration dialog** as of the config-v2 migration baseline. Treat it as the **behavioral and structural** oracle for parity checks (controls, actions, IDs, states, side effects). Visual micro-spacing and per-host size quirks are **descriptive of v1**, not a requirement to reproduce in v2, unless a section’s “v2 target” column marks a difference as intentional. Do not “improve” v1 to match v2; update this doc if product behavior intentionally changes.
+Describes **Configuration** controls, actions, section IDs, states, and side effects. Visual presentation is owned by the kit ([config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md)); this doc is the behavioral oracle. Update it when product behavior intentionally changes.
 
-Related: [config-ui-migration.md](./config-ui-migration.md) (freeze rules), [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md) (Phase 0.5 style system).
+Related: [config-ui-migration.md](./config-ui-migration.md) (cutover complete), [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md).
 
 ---
 
@@ -10,15 +10,14 @@ Related: [config-ui-migration.md](./config-ui-migration.md) (freeze rules), [con
 
 ### Entry
 - **App gear** → `TOGGLE_MODAL` `{ type: 'config' }` ([`App.jsx`](../src/containers/App/App.jsx)).
-- **Deep link** → `openConfigSettings(dispatch, sectionId)` ([`ConfigStickyNav.jsx`](../src/components/config/ConfigStickyNav.jsx)): opens config modal, then scrolls `.config-panel__body` to `#sectionId`.
+- **Deep link** → `openConfigSettings(dispatch, sectionId)` ([`ConfigV2Nav.jsx`](../src/components/config-v2/ConfigV2Nav.jsx)): opens config modal, then scrolls `.config-v2__body` to `#sectionId`.
 
 ### Shell component
-[`ModalConfig.jsx`](../src/containers/Modal/ModalConfig.jsx)
+[`ModalConfig.jsx`](../src/containers/Modal/ModalConfig.jsx) → [`ConfigV2App`](../src/components/config-v2/ConfigV2App.jsx)
 - Header title: **Configuration**.
-- Layout: `.config-panel` → sticky nav + `.config-panel__body` (scroll root).
+- Layout: `.config-v2` → sticky nav + `.config-v2__body` (scroll root).
 - Global disable: `files.processing || files.disable_changes` (most controls).
-- Owns naming **preview sandbox**: `previewRowMode` (`example` | `file`), `previewRow`; catalogs via `getPatternPlaceholderCatalog`; pattern validation via `selectPatternValidationFromState`.
-- `triggerRecompute()` → `RECOMPUTE_ALL_NAMING` + refresh local preview defaults.
+- Naming **preview sandbox**: `ConfigPreviewSandboxProvider` (`previewRowMode` `example` | `file`, catalogs, pattern validation).
 
 ### Sticky nav (order)
 
@@ -57,8 +56,6 @@ Related: [config-ui-migration.md](./config-ui-migration.md) (freeze rules), [con
 | `GlobusDeliveryControls` / `GlobusEndpointChangeControl` | `config-globus-upload` |
 | `ModalGlobusEndpointPicker` (after durable close) | scroll `config-globus-upload` |
 | `ModalESlideManager` | `config-api-integrations` |
-
-**Comparison UX (Phase 1+):** two header gears — existing → v1 `config`; distinct color → v2 `configV2`. Deep links stay on **v1** until cutover.
 
 ---
 
@@ -187,10 +184,7 @@ Reserved keys: `filePath`, `outputName`, `labelText`, `qrContent`.
 
 ### 2.7 Advanced — `config-advanced`
 
-**v1 component:** `config/ConfigAdvancedSection.jsx` (collapsed by default; unfinished chrome).
-**v2 component:** `config-v2/sections/ConfigAdvancedSection.jsx` (always visible; kit redesign).
-
-Both gears share the same actions. All controls honor `processing || disable_changes`.
+**Component:** `config-v2/sections/ConfigAdvancedSection.jsx` (always visible). All controls honor `processing || disable_changes`.
 
 | Control | Redux |
 |---------|--------|
@@ -199,8 +193,6 @@ Both gears share the same actions. All controls honor `processing || disable_cha
 | Show troubleshooting tools | `TOGGLE_ENABLE_DEBUG` → `debug.enable_debug` |
 | Restore defaults | `RESTORE_DEFAULTS` → `RESET_STORE` + rewrite persisted defaults (app stays open) |
 | Hard reset | `DELETE_STORE` → `RESET_STORE` + delete persisted store + exit app |
-
-**Parity for v2:** behavioral (same actions/effects). Layout is a deliberate redesign (stacked SettingHeaders + BooleanRows + dual reset).
 
 ---
 
@@ -213,7 +205,7 @@ Used as segmented radios for: Output name source, Label/QR defaults, DSA item na
 Hosts: Output name, Label text/QR defaults, DSA item name pattern, eSM column mappings. DSA metadata chips select a column (not always `{token}` insert).
 
 ### Test it out / preview
-`ConfigTestItOutSection` + `ConfigPreviewRowEditor` on Output name and Slide label. Overview illustration is static. DSA URL / Globus detect are status, not naming preview.
+`ConfigTestPreview` + `ConfigPreviewRowEditor` on Output name and Slide label (shared `ConfigPreviewSandbox`). Overview illustration is static. DSA URL / Globus detect are status, not naming preview.
 
 ### Light-surface controls
 Config panel uses onLight Button/InputText/Checkbox skins (Modal `__content--config` + InputText onLight). Compact InputText defaults to ~5–6em width (override wars in delivery/audit).
@@ -243,26 +235,22 @@ Config panel uses onLight Button/InputText/Checkbox skins (Modal `__content--con
 
 ---
 
-## 5. Orphans (unmounted — delete at cutover)
+## 5. Shared keep widgets (`src/components/config/`)
 
-`AssembledNameSection`, `AssemblyBuildControls`, `LabelCompositionPanel` (+ controls/items), `LabelContentBuilder`, `SpecimenIdStep`, `LabelConfigPreview`, `LabelReviewPanel`, `CsvColumnMappingField`, `DeIdTokenCard`, unused default `ComputedFieldEditor` (keep file for `PlaceholderChips` export).
+Still used by the kit (not section shells): `ComputedFieldEditor` (`PlaceholderChips`), `ConfigPreviewRowEditor`, `PreviewRenameOverrideCallout`, `LabelSchematicPanel` + mockup/thumbnail/decorations, `OverviewLabelIllustration` + `overview_examples`, `EsmDataLoadingSection` + profile editors, `SlideLabelLayout.scss`.
 
-Still live: `LabelCompositionMockup`, `LabelThumbnailPreview`, `SlideLabelDecorations`, `PreviewRenameOverrideCallout`.
+Deleted at cutover: v1 section trees and orphans (`AssembledNameSection`, `LabelCompositionPanel`, `LabelContentBuilder`, etc.).
 
 ---
 
-## 6. Parity checklist template (per migrated section)
+## 6. Regression checklist (post-cutover)
 
-Copy for each Phase 2 section:
-
-- [ ] Open v1 gear and v2 gear; same section IDs present where applicable
+- [ ] Settings gear opens kit Configuration only
+- [ ] Deep links open kit dialog and scroll to the correct section
 - [ ] Every control from this doc’s inventory exists and dispatches the same action/field
 - [ ] Key states exercised (empty files, pattern expanded, CLI missing, disabled while processing, …)
 - [ ] Side effects observed (recompute, sync, nested modal)
-- [ ] Deep links still land on v1 (until cutover)
-- [ ] Visual differences vs v1 are kit harmonization and/or documented v2 targets — not new one-off CSS
-- [ ] No new one-off CSS outside style-spec primitives (see style spec change control)
-- [ ] Advanced only: behavioral parity; layout may differ by design
+- [ ] No revived v1 section components or Modal.scss section dumps
 
 ---
 

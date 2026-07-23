@@ -5,7 +5,7 @@ import * as dsa_actions from '../../actions/dsa';
 import * as modal_actions from '../../actions/modal';
 import { formatDsaBaseUrl } from '../../helpers/dsa_url.js';
 import GridHoverTooltip from '../AgGrid/GridHoverTooltip';
-import { openConfigSettings } from '../config/ConfigStickyNav';
+import { openConfigSettings } from '../config-v2/ConfigV2Nav';
 import DsaUrlChangeControl from './DsaUrlChangeControl.jsx';
 
 import './upload-delivery.scss';

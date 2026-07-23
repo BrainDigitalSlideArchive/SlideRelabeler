@@ -1,8 +1,7 @@
 import React from 'react';
 
 /**
- * Scroll root + sticky nav host for the config-v2 dialog.
- * badge: optional preview label for dual-gear comparison.
+ * Scroll root + sticky nav host for the Configuration dialog.
  */
 export default function ConfigShell({ nav, children, badge }) {
   return (

@@ -5,32 +5,24 @@ import modalReducer from './index.js';
 import defaultState from './default_state.js';
 import * as modal_actions from '../../actions/modal.js';
 
-test('TOGGLE_MODAL opens configV2 when stack is empty', () => {
-  const next = modalReducer(defaultState, {
-    type: modal_actions.TOGGLE_MODAL,
-    payload: { type: 'configV2' },
-  });
-  assert.deepEqual(next.stack, ['configV2']);
-});
-
-test('TOGGLE_MODAL pops when toggling configV2', () => {
-  const open = modalReducer(defaultState, {
-    type: modal_actions.TOGGLE_MODAL,
-    payload: { type: 'configV2' },
-  });
-  const closed = modalReducer(open, {
-    type: modal_actions.TOGGLE_MODAL,
-    payload: { type: 'configV2' },
-  });
-  assert.deepEqual(closed.stack, []);
-});
-
 test('TOGGLE_MODAL opens config when stack is empty', () => {
   const next = modalReducer(defaultState, {
     type: modal_actions.TOGGLE_MODAL,
     payload: { type: 'config' },
   });
   assert.deepEqual(next.stack, ['config']);
+});
+
+test('TOGGLE_MODAL pops when toggling config', () => {
+  const open = modalReducer(defaultState, {
+    type: modal_actions.TOGGLE_MODAL,
+    payload: { type: 'config' },
+  });
+  const closed = modalReducer(open, {
+    type: modal_actions.TOGGLE_MODAL,
+    payload: { type: 'config' },
+  });
+  assert.deepEqual(closed.stack, []);
 });
 
 test('TOGGLE_MODAL pushes auditLog on top of config', () => {

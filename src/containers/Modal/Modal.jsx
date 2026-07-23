@@ -4,7 +4,6 @@ import {useSelector} from "react-redux";
 import './Modal.scss';
 import ModalHelp from "./ModalHelp";
 import ModalConfig from './ModalConfig';
-import ModalConfigV2 from './ModalConfigV2';
 import ModalImage from './ModalImage';
 import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
@@ -23,8 +22,6 @@ function render_modal(type, props) {
       return <ModalHelp/>;
     case 'config':
       return <ModalConfig/>;
-    case 'configV2':
-      return <ModalConfigV2/>;
     case 'image':
       return ModalImage(props);
     case 'debug':

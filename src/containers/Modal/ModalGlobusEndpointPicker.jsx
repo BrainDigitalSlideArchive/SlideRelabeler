@@ -4,7 +4,7 @@ import { useDispatch, useSelector, useStore } from 'react-redux';
 import * as config_actions from '../../actions/config';
 import * as globus_actions from '../../actions/globus';
 import * as modal_actions from '../../actions/modal';
-import { scrollConfigSectionIntoView } from '../../components/config/ConfigStickyNav';
+import { scrollConfigSectionIntoView } from '../../components/config-v2/ConfigV2Nav';
 import Button from '../../components/controls/button/Button';
 import InputText from '../../components/controls/input/InputText';
 import GlobusTargetTree from '../../components/globus/GlobusTargetTree';

@@ -2,33 +2,25 @@
 
 Companion to [config-ui-reference.md](./config-ui-reference.md) and [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md).
 
-## Dual live dialogs (comparison period)
+## Status: Phase 3 complete (cutover)
 
-- **v1** (`config/` + Modal.scss): opened by existing header gear → modal type `config`. **Frozen reference.**
-- **v2** (`config-v2/`): opened by second, distinctly colored (blue) gear → modal type `configV2`.
-- Both edit the **same Redux config store** (intentional for parity).
-- Deep links (`openConfigSettings`) open **v1** until cutover.
-- **Phase 1 complete:** dual gears, `ModalConfigV2` + `ConfigV2App` shell, style-kit primitives, nav section stubs.
+- **One** Configuration dialog: kit UI under `config-v2/` via modal type `config`.
+- Deep links (`openConfigSettings` in `ConfigV2Nav`) open kit Configuration and scroll `.config-v2__body`.
+- v1 section tree and orphans deleted; shared keep widgets remain in `src/components/config/`.
+- Reference + style-spec remain regression oracles.
 
-## Freeze rules
+## Historical freeze rules (Phases 0–2)
 
-1. **Do not redesign v1** for visual polish, consistency, or “while we’re here.” Critical bugfixes only; prefer shared non-UI layers (actions/reducers/sagas/helpers) when the bug is behavioral.
-2. **Do not change product IA** (section order, sticky/deep-link IDs, durable vs session split) without updating the reference doc first and getting human approval.
-3. **v2 presentation only** rebuilds UI using the Phase 0.5 style kit. Same actions/selectors as v1.
-4. **No bolted CSS in Phase 2:** if a layout pattern is missing, update the style spec and add a primitive; do not add one-off section classes as the permanent fix.
-5. **No large new blocks** under Modal.scss `.__config-controls` for v2.
-6. **Advanced:** v1 chrome stays unfinished; v2 Advanced is a kit redesign. Shared behavior includes hybrid reset (`RESTORE_DEFAULTS` in-session + `DELETE_STORE` hard exit).
-7. **Shared primitives** (`InputText`, `Button`, etc.): changes that would alter v1 appearance need human approval; prefer v2-local variants or kit wrappers.
-8. **Parity gate:** finish A/B (both gears) + checklist for a section before starting the next. Behavioral parity is strict; **visual** parity does **not** require matching v1 micro-spacing. Prefer kit harmonization when two hosts use the same pattern.
-9. **Harmonize bolt-on drift in v2:** small spacing/size/alignment differences between similar v1 components are accidental unless the reference doc marks them intentional — use one recipe per primitive.
-10. **Orphans:** do not revive assembled-name / LabelCompositionPanel trees; delete at cutover.
+1. Dual gears (`config` = v1, `configV2` = preview) were used during progressive migration; removed at cutover.
+2. Do not revive deleted v1 section components or Modal.scss mega dumps for those sections.
+3. Prefer kit primitives; amend style-spec before inventing section-local CSS.
+4. Shared Redux behavior is unchanged; visual rhythm is the harmonized kit.
+5. Orphans (assembled-name / LabelCompositionPanel trees) deleted at cutover — do not revive.
 
-## Migration order (Phase 2)
+## Migration order (Phase 2 — done)
 
-Overview → Audit → Output name → Output delivery → Data loading → Slide label → **Advanced last**.
+Overview → Audit → Output name → Output delivery → Data loading → Slide label → Advanced.
 
-**Progress:** 2a–2g migrated (Overview, Audit, Output name, Output delivery, Data loading, Slide label, Advanced). Next: Phase 3 cutover.
+## Cutover (Phase 3 — done)
 
-## Cutover (Phase 3)
-
-Single gear → v2; remove preview gear; retarget deep links; delete v1 sections + orphans + obsolete Modal config CSS.
+Single gear → kit Configuration; retarget deep links; delete v1 sections + orphans + obsolete Modal config CSS.

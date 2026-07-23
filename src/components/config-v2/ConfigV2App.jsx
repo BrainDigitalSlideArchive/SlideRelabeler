@@ -2,7 +2,7 @@ import React from 'react';
 
 import './styles/index.scss';
 import ConfigShell from './primitives/ConfigShell';
-import ConfigV2Nav, { CONFIG_V2_NAV_ITEMS } from './ConfigV2Nav';
+import ConfigV2Nav, { CONFIG_NAV_ITEMS } from './ConfigV2Nav';
 import { ConfigPreviewSandboxProvider } from './preview/ConfigPreviewSandbox';
 import ConfigOverviewSection from './sections/ConfigOverviewSection';
 import OutputFilenameSection from './sections/OutputFilenameSection';
@@ -34,18 +34,17 @@ function renderSection(item) {
 }
 
 /**
- * Configuration UI v2 root.
- * Sections render in sticky-nav order; migration fills them progressively.
+ * Configuration UI root (kit).
+ * Sections render in sticky-nav order.
  */
 export default function ConfigV2App() {
   return (
     <div className="config-v2">
       <ConfigPreviewSandboxProvider>
         <ConfigShell
-          badge="v2 preview"
           nav={<ConfigV2Nav />}
         >
-          {CONFIG_V2_NAV_ITEMS.map((item, index) => (
+          {CONFIG_NAV_ITEMS.map((item, index) => (
             <React.Fragment key={item.id}>
               {index > 0 ? <div className="cfg-shell__divider" role="separator" /> : null}
               {renderSection(item)}
