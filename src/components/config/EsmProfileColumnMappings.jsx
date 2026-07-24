@@ -4,7 +4,7 @@ import InputText from '../controls/input/InputText';
 import { PlaceholderChips } from './ComputedFieldEditor';
 import { ESM_PATTERN_PLACEHOLDERS } from '../../helpers/esm_profile_helpers';
 
-const SLIDE_FIELDS_HELP = 'Click a chip to insert eSM slide fields or search-row values into the pattern. De-identification comes from the De-identification column in Search criteria (typed per row or loaded from Import CSV). UUID is assigned when slides are added to the file list — the Results preview shows {uuid} literally until then.';
+const SLIDE_FIELDS_HELP = 'Click a chip to insert eSlideManager slide fields or search-row values into the pattern. De-identification text comes from the De-identification column in Search criteria. A random unique ID (UUID) is assigned when slides are added to the file list — the Results preview shows {uuid} literally until then.';
 
 export default function EsmProfileColumnMappings({
   profile,
@@ -56,7 +56,7 @@ export default function EsmProfileColumnMappings({
   return (
     <div className="esm-profile-column-mappings">
       <p className="esm-profile-column-mappings__lead">
-        Choose how each slide&apos;s output file name and label text are filled in when you add it from eSM.
+        Choose how each slide&apos;s Output name and Label text are filled when you add it from eSlideManager.
         Leave off to use the app-wide settings in Configuration.
       </p>
 

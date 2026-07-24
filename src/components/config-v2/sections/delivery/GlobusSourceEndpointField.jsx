@@ -12,11 +12,12 @@ import Button from '../../../controls/button/Button';
 import ConfigField from '../../primitives/ConfigField';
 import ConfigStatusField from '../../primitives/ConfigStatusField';
 import ConfigWarnText from '../../primitives/ConfigWarnText';
+import { GlobusCliUnavailableMessage } from './globus_cli_copy.jsx';
 
 function formatDetectError(raw) {
   const interpreted = interpretGlobusCliFailure(raw);
   if (interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE) {
-    return `${interpreted.userSummary} ${interpreted.userDetail}`.trim();
+    return <GlobusCliUnavailableMessage />;
   }
   if (interpreted.userDetail) {
     return `${interpreted.userSummary} ${interpreted.userDetail}`.trim();
@@ -26,9 +27,9 @@ function formatDetectError(raw) {
 
 const SOURCE_HELP = (
   <>
-    Globus Connect Personal endpoint UUID for this machine — not a display name.
-    De-identified files are read from here during upload. Use Auto-detect to run{' '}
-    <code>globus endpoint local-id</code> for the current user.
+    The Globus Connect Personal endpoint ID for this computer (a UUID, not a display name).
+    De-identified files are read from here during upload. Use Auto-detect to look it up with Globus
+    tools for the current user.
   </>
 );
 
@@ -57,9 +58,7 @@ export default function GlobusSourceEndpointField({ disabled = false }) {
   async function detectLocalEndpoint() {
     setDetectError(null);
     if (cliAvailable === false) {
-      setDetectError(
-        'Globus CLI is not available. Install Globus CLI (globus-cli) or use a packaged build.',
-      );
+      setDetectError(<GlobusCliUnavailableMessage />);
       return;
     }
     setDetecting(true);
@@ -121,7 +120,7 @@ export default function GlobusSourceEndpointField({ disabled = false }) {
         <ConfigWarnText role="alert">{detectError}</ConfigWarnText>
       ) : null}
       {invalid ? (
-        <ConfigWarnText role="alert">Enter a valid Globus endpoint UUID.</ConfigWarnText>
+        <ConfigWarnText role="alert">Enter a valid Globus endpoint ID (UUID).</ConfigWarnText>
       ) : null}
     </div>
   );

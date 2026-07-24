@@ -59,6 +59,7 @@ export default function LabelDefaultsEditor({
   inactive = false,
   onChange,
   placeholderCatalog = [],
+  hasLoadedFiles = false,
 }) {
   const isText = kind === 'text';
   const options = isText ? TEXT_OPTIONS : QR_OPTIONS;
@@ -130,6 +131,7 @@ export default function LabelDefaultsEditor({
             <div className="computed-field-editor">
               <PlaceholderChips
                 catalog={placeholderCatalog}
+                hasLoadedFiles={hasLoadedFiles}
                 disabled={controlsDisabled}
                 onInsert={handlePatternInsert}
               />

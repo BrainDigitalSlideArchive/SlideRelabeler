@@ -5,7 +5,7 @@ export const CONFIG_DEFAULT_LOCAL_OUTPUT_EMPTY =
   'No default folder configured.';
 
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_HELP = (
-  'When set, this folder seeds the Save locally default at startup and after clearing the file table. '
+  'When set, this folder seeds the Save locally default at startup and after clearing the file list. '
   + 'CSV-defined or manually set Copy To paths always take precedence. '
   + 'You can still pick a different folder on the main page for the current session.'
 );

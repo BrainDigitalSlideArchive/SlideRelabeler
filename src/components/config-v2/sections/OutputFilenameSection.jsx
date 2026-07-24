@@ -19,10 +19,10 @@ import ConfigTestPreview from '../primitives/ConfigTestPreview';
 
 const OUTPUT_NAME_HELP = (
   <>
-    When a file is loaded directly from disk, or another method but a value for the desired output
-    name is not provided, we need to define what the output should be named. You can choose to use a
-    random UUID, keep the original filename, or build a custom pattern from placeholders and column
-    values.
+    When a slide is loaded and an output name is not provided, you can choose to use a
+    random unique ID (UUID), keep the original filename, or build a custom pattern using column
+    values. If an output name is provided, for example from a CSV import or loading from an API,
+    that value will be used instead.
   </>
 );
 
@@ -30,8 +30,8 @@ const SOURCE_OPTIONS = [
   {
     value: 'uuid',
     label: 'Use a UUID (recommended for sharing)',
-    helper: 'Assigns a random UUID as the output name for each file.',
-    detail: 'A UUID is a randomly generated unique identifier. Using one as the output name helps deidentify slides for sharing, since it carries no patient or specimen information. Each file gets its own UUID when loaded.',
+    helper: 'Assigns a random unique ID (UUID) as the Output name for each file.',
+    detail: 'A UUID is a randomly generated unique identifier. Using one as the output name helps de-identify slides for sharing, since it carries no patient or specimen details. Each slide gets its own UUID when loaded, which you can use in various places if desired.',
   },
   {
     value: 'original',
@@ -58,9 +58,7 @@ function renderSourceDetail(source) {
   if (source === 'original') {
     return (
       <>
-        Keeps the source file&apos;s basename unchanged. Use this when the file has already been
-        renamed to the desired deidentified name. To add a prefix or suffix (e.g.{' '}
-        <code>deid-</code>), use <strong>Custom pattern</strong> instead.
+        Keeps the source file&apos;s name. Use this when the file is already named appropriately for sharing. To add a prefix or suffix (e.g. deid-), use Custom pattern instead.
       </>
     );
   }
@@ -134,8 +132,7 @@ export default function OutputFilenameSection() {
       title="Output name"
       description={(
         <>
-          If the <strong>Output name</strong> column is empty when a file is loaded, how should we
-          define it?
+          When the <strong>Output name</strong> column is empty for a loaded slide, how should it be filled in?
         </>
       )}
       help={OUTPUT_NAME_HELP}
@@ -183,6 +180,7 @@ export default function OutputFilenameSection() {
               <div className="computed-field-editor">
                 <PlaceholderChips
                   catalog={placeholderCatalog}
+                  hasLoadedFiles={hasLoadedFiles}
                   disabled={disabled}
                   onInsert={handlePatternInsert}
                 />

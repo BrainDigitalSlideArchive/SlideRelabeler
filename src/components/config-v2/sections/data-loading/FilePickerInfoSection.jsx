@@ -15,19 +15,19 @@ export default function FilePickerInfoSection() {
       <div className="cfg-file-picker-body">
         <ConfigHelperText>
           Use <strong>Add File/Files</strong> (multi-select) or <strong>Add Folder</strong> (includes
-          subfolders) to load whole-slide images into the file table. Slide metadata is fetched
+          subfolders) to load whole-slide images into the file list. Internal slide metadata is fetched
           automatically after rows are added.
         </ConfigHelperText>
         <ConfigHelperText>
           <strong>Supported formats:</strong> {extensions}
         </ConfigHelperText>
         <ConfigHelperText>
-          Output name, label text, and QR content columns start blank for picker-loaded rows. The app
-          applies values from <strong>Output name</strong> and <strong>Slide label</strong> in
-          Configuration when defaults are needed.
+          Output name, label text, and QR content columns always start out empty for rows loaded this way. The app
+          uses the configured settings above to define the <strong>Output name</strong> and <strong>Slide label</strong>{' '}
+          values for each row.
         </ConfigHelperText>
         <ConfigHelperText>
-          Loading the same file path twice is skipped with a warning.
+          Loading the same file path twice is skipped.
         </ConfigHelperText>
       </div>
     </ConfigSubsection>

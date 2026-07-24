@@ -8,6 +8,7 @@ Companion to [config-ui-reference.md](./config-ui-reference.md) and [config-ui-v
 - Deep links (`openConfigSettings` in `ConfigV2Nav`) open kit Configuration and scroll `.config-v2__body`.
 - v1 section tree and orphans deleted; shared keep widgets remain in `src/components/config/`.
 - Reference + style-spec remain regression oracles.
+- **Copy review:** [config-copy-review.md](./config-copy-review.md) — numbered inventory of user-facing strings with source jump links.
 
 ## Historical freeze rules (Phases 0–2)
 

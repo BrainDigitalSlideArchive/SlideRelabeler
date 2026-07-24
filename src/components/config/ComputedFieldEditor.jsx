@@ -2,25 +2,40 @@ import React, { useCallback } from 'react';
 import InputText from '../controls/input/InputText';
 import HelpIconPopover from '../controls/HelpIconPopover';
 
-const CURRENT_COLUMNS_HELP = 'These are columns from your currently loaded file list. Click a chip to insert it into the pattern. Any column name - even those not currently visible here - can be wrapped in curly braces (e.g. {blockId}). This is especially useful when loading data from CSV or an API, where column names come from your imported data.';
+const CURRENT_COLUMNS_HELP = 'These are columns from your currently loaded file list. Click a chip to insert it into the pattern. Any column name—even those not currently visible here—can be wrapped in curly braces (e.g. {blockId}). This is especially useful with CSV import or an API integration, where column names come from your imported data.';
+
+const DEFAULT_COLUMNS_HELP = 'These are columns that are always available, shown here because no slides are loaded yet. Click a chip to insert it into the pattern. After you load slides, columns from your file list appear here too. You can also wrap any column name in curly braces (e.g. {blockId}).';
+
+/** Label + help for file-list pattern chips; switches with load state. */
+export function getFileListPlaceholderCopy(hasLoadedFiles) {
+  if (hasLoadedFiles) {
+    return { catalogLabel: 'Current columns', helpText: CURRENT_COLUMNS_HELP };
+  }
+  return { catalogLabel: 'Default columns', helpText: DEFAULT_COLUMNS_HELP };
+}
 
 export function PlaceholderChips({
   catalog,
-  catalogLabel = 'Current columns',
-  helpText = CURRENT_COLUMNS_HELP,
+  hasLoadedFiles = false,
+  catalogLabel,
+  helpText,
   disabled,
   onInsert,
 }) {
+  const copy = getFileListPlaceholderCopy(hasLoadedFiles);
+  const resolvedLabel = catalogLabel ?? copy.catalogLabel;
+  const resolvedHelp = helpText ?? copy.helpText;
+
   return (
     <div className="computed-field-editor__catalog">
       <div className="computed-field-editor__catalog-header">
-        <span className="computed-field-editor__catalog-label">{catalogLabel}</span>
-        <HelpIconPopover helpLabel={`${catalogLabel} help`} variant="onLight">
-          {helpText}
+        <span className="computed-field-editor__catalog-label">{resolvedLabel}</span>
+        <HelpIconPopover helpLabel={`${resolvedLabel} help`} variant="onLight">
+          {resolvedHelp}
         </HelpIconPopover>
       </div>
       {catalog?.length > 0 && (
-        <div className="computed-field-editor__placeholders" aria-label={`${catalogLabel} placeholders`}>
+        <div className="computed-field-editor__placeholders" aria-label={`${resolvedLabel} placeholders`}>
           {catalog.map((item) => (
             <button
               key={item.token}
@@ -51,6 +66,7 @@ function OptionGroup({
   patternValue,
   onPatternChange,
   catalog,
+  hasLoadedFiles = false,
   previewValue,
 }) {
   const handleInsert = useCallback((token) => {
@@ -92,7 +108,12 @@ function OptionGroup({
                   value={patternValue ?? ''}
                   onChange={onPatternChange}
                 />
-                <PlaceholderChips catalog={catalog} disabled={disabled} onInsert={handleInsert} />
+                <PlaceholderChips
+                  catalog={catalog}
+                  hasLoadedFiles={hasLoadedFiles}
+                  disabled={disabled}
+                  onInsert={handleInsert}
+                />
                 {previewValue != null && String(previewValue).trim() && (
                   <div className="computed-field-editor__preview">
                     Preview: {previewValue}
@@ -117,6 +138,7 @@ export default function ComputedFieldEditor({
   patternValue,
   onPatternChange,
   catalog = [],
+  hasLoadedFiles = false,
   previewValue,
 }) {
   return (
@@ -131,6 +153,7 @@ export default function ComputedFieldEditor({
         patternValue={patternValue}
         onPatternChange={onPatternChange}
         catalog={catalog}
+        hasLoadedFiles={hasLoadedFiles}
         previewValue={previewValue}
       />
     </div>

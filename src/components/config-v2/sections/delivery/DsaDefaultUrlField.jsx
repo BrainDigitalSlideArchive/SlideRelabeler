@@ -11,8 +11,8 @@ import ConfigStatusField from '../../primitives/ConfigStatusField';
 
 const DSA_URL_HELP = (
   <>
-    Default DSA / Girder API address for this configuration. It usually ends with <strong>/api/v1</strong>.
-    Sign-in uses this URL on the Delivery panel unless you choose a temporary URL there.
+    Default Digital Slide Archive (DSA) server address for this configuration. It usually ends with{' '}
+    <strong>/api/v1</strong>. Sign-in uses this URL on the Delivery panel unless you choose a temporary URL there.
   </>
 );
 

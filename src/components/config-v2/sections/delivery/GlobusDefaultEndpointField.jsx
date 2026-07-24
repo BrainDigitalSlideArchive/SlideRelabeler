@@ -10,11 +10,12 @@ import ConfigPathChip from '../../primitives/ConfigPathChip';
 import ConfigStatusField from '../../primitives/ConfigStatusField';
 import ConfigTextButton from '../../primitives/ConfigTextButton';
 import ConfigWarnText from '../../primitives/ConfigWarnText';
+import { GlobusCliUnavailableMessage } from './globus_cli_copy.jsx';
 
 const DEFAULT_EP_HELP = (
   <>
-    Default remote Globus collection used when Upload → Via Globus is enabled.
-    The Delivery panel can override the endpoint for this session without changing this default.
+    Default remote Globus collection used when Upload via Globus is enabled on the Delivery panel.
+    That panel can override the endpoint for this session without changing this default.
   </>
 );
 
@@ -106,7 +107,7 @@ export default function GlobusDefaultEndpointField({ disabled = false }) {
       </ConfigStatusField>
       {cliMissing ? (
         <ConfigWarnText role="status">
-          Globus CLI is not available. Endpoint search is disabled until the CLI is installed.
+          <GlobusCliUnavailableMessage trailing=". Endpoint search is disabled until they are installed." />
         </ConfigWarnText>
       ) : null}
     </div>

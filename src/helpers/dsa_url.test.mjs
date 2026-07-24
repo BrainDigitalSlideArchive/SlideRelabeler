@@ -78,5 +78,5 @@ test('getGirderVersionLabel falls back through apiVersion, api, version', () => 
 });
 
 test('INVALID_GIRDER_API_URL_MESSAGE is the unified check failure copy', () => {
-  assert.equal(INVALID_GIRDER_API_URL_MESSAGE, 'Not a valid Girder API URL');
+  assert.equal(INVALID_GIRDER_API_URL_MESSAGE, 'Not a valid Digital Slide Archive (DSA) API URL');
 });

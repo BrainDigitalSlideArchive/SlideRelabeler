@@ -49,7 +49,7 @@ export default function EsmProfileEditor({ profile, disabled = false, variant = 
         />
         <InputText
           disabled={disabled}
-          label="eSM server URL"
+          label="eSlideManager server URL"
           variant="onLight"
           value={profile.url ?? ''}
           onChange={(v) => updateProfile({ url: v })}
@@ -94,8 +94,8 @@ export default function EsmProfileEditor({ profile, disabled = false, variant = 
         </div>
         <div className="esm-profile-editor__section-body">
           <div className="esm-profile-editor__intro" role="note">
-            Quick picks for the stain filtering dropdown when you search eSM. Matching uses stain text{' '}
-            <strong>after</strong> the cleanup rules above are applied — enter the spelling those rules produce
+            Quick picks for the stain filter when you search eSlideManager. Matching uses stain text{' '}
+            <strong>after</strong> the cleanup rules above — enter the spelling those rules produce
             (or type a custom stain when searching).
           </div>
           <EsmStainPresetsEditor

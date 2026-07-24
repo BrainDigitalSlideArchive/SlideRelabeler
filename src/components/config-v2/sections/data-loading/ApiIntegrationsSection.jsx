@@ -11,8 +11,8 @@ import ConfigChoiceChips from '../../primitives/ConfigChoiceChips';
 
 const API_INTEGRATIONS_HELP = (
   <>
-    Connect SlideRelabeler to external APIs for loading slides. Enable each integration
-    individually to configure its connection and import rules.
+    Connect SlideRelabeler to external systems that load slides into the file list. Enable each
+    integration individually to configure its connection and import rules.
   </>
 );
 
@@ -48,7 +48,7 @@ export default function ApiIntegrationsSection({ disabled = false }) {
           </HelpIconPopover>
         </>
       )}
-      description="External APIs that can load slides into the file table. Enable only the ones you use."
+      description="External software/systems can load slides into the file list. Enable only the ones you use."
     >
       <ConfigSubsection
         id="config-esm-api"

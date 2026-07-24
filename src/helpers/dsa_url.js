@@ -1,7 +1,7 @@
 // helpers/dsa_url.js — display helpers for DSA / Girder API URLs.
 
 /** User-facing message when a DSA URL check fails for any reason. */
-export const INVALID_GIRDER_API_URL_MESSAGE = 'Not a valid Girder API URL';
+export const INVALID_GIRDER_API_URL_MESSAGE = 'Not a valid Digital Slide Archive (DSA) API URL';
 
 /**
  * Strip trailing /api/v1 (and optional slash) for human-readable base URL display.

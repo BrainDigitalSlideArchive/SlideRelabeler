@@ -100,7 +100,7 @@ function useConfigPreviewSandboxState() {
   );
 
   const recomputeNotice = hasLoadedFiles && protectedRowCount > 0
-    ? 'Rows with values from CSV, eSM, or manual edits will not be changed when you update defaults.'
+    ? 'Rows already filled from a CSV import, API integration, or a manual edit will not change when you update these defaults.'
     : null;
 
   const triggerRecompute = useCallback(() => {

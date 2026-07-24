@@ -46,11 +46,11 @@ export default function ConfigAdvancedSection() {
     >
       <ConfigSectionPanel>
         <ConfigSettingHeader
-          title="Overview image"
+          title="Macro image (overview)"
           description="By default the large overview photo inside the slide file is removed because it can show patient details. Turn this on only if that image is safe to keep in saved files."
         />
         <ConfigBooleanRow
-          label="Keep the overview image"
+          label="Keep the macro image (overview)"
           checked={saveMacro}
           disabled={disabled}
           onClick={() => dispatch({ type: config_actions.TOGGLE_SAVE_MACRO })}
@@ -80,7 +80,7 @@ export default function ConfigAdvancedSection() {
 
         <ConfigSettingHeader
           title="Reset"
-          description="Restore defaults keeps the app open. Hard reset clears saved app data and closes SlideRelabeler — open the app again to start fresh."
+          description="Restore defaults keeps the app open. Clear all saved data closes SlideRelabeler — open the app again to start fresh."
         />
         <div className="cfg-panel-actions">
           <Button
@@ -91,7 +91,7 @@ export default function ConfigAdvancedSection() {
           />
           <Button
             variant="onLight"
-            text="Hard reset"
+            text="Clear all saved data"
             disabled={disabled}
             onClick={hardReset}
           />

@@ -14,7 +14,7 @@ const FIELD_LABELS = {
   outputName: 'Output name',
   labelText: 'Label text',
   qrContent: 'QR content',
-  dsaAlias: 'DSA alias',
+  dsaAlias: 'Digital Slide Archive item name',
 };
 
 function dsaAliasActive(config) {

@@ -38,6 +38,7 @@ export default function LabelComposer({
   schematicPreview,
   onRecompute,
   placeholderCatalogs = {},
+  hasLoadedFiles = false,
   addText,
   addQr,
   addIcon,
@@ -85,6 +86,7 @@ export default function LabelComposer({
           inactive={inactive}
           onChange={setLabelDefaults}
           placeholderCatalog={placeholderCatalogs.labelText ?? []}
+          hasLoadedFiles={hasLoadedFiles}
         />
       );
     }
@@ -98,6 +100,7 @@ export default function LabelComposer({
           inactive={inactive}
           onChange={setLabelDefaults}
           placeholderCatalog={placeholderCatalogs.qrContent ?? []}
+          hasLoadedFiles={hasLoadedFiles}
         />
       );
     }

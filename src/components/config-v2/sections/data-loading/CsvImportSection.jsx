@@ -17,7 +17,7 @@ const CSV_IMPORT_HELP = (
     On import, SlideRelabeler matches your configured column names to special CSV fields. Mapped
     values override Output name and Slide label defaults when a row includes data. If a required
     column is missing, import pauses so you can pick the correct column. Any other CSV headers become
-    file-table columns for use in patterns.
+    file list columns for use in patterns.
   </>
 );
 
@@ -73,7 +73,7 @@ export default function CsvImportSection({ csvConfig, disabled = false }) {
       )}
     >
       <p className="cfg-csv-lead">
-        SlideRelabeler can use data loaded from a CSV file to populate the table of WSI files. This is
+        SlideRelabeler can use data loaded from a CSV file to populate the file list. This is
         useful in multiple ways: for example, you can easily add files from multiple locations.
         Additionally, the CSV file can define output names, label text, and QR content for each file.
         Get started with a{' '}
@@ -82,7 +82,8 @@ export default function CsvImportSection({ csvConfig, disabled = false }) {
         </ConfigTextButton>
         {' '}
         you can save to the location of your choosing. If you have existing data in a CSV file that
-        uses different header names, you can map them to the appropriate columns below.
+        uses different header names (and you don't want to change those headers), you can map them 
+        to the appropriate columns below instead.
       </p>
 
       {!showMappings ? (

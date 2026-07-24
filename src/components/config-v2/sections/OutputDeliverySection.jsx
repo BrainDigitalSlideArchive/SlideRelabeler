@@ -35,8 +35,8 @@ import GlobusSslField from './delivery/GlobusSslField';
 const SECTION_HELP = (
   <>
     Configure defaults for saving finished slides on this computer and for uploading them.
-    Enable <strong>Save locally</strong> and/or <strong>Upload</strong> on the main Delivery panel.
-    Sign-in and folder selection for DSA or Globus stay on that panel.
+    Enable <strong>Save locally</strong> and/or <strong>Upload</strong> on the Delivery panel
+    (on the main window, above the file list).
   </>
 );
 
@@ -98,7 +98,7 @@ export default function OutputDeliverySection() {
     <ConfigSection
       id="config-output-delivery"
       title="Output delivery"
-      description="Where finished slides go. Enable Save locally / Upload on the Delivery panel."
+      description="Where finished slides are saved or uploaded. Turn on Save locally and/or Upload on the Delivery panel (on the main window, above the file list)."
       help={SECTION_HELP}
       helpLabel="Output delivery help"
     >
@@ -168,7 +168,7 @@ export default function OutputDeliverySection() {
         <ConfigCategory
           id="config-upload"
           title="Upload"
-          description="Configure Slide Relabeler to send slides to an online archive."
+          description="Configure SlideRelabeler to send finished slides to an online archive."
         >
           <ConfigSubsection
             id="config-dsa-upload"
@@ -198,8 +198,8 @@ export default function OutputDeliverySection() {
             title="Globus"
             description={(
               <>
-                Sign-in and folder selection stay on the Delivery panel. Set machine and destination
-                defaults here.
+                Set this computer&apos;s Globus endpoint and the default place to send files.
+                When you upload, use the Delivery panel (above the file list) to sign in and choose folders.
               </>
             )}
           >
@@ -237,8 +237,8 @@ export default function OutputDeliverySection() {
           </ConfigSubsection>
 
           <ConfigSubsection
-            title="Upload internals"
-            description="Usually leave as default. Scratch disk and upload pace used when sending files."
+            title="Upload details"
+            description="Usually leave as default. Temporary storage and upload pace used when sending files."
           >
             <ConfigSettingHeader
               id="config-staging-directory"

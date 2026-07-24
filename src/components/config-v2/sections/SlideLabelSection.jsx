@@ -152,6 +152,7 @@ export default function SlideLabelSection() {
           schematicPreview={schematicPreview}
           onRecompute={triggerRecompute}
           placeholderCatalogs={placeholderCatalogs}
+          hasLoadedFiles={hasLoadedFiles}
           addText={labelConfig?.add_text}
           addQr={labelConfig?.add_qr}
           addIcon={labelConfig?.add_icon}

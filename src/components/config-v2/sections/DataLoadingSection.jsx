@@ -10,9 +10,8 @@ import ApiIntegrationsSection from './data-loading/ApiIntegrationsSection';
 
 const DATA_LOADING_HELP = (
   <>
-    SlideRelabeler can load slides via the file picker, a CSV spreadsheet, or eSlideManager. Each path
-    has its own subsection below. Output name and label defaults always come from the sections
-    above in Configuration.
+    SlideRelabeler can load slides via the file picker, a CSV spreadsheet, or an API integration (e.g. eSlideManager).
+    Each of these loading options is detailed below.
   </>
 );
 
@@ -30,7 +29,7 @@ export default function DataLoadingSection() {
     <ConfigSection
       id="config-data-loading"
       title="Data loading"
-      description="How slide rows enter the file table before processing."
+      description="How slides are added to the file list before processing."
       help={DATA_LOADING_HELP}
       helpLabel="Data loading help"
     >

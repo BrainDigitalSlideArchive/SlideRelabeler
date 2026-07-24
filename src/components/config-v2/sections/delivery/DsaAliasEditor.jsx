@@ -13,7 +13,7 @@ const ITEM_NAME_OPTIONS = [
   {
     value: 'file',
     label: 'Same as file (default)',
-    helper: 'Keep the Girder item name matching the uploaded file (from Output name).',
+    helper: 'Keep the DSA item name matching the uploaded file (from Output name).',
   },
   {
     value: 'label_text',

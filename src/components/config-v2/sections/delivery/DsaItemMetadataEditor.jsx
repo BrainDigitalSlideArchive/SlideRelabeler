@@ -13,19 +13,19 @@ const METADATA_OPTIONS = [
   {
     value: 'none',
     label: 'None (default)',
-    helper: 'Do not attach file-table metadata to the Girder item.',
+    helper: 'Do not attach file list metadata to the DSA item.',
   },
   {
     value: 'all_deid',
     label: 'Data columns',
     helper:
-      'All scalar file-table columns; excludes original path/filename. Does not include computed Label/Output name unless they are table columns.',
+      'All simple file list columns (text/number); excludes original path and filename. Does not include Label or Output name unless those appear as columns.',
   },
   {
     value: 'all_original',
     label: 'Data + original name',
     helper:
-      'Same as Data columns, plus original basename as originalFileName.',
+      'Same as Data columns, plus the original file name (without folder path) as originalFileName.',
   },
   {
     value: 'column',
