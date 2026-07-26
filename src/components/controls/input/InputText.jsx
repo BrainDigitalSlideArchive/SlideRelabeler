@@ -21,7 +21,8 @@ function get_input_text_class(disabled, error) {
 
 function InputText(props) {
   const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress, onBlur } = props;
-  let rootClass = variant === 'onLight' ? 'InputText InputText--onLight' : 'InputText';
+  // Light is the default. `onLight` is a no-op alias; `onDark` opts into dark-modal chrome.
+  let rootClass = variant === 'onDark' ? 'InputText InputText--onDark' : 'InputText';
   if (compact) rootClass += ' InputText--compact';
   if (omitLabel) rootClass += ' InputText--controlOnly';
 

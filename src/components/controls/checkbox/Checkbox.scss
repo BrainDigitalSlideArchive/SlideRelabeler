@@ -53,15 +53,27 @@
     }
   }
 
+  // Light panel chrome is the default (config / pickers).
   .__checkbox {
     font-weight: bolder;
     display: flex;
     width: 1.5em;
     height: 1.5em;
-    background-color: $black;
-    color: $green;
+    background: $config-panel-bg;
+    border: 1px solid $config-border;
+    color: $config-text-primary;
+    border-radius: 0.2em;
+    box-sizing: border-box;
     justify-content: center;
     align-items: center;
     margin-left: 1em;
+  }
+
+  // Opt-in dark-modal chrome (black fill, green check).
+  &.Checkbox--onDark .__checkbox {
+    background-color: $black;
+    border: none;
+    color: $green;
+    border-radius: 0;
   }
 }

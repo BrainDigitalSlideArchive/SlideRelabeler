@@ -252,6 +252,7 @@ const config_reducer  = createReducer(default_state, (builder) => {
             default_target_endpoint_label: '',
             source_endpoint: '',
             disable_ssl_verification: false,
+            max_upload_batch_size: 1,
           };
         }
         Object.assign(draft.globus_upload, action.payload || {});

@@ -834,6 +834,102 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
   }
 }
 
+/**
+ * Poll one Globus task for a multi-file batch. Emits progress to all rows; does not emit
+ * complete/error IPC (caller/saga finalizes rows and upload slots).
+ * @returns {Promise<[boolean, object]>}
+ */
+async function poll_globus_batch_transfer_status(webContents, task_id, items, total_bytes = null) {
+  const max_polls = 1000;
+  const pollStartMs = Date.now();
+  let poll_count = 0;
+  let last_status = null;
+  let last_reported_progress = 0;
+  const rowList = (items || []).map((it) => ({
+    row_idx: it.row_idx,
+    file_path: it.file_path,
+  }));
+
+  while (poll_count < max_polls) {
+    const status_response = await globus_client.get_transfer_status(task_id);
+    if (!status_response[0]) {
+      const message = status_response?.[1]?.message || 'Task status check failed';
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', message, { task_id });
+      }
+      return [false, { message, task_id }];
+    }
+
+    const task = status_response[1];
+    const status = task.status || task.state;
+    if (status && status !== last_status) {
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(
+          webContents,
+          row.row_idx,
+          'status',
+          `Batch task status: ${status}${task?.nice_status ? ` (${task.nice_status})` : ''}`,
+          { task_id },
+        );
+      }
+      last_status = status;
+    }
+
+    const { progress: rawProgress, indeterminate } = globusTransferProgressFromTask(
+      task,
+      total_bytes,
+      last_reported_progress,
+    );
+    let progress = rawProgress;
+    if (status !== 'SUCCEEDED') {
+      progress = Math.max(last_reported_progress, progress);
+    }
+    last_reported_progress = progress;
+
+    if (webContents && !webContents.isDestroyed()) {
+      for (const row of rowList) {
+        try {
+          webContents.send('globus-upload-file-progress', {
+            file_path: row.file_path,
+            progress,
+            indeterminate,
+            status,
+            row_idx: row.row_idx,
+            globus: true,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    if (status === 'SUCCEEDED') {
+      const durationSec = Math.max(1, Math.round((Date.now() - pollStartMs) / 1000));
+      const effectiveBps = globusTaskNumericField(task, 'effective_bytes_per_second');
+      return [true, {
+        task_id,
+        duration_sec: durationSec,
+        effective_bytes_per_second: effectiveBps != null ? effectiveBps : 0,
+      }];
+    }
+    if (status === 'FAILED') {
+      const message = task?.message || `Transfer ${status}`;
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', message, { task_id });
+      }
+      return [false, { message, task_id }];
+    }
+
+    poll_count += 1;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  for (const row of rowList) {
+    emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', 'Transfer polling timeout', { task_id });
+  }
+  return [false, { message: 'Transfer polling timeout', task_id }];
+}
+
 // Progress/poll callbacks must use this handler's event.sender (never title/focus/window lookup) so concurrent transfers reach the invoking renderer.
 ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) => {
   const rowIdxNum = Number(file_row_idx);
@@ -894,6 +990,80 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
   
   return [true, { task_id: task_id, message: 'Transfer initiated' }];
 });
+
+/**
+ * Submit and wait for a multi-file Globus --batch transfer.
+ * Payload: { sourceEndpointId, destEndpointId, pairs: [{sourcePath,destPath}], items: [{row_idx,file_path,file_size_bytes?}] }
+ * Returns when the task completes; does not emit complete/error IPC (saga finalizes rows).
+ */
+ipcMain.handle('globus-upload-batch', async (event, payload = {}) => {
+  const sender = event.sender;
+  if (sender.isDestroyed()) {
+    return [false, { message: 'Renderer webContents is destroyed' }];
+  }
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+
+  const sourceEndpointId = payload.sourceEndpointId;
+  const destEndpointId = payload.destEndpointId;
+  const pairs = payload.pairs || [];
+  const items = payload.items || [];
+  const totalBytes = items.reduce((sum, it) => {
+    const n = Number(it.file_size_bytes);
+    return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+  }, 0) || null;
+
+  const firstRow = items[0]?.row_idx ?? 0;
+  emitGlobusUploadDebugLog(sender, firstRow, 'stdout', `Submitting batch transfer (${pairs.length} files)`, {});
+
+  const transfer_response = await globus_client.submit_transfer_batch(
+    sourceEndpointId,
+    destEndpointId,
+    pairs,
+  );
+  if (!transfer_response[0]) {
+    emitGlobusUploadDebugLog(
+      sender,
+      firstRow,
+      'stderr',
+      transfer_response?.[1]?.message || 'Batch transfer submission failed',
+      {},
+    );
+    return transfer_response;
+  }
+
+  const task_id = transfer_response[1].task_id
+    || transfer_response[1].id
+    || transfer_response[1].DATA?.[0]?.task_id;
+  if (!task_id) {
+    return [false, { message: 'Could not extract task_id from batch transfer response', response: transfer_response[1] }];
+  }
+
+  emitGlobusUploadDebugLog(sender, firstRow, 'stdout', `Batch transfer task_id: ${task_id}`, { task_id });
+  if (!sender.isDestroyed()) {
+    for (const item of items) {
+      try {
+        sender.send('globus-upload-file-progress', {
+          file_path: item.file_path,
+          progress: 0,
+          indeterminate: true,
+          status: 'INITIATED',
+          row_idx: item.row_idx,
+          globus: true,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  return poll_globus_batch_transfer_status(sender, task_id, items, totalBytes);
+});
+
 ipcMain.handle('get-platform', async () => {
   return process.platform;
 })

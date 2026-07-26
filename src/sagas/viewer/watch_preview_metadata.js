@@ -4,7 +4,7 @@ import * as preview_actions from '../../actions/preview';
 
 import { structToObject, buildFileRowErrorFromBackend } from '../../helpers/grpc_helpers';
 import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
-import * as files_actions from '../../actions/files';
+import { makePreviewErrorTable } from '../../helpers/metadata_preview_ui';
 import * as debug_actions from '../../actions/debug';
 
 function are_values_diff(prior, after) {
@@ -160,6 +160,16 @@ function* watch_preview_metadata() {
                     newType: typeof new_ifds,
                     responseKeys: response && typeof response === 'object' ? Object.keys(response) : [],
                 });
+                yield put({
+                    type: preview_actions.SET_METADATA_PREVIEW,
+                    payload: {
+                        path: sourcePath,
+                        row_idx,
+                        table: makePreviewErrorTable(
+                            'Metadata preview is not available for this file.',
+                        ),
+                    },
+                });
                 continue;
             }
 
@@ -185,19 +195,17 @@ function* watch_preview_metadata() {
                 path: sourcePath,
                 message: details,
             });
-            if (!file_row.__reserved?.error) {
-                yield put({
-                    type: files_actions.UPDATE_FILE_ROW_WITH_ERROR,
-                    payload: { file_row_idx: row_idx, error: summary, errorDetails: details },
-                });
-                yield put({
-                    type: debug_actions.ADD_BACKEND_ERROR_MESSAGE,
-                    payload: details,
-                });
-            }
+            yield put({
+                type: debug_actions.ADD_BACKEND_ERROR_MESSAGE,
+                payload: details,
+            });
             yield put({
                 type: preview_actions.SET_METADATA_PREVIEW,
-                payload: { path: sourcePath, row_idx, table: [] },
+                payload: {
+                    path: sourcePath,
+                    row_idx,
+                    table: makePreviewErrorTable(summary),
+                },
             });
         }
     }

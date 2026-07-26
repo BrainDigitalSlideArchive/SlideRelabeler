@@ -152,6 +152,7 @@ const API = {
     ipcRenderer.invoke('globus-upload-file', source_path, dest_collection_path, file_path, file_row_idx),
   globusUploadFileWithSize: (source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) =>
     ipcRenderer.invoke('globus-upload-file', source_path, dest_collection_path, file_path, file_row_idx, file_size_bytes),
+  globusUploadBatch: (payload) => ipcRenderer.invoke('globus-upload-batch', payload),
   globusCheckCollectionPath: (collection_path) => ipcRenderer.invoke('globus-check-collection-path', collection_path),
   globusListDirectory: (collection_path) => ipcRenderer.invoke('globus-list-directory', collection_path),
   globusGetLocalEndpointId: () => ipcRenderer.invoke('globus-get-local-endpoint-id'),

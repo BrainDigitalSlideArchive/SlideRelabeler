@@ -26,6 +26,7 @@ const DEFAULT_QR_ASSEMBLY = {
 };
 
 const DEFAULT_DSA_UPLOAD = {
+  integrationEnabled: false,
   rename_item_after_upload: false,
   dsaAlias: { mode: 'label_text', pattern: '' },
   itemMetadata: { mode: 'none', column: '' },
@@ -38,10 +39,12 @@ const DEFAULT_DSA_UPLOAD = {
 };
 
 const DEFAULT_GLOBUS_UPLOAD = {
+  integrationEnabled: false,
   default_target_endpoint_id: '',
   default_target_endpoint_label: '',
   source_endpoint: '',
   disable_ssl_verification: false,
+  max_upload_batch_size: 1,
 };
 
 /**
@@ -97,6 +100,7 @@ export function migrateNamingConfig(loadedConfig, loadedEsm) {
     config.dsa_upload = {
       ...DEFAULT_DSA_UPLOAD,
       ...config.dsa_upload,
+      integrationEnabled: config.dsa_upload.integrationEnabled === true,
       dsaAlias: {
         ...DEFAULT_DSA_UPLOAD.dsaAlias,
         ...(config.dsa_upload.dsaAlias || {}),
@@ -115,10 +119,28 @@ export function migrateNamingConfig(loadedConfig, loadedEsm) {
   if (!config.globus_upload || typeof config.globus_upload !== 'object') {
     config.globus_upload = { ...DEFAULT_GLOBUS_UPLOAD };
   } else {
-    config.globus_upload = {
+    const merged = {
       ...DEFAULT_GLOBUS_UPLOAD,
       ...config.globus_upload,
+      integrationEnabled: config.globus_upload.integrationEnabled === true,
     };
+    if (
+      merged.max_upload_batch_size === null
+      || merged.max_upload_batch_size === undefined
+      || merged.max_upload_batch_size === ''
+    ) {
+      // explicit null stays null only if user cleared; missing → default 1 from DEFAULT spread.
+      // If key was absent, DEFAULT already set 1; if explicitly null, keep null.
+      if (!Object.prototype.hasOwnProperty.call(config.globus_upload, 'max_upload_batch_size')) {
+        merged.max_upload_batch_size = 1;
+      } else if (merged.max_upload_batch_size === undefined || merged.max_upload_batch_size === '') {
+        merged.max_upload_batch_size = null;
+      }
+    } else {
+      const n = parseInt(merged.max_upload_batch_size, 10);
+      merged.max_upload_batch_size = Number.isFinite(n) && n >= 1 ? n : 1;
+    }
+    config.globus_upload = merged;
   }
 
   return migrateConfigV3(config);

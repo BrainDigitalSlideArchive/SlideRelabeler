@@ -13,13 +13,24 @@ import {
   hasSlideErrorAuditForSource,
 } from '../../helpers/audit_log.js';
 import { recordAuditIfEnabled } from '../auditLog/export_audit_log.js';
+import * as globus_actions from '../../actions/globus';
+import {
+  clearDeferredGlobusUploads,
+  getDeferredGlobusUploadCount,
+  resolveMaxUploadBatchSize,
+  takeDeferredGlobusUploads,
+} from '../../helpers/globus_upload_batch.js';
 
 function countPendingUploads(file_rows, dsa_upload_queue, globus_upload_queue) {
   const queuedRowIds = new Set();
   const mergeQueues = [dsa_upload_queue, globus_upload_queue].filter(Array.isArray);
   mergeQueues.forEach((upload_queue) => {
     upload_queue.forEach((q) => {
-      if (q && typeof q.row_idx !== 'undefined') {
+      if (q?.kind === 'batch' && Array.isArray(q.items)) {
+        q.items.forEach((it) => {
+          if (it && typeof it.row_idx !== 'undefined') queuedRowIds.add(String(it.row_idx));
+        });
+      } else if (q && typeof q.row_idx !== 'undefined') {
         queuedRowIds.add(String(q.row_idx));
       }
     });
@@ -114,8 +125,45 @@ function* finalizeBatchRun(runId, { cancelled = false } = {}) {
   return true;
 }
 
+function* flushDeferredGlobusUploads(batchSize) {
+  const pending = getDeferredGlobusUploadCount();
+  if (pending === 0) return;
+
+  // null = wait for end-of-run flush (caller passes forceAll)
+  if (batchSize == null) return;
+
+  while (getDeferredGlobusUploadCount() >= batchSize) {
+    const items = takeDeferredGlobusUploads(batchSize);
+    if (!items.length) break;
+    const first = items[0];
+    yield put({
+      type: globus_actions.UPLOAD_BATCH,
+      payload: {
+        items,
+        collection_path: first.collection_path,
+        source_endpoint: first.source_endpoint,
+      },
+    });
+  }
+}
+
+function* flushAllDeferredGlobusUploads() {
+  const items = takeDeferredGlobusUploads(null);
+  if (!items.length) return;
+  const first = items[0];
+  yield put({
+    type: globus_actions.UPLOAD_BATCH,
+    payload: {
+      items,
+      collection_path: first.collection_path,
+      source_endpoint: first.source_endpoint,
+    },
+  });
+}
+
 function* watch_cancel_process_files(process_files_task) {
   yield take(files_actions.CANCEL_PROCESS_FILES);
+  clearDeferredGlobusUploads();
   const runId = yield select((state) => state.auditLog?.currentRunId);
   yield call(electronAPI.cancelRestartBridge);
   yield put({ type: files_actions.CLEAR_PROGRESS });
@@ -140,6 +188,7 @@ function* process_files_worker() {
   const file_rows = yield select(state => state.files.file_rows);
   const runId = createRunId();
   let batchFinalized = false;
+  clearDeferredGlobusUploads();
 
   try {
     yield put({ type: auditLog_actions.SET_AUDIT_LOG_CURRENT_RUN, payload: runId });
@@ -151,6 +200,7 @@ function* process_files_worker() {
       const file_rows_current = yield select(state => state.files.file_rows);
       const config = yield select((state) => state.config);
       const file_cols = yield select((state) => state.files.file_columns);
+      const batchSize = resolveMaxUploadBatchSize(config?.globus_upload?.max_upload_batch_size);
 
       const ur = yield select((state) => state.uploadRouting);
       const upload_throttle_limit = ur.max_local_pending || 2;
@@ -168,13 +218,17 @@ function* process_files_worker() {
               const current_file_rows = yield select((state) => state.files.file_rows);
               const dsa_upload_queue = yield select((state) => state.dsa.upload_queue);
               const globus_upload_queue = yield select((state) => state.globus.upload_queue);
-              const pending_count = countPendingUploads(current_file_rows, dsa_upload_queue, globus_upload_queue);
+              const pending_count = countPendingUploads(current_file_rows, dsa_upload_queue, globus_upload_queue)
+                + getDeferredGlobusUploadCount();
               if (pending_count >= upload_throttle_limit) {
                 yield delay(1000);
                 break;
               }
             }
             yield call(process_file, file_row_idx, file_row);
+            if (batchSize != null && batchSize > 1) {
+              yield* flushDeferredGlobusUploads(batchSize);
+            }
             processed_files_count += 1;
           } else if (file_row.__reserved.processed !== 1 && !file_row.__reserved.error && !file_row.__reserved.bytes) {
             metadata_pending_count += 1;
@@ -203,11 +257,15 @@ function* process_files_worker() {
       }
     }
 
+    yield* flushAllDeferredGlobusUploads();
     batchFinalized = yield* finalizeBatchRun(runId);
   } finally {
+    // On cancel/error, still try to flush whatever was deferred
+    yield* flushAllDeferredGlobusUploads();
     if (!batchFinalized) {
       yield* finalizeBatchRun(runId, { cancelled: true });
     }
+    clearDeferredGlobusUploads();
     yield put({ type: auditLog_actions.SET_AUDIT_LOG_CURRENT_RUN, payload: null });
     yield put({ type: files_actions.NOT_PROCESSING });
   }

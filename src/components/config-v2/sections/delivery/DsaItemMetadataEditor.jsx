@@ -6,6 +6,7 @@ import { discoverPatternColumnFields } from '../../../../helpers/pattern_engine.
 import { PlaceholderChips } from '../../../config/ComputedFieldEditor';
 import ConfigChoiceChips from '../../primitives/ConfigChoiceChips';
 import ConfigDetailPanel from '../../primitives/ConfigDetailPanel';
+import ConfigField from '../../primitives/ConfigField';
 import ConfigHelperText from '../../primitives/ConfigHelperText';
 import ConfigLabeledRow from '../../primitives/ConfigLabeledRow';
 
@@ -13,25 +14,24 @@ const METADATA_OPTIONS = [
   {
     value: 'none',
     label: 'None (default)',
-    helper: 'Do not attach file list metadata to the DSA item.',
+    helper: 'Nothing from the file list is added to the DSA item.',
   },
   {
     value: 'all_deid',
     label: 'Data columns',
     helper:
-      'All simple file list columns (text/number); excludes original path and filename. Does not include Label or Output name unless those appear as columns.',
+      'Add every simple text and number column from the file list (skips original path and filename).',
   },
   {
     value: 'all_original',
     label: 'Data + original name',
-    helper:
-      'Same as Data columns, plus the original file name (without folder path) as originalFileName.',
+    helper: 'Same as Data columns, and also add the original file name.',
   },
   {
     value: 'column',
     label: 'Single column…',
     helper:
-      'Attach one column as a string, or parse JSON object/array from the cell.',
+      "Add one column's value—plain text, or JSON from the cell if it is an object or array.",
   },
 ];
 
@@ -56,6 +56,9 @@ export default function DsaItemMetadataEditor({
   const itemMetadata = dsaUploadConfig?.itemMetadata ?? { mode: 'none', column: '' };
   const active = itemMetadata.mode ?? 'none';
   const selectedColumn = itemMetadata.column ?? '';
+  const activeHelper =
+    METADATA_OPTIONS.find((opt) => opt.value === active)?.helper
+    ?? METADATA_OPTIONS[0].helper;
 
   const columnCatalog = useMemo(() => {
     if (!hasLoadedFiles) return [];
@@ -101,29 +104,38 @@ export default function DsaItemMetadataEditor({
         ariaLabelledBy="dsa-item-metadata-label-v2"
         onChange={(value) => setItemMetadata({ mode: value })}
       />
+      <ConfigHelperText>{activeHelper}</ConfigHelperText>
       {active === 'column' ? (
         <ConfigDetailPanel aria-live="polite">
-          <ConfigHelperText>
-            {selectedColumn
-              ? (
-                <>
-                  Selected column: <code>{selectedColumn}</code>
-                </>
-              )
-              : 'Choose a column. Nothing is attached until a column is selected.'}
-          </ConfigHelperText>
-          <div className="computed-field-editor">
-            <PlaceholderChips
-              catalog={columnCatalog}
-              disabled={disabled || !hasLoadedFiles}
-              catalogLabel="Columns"
-              helpText="Click a column to attach its cell value (plain text or JSON)."
-              onInsert={(field) => setItemMetadata({ mode: 'column', column: field })}
-            />
-          </div>
-          {!hasLoadedFiles ? (
-            <ConfigHelperText>Load files to list available columns.</ConfigHelperText>
+          {!selectedColumn.trim() ? (
+            <ConfigHelperText>
+              Nothing is attached until a column name is entered.
+            </ConfigHelperText>
           ) : null}
+          <ConfigField
+            size="fill"
+            omitLabel
+            disabled={disabled}
+            ariaLabel="Column name"
+            placeholder="columnName"
+            value={selectedColumn}
+            onChange={(value) => setItemMetadata({ column: value })}
+          />
+          {columnCatalog.length > 0 ? (
+            <div className="computed-field-editor">
+              <PlaceholderChips
+                catalog={columnCatalog}
+                disabled={disabled}
+                catalogLabel="Columns"
+                helpText="Click a column to use its name."
+                onInsert={(field) => setItemMetadata({ mode: 'column', column: field })}
+              />
+            </div>
+          ) : (
+            <ConfigHelperText>
+              When files are loaded, you can pick a column from a list here.
+            </ConfigHelperText>
+          )}
         </ConfigDetailPanel>
       ) : null}
     </ConfigLabeledRow>

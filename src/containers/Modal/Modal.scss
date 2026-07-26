@@ -1,7 +1,6 @@
 @import '../../styles/colors.scss';
 @import '../../styles/variables.scss';
 @import '../../components/config/SlideLabelLayout.scss';
-@import '../../components/controls/button/button_on_light';
 
 .Modal {
   position: absolute;
@@ -145,16 +144,6 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
-
-        // Outlined light-surface Button skin for all light modals.
-        // Intentional filled CTAs use .Button--filled or more-specific overrides (e.g. Globus auth).
-        .Button:not(.Button--filled) .__button {
-          @include button-on-light-skin;
-        }
-
-        .Button:not(.Button--filled) .__button-result {
-          color: $config-text-secondary;
-        }
       }
 
       .config-panel {
@@ -196,38 +185,7 @@
               margin-bottom: 0.5em;
             }
 
-            .Checkbox {
-              label {
-                color: $config-text-primary;
-              }
-
-              .__checkbox {
-                background: $config-panel-bg;
-                border: 1px solid $config-border;
-                color: $config-text-primary;
-                border-radius: 0.2em;
-              }
-            }
-
-            .HelpIconPopover--onLight .HelpIconPopover__icon,
-            .InputText .__help-icon {
-              border-color: $darker-blue;
-              color: $darker-blue;
-              background: rgba($darker-blue, 0.12);
-              font-weight: 700;
-
-              &:hover:not(:disabled) {
-                border-color: darken($darker-blue, 6%);
-                color: darken($darker-blue, 6%);
-                background: rgba($darker-blue, 0.2);
-              }
-
-              &:focus-visible {
-                outline: 2px solid rgba($darker-blue, 0.45);
-                outline-offset: 2px;
-              }
-            }
-
+            // Dropdown light skin (legacy host path; Dropdown stays dark-by-default).
             .Dropdown {
               .__trigger {
                 background: $config-panel-bg;
@@ -903,7 +861,7 @@
               align-items: center;
               gap: 0.35rem 0.5rem;
 
-              .InputText.InputText--onLight {
+              .InputText {
                 flex: 1 1 8rem;
                 min-width: 6rem;
                 margin-bottom: 0;
@@ -1255,7 +1213,7 @@
               row-gap: 0.35rem;
               align-items: center;
 
-              .InputText.InputText--onLight {
+              .InputText {
                 display: contents;
                 margin-bottom: 0;
 
@@ -1277,7 +1235,7 @@
               }
             }
 
-            .InputText.InputText--onLight {
+            .InputText {
               flex-direction: column;
               align-items: stretch;
               margin-bottom: 0.25rem;
@@ -1407,7 +1365,7 @@
                   grid-template-columns: 1fr auto;
                 }
 
-                .InputText.InputText--onLight {
+                .InputText {
                   margin-bottom: 0;
                   min-width: 0;
                 }
@@ -1427,7 +1385,7 @@
                 gap: 0.35rem;
                 margin-top: 0;
 
-                .InputText.InputText--onLight {
+                .InputText {
                   flex: 1 1 8rem;
                   min-width: 6rem;
                   margin-bottom: 0;
@@ -1447,7 +1405,7 @@
                 gap: 0.35rem;
                 margin-top: 0.35rem;
 
-                .InputText.InputText--onLight {
+                .InputText {
                   margin-bottom: 0;
                 }
               }
@@ -1597,7 +1555,7 @@
               padding-left: 1.35rem;
               box-sizing: border-box;
 
-              .InputText.InputText--controlOnly.InputText--onLight {
+              .InputText.InputText--controlOnly {
                 width: 100%;
                 max-width: 100%;
                 margin-bottom: 0;

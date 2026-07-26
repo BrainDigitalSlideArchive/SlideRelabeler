@@ -1015,7 +1015,10 @@ class DeidTools:
             if not output_dict['config']['wsi']['save_macro_image']:
                 macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
             else:
-                macroImage = PIL.Image.open(io.BytesIO(tileSource.getAssociatedImage("macro")[0]))
+                try:
+                    macroImage = PIL.Image.open(io.BytesIO(tileSource.getAssociatedImage("macro")[0]))
+                except Exception:
+                    macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
 
         return macroImage
 
@@ -1185,12 +1188,13 @@ class DeidTools:
                 return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ndpi")
             
     def determine_format(self, tileSource):
-        internal_metadata = tileSource.getInternalMetadata()
-        if internal_metadata.get('Make').lower() == 'hamamatsu':
+        internal_metadata = tileSource.getInternalMetadata() or {}
+        make = (internal_metadata.get('Make') or '').lower()
+        if make == 'hamamatsu':
             return 'hamamatsu'
-        elif internal_metadata.get('Make').lower() == 'aperio':
+        elif make == 'aperio':
             return 'aperio'
-        elif internal_metadata.get('Make').lower() == 'philips':
+        elif make == 'philips':
             return 'philips'
         else:
             return None
@@ -1227,7 +1231,7 @@ class DeidTools:
         func = None
         if format is not None:
             # fadvise_willneed(curItem)  ## DETERMINE WHAT THIS FUNCTION DOSE..
-            func = getattr(self, "redact_format_" + format)
+            func = getattr(self, "redact_format_" + format, None)
         if func is None:
             raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: {}".format(format)}))
 

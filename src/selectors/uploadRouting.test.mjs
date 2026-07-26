@@ -3,11 +3,17 @@ import assert from 'node:assert/strict';
 
 import {
   GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE,
+  UPLOAD_METHODS_DISABLED_MESSAGE,
   globusParallelExceedsUploadQueue,
   selectUploadReadiness,
 } from './uploadRouting.js';
 
 const baseUr = { auto_upload: true, destination: 'dsa' };
+
+const configBothEnabled = {
+  dsa_upload: { integrationEnabled: true },
+  globus_upload: { integrationEnabled: true },
+};
 
 const readyGlobus = {
   cli_available: true,
@@ -21,6 +27,7 @@ const readyGlobus = {
 test('DSA readiness: missing api_url', () => {
   const result = selectUploadReadiness({
     uploadRouting: baseUr,
+    config: configBothEnabled,
     dsa: { api_url: '', api_auth: null, folder_id: '' },
     globus: {},
   });
@@ -31,6 +38,7 @@ test('DSA readiness: missing api_url', () => {
 test('DSA readiness: url set but logged out', () => {
   const result = selectUploadReadiness({
     uploadRouting: baseUr,
+    config: configBothEnabled,
     dsa: { api_url: 'https://example.org/api/v1', api_auth: null, folder_id: '' },
     globus: {},
   });
@@ -42,6 +50,7 @@ test('DSA readiness: url set but logged out', () => {
 test('DSA readiness: logged in without folder', () => {
   const result = selectUploadReadiness({
     uploadRouting: baseUr,
+    config: configBothEnabled,
     dsa: {
       api_url: 'https://example.org/api/v1',
       api_auth: { authToken: { token: 'x' } },
@@ -57,6 +66,7 @@ test('DSA readiness: logged in without folder', () => {
 test('DSA readiness: ready when auth and folder ok', () => {
   const result = selectUploadReadiness({
     uploadRouting: baseUr,
+    config: configBothEnabled,
     dsa: {
       api_url: 'https://example.org/api/v1',
       api_auth: { authToken: { token: 'x' } },
@@ -67,6 +77,42 @@ test('DSA readiness: ready when auth and folder ok', () => {
   });
   assert.equal(result.ready, true);
   assert.deepEqual(result.blockers, []);
+});
+
+test('upload readiness: blocks when no methods enabled', () => {
+  const result = selectUploadReadiness({
+    uploadRouting: baseUr,
+    config: {
+      dsa_upload: { integrationEnabled: false },
+      globus_upload: {},
+    },
+    dsa: {
+      api_url: 'https://example.org/api/v1',
+      api_auth: { authToken: { token: 'x' } },
+      folder_id: 'abc',
+    },
+    globus: {},
+  });
+  assert.equal(result.ready, false);
+  assert.ok(result.blockers.includes(UPLOAD_METHODS_DISABLED_MESSAGE));
+});
+
+test('upload readiness: blocks when destination method is disabled', () => {
+  const result = selectUploadReadiness({
+    uploadRouting: baseUr,
+    config: {
+      dsa_upload: { integrationEnabled: false },
+      globus_upload: { integrationEnabled: true },
+    },
+    dsa: {
+      api_url: 'https://example.org/api/v1',
+      api_auth: { authToken: { token: 'x' } },
+      folder_id: 'abc',
+    },
+    globus: {},
+  });
+  assert.equal(result.ready, false);
+  assert.ok(result.blockers.some((b) => b.includes('DSA upload is disabled')));
 });
 
 test('globusParallelExceedsUploadQueue compares parallel to pending', () => {
@@ -92,6 +138,7 @@ test('Globus readiness: blocks when transfers exceed upload queue', () => {
       max_globus_parallel_uploads: 4,
       max_local_pending: 2,
     },
+    config: configBothEnabled,
     dsa: {},
     globus: readyGlobus,
   });
@@ -107,6 +154,7 @@ test('Globus readiness: ready when transfers within upload queue', () => {
       max_globus_parallel_uploads: 2,
       max_local_pending: 2,
     },
+    config: configBothEnabled,
     dsa: {},
     globus: readyGlobus,
   });

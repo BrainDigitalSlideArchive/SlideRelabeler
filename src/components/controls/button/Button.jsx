@@ -15,8 +15,10 @@ function Button(props) {
     return class_name;
   }
 
+  // Light is the default. `onLight` is a no-op alias; `onDark` opts into host/global chrome.
   const rootClass = [
     'Button',
+    variant === 'onDark' ? 'Button--onDark' : '',
     variant === 'onLight' ? 'Button--onLight' : '',
     extra_class_name || '',
   ].filter(Boolean).join(' ');

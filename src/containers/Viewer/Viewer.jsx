@@ -8,6 +8,10 @@ import { encodeURLParameters } from '../../helpers/url_helpers';
 import { buildThumbnailProtocolUrl } from '../../helpers/thumbnail_helpers.js';
 import { isViewerDebugEnabled, logViewerDebug } from '../../helpers/viewer_debug';
 import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
+import {
+  hasUsableMetadataTable,
+  PREVIEW_ERROR_KEY,
+} from '../../helpers/metadata_preview_ui';
 import './Viewer.scss';
 
 import * as app_actions from '../../actions/app';
@@ -126,7 +130,11 @@ function Viewer(props) {
     if (fileRow?.__reserved?.error) {
       return;
     }
-    if (ifds[sourcePath]) {
+    const existing = ifds[sourcePath];
+    if (
+      hasUsableMetadataTable(existing)
+      || (existing && typeof existing === 'object' && !Array.isArray(existing) && existing[PREVIEW_ERROR_KEY])
+    ) {
       return;
     }
 
@@ -226,15 +234,12 @@ function Viewer(props) {
     config,
   ]);
 
-  const showDebugStrip = isViewerDebugEnabled() && debugStatus;
+  const showViewerDebug = isViewerDebugEnabled();
 
   return ([
     <div key={0} className="viewer-container">
       {OpenSeadragon(metadata)}
       <div className="__preview">
-        {showDebugStrip && (
-          <pre className="__viewer-debug-strip">{JSON.stringify(debugStatus, null, 2)}</pre>
-        )}
         <table>
           <thead>
             <tr>
@@ -338,9 +343,28 @@ function Viewer(props) {
             }
             <tr>
               <td>Metadata:</td>
-              <td><button type="button" onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}>View</button></td>
-              <td><button type="button" onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}>View</button></td>
+              <td colSpan={2}>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}
+                >
+                  Compare
+                </button>
+              </td>
             </tr>
+            {showViewerDebug && (
+              <tr>
+                <td>Debug:</td>
+                <td colSpan={2}>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'viewerDebug' } })}
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -355,6 +379,7 @@ function Viewer(props) {
       label_url={label_url}
       preview_label_url={preview_label_url}
       macro_url={macro_url}
+      debug_status={debugStatus}
     />,
   ]);
 }

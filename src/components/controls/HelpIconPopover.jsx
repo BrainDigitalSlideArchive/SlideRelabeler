@@ -80,9 +80,10 @@ function HelpIconPopover(props) {
     }
   }, [helpOpen]);
 
+  // Light is the default. `onLight` is a no-op alias; `onDark` opts into dark icon chrome.
   const rootClass = [
     'HelpIconPopover',
-    variant === 'onLight' ? 'HelpIconPopover--onLight' : '',
+    variant === 'onDark' ? 'HelpIconPopover--onDark' : '',
     variant === 'warning' ? 'HelpIconPopover--warning' : '',
   ].filter(Boolean).join(' ');
 

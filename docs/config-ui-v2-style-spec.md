@@ -4,7 +4,7 @@ Kit for the live Configuration dialog under `src/components/config-v2/`. Compose
 
 **Inputs:** [config-ui-reference.md](./config-ui-reference.md) (behavior), Modal shell chrome for `__content--config`.
 
-**Related:** [config-ui-migration.md](./config-ui-migration.md) (cutover complete).
+**Related:** [config-ui-reference.md](./config-ui-reference.md).
 
 ---
 
@@ -15,7 +15,7 @@ Kit for the live Configuration dialog under `src/components/config-v2/`. Compose
 - Named primitives with fixed ownership under `src/components/config-v2/`.
 - Kill class theft and misnamed BEM (`config-filename-style`, `dsa-url-*` for Globus, `data-loading-section__*` stolen by delivery).
 - End InputText compact width wars via explicit field size variants.
-- Modal.scss remains **shell chrome** (+ shared light Button skin for config content) — not a dumping ground for section layouts.
+- Modal.scss remains **shell chrome** — not a dumping ground for section layouts or control skins (shared controls are light-by-default).
 - **Harmonize similar components:** when v1 shows near-duplicate patterns with small spacing, size, or alignment differences, treat those as accidental bolt-on drift unless the reference doc marks them as intentional. v2 uses **one** recipe per primitive, not a preserved quirk per host.
 
 ### Non-goals
@@ -92,7 +92,7 @@ Implement as React components under `config-v2/primitives/` with SCSS under `con
 | **ConfigChoiceChips** | `config-filename-style--compact` | Segmented radio chips (N options) |
 | **ConfigLabeledRow** | audit / dsa-after-upload / api rows | `label \| controls` grid; label optically aligned with chips |
 | **ConfigDetailPanel** | `dsa-after-upload__detail`, filename detail | Dependent UI under controls column; left rail |
-| **ConfigField** | ad-hoc InputText | Size `xs\|sm\|md\|fill`; onLight |
+| **ConfigField** | ad-hoc InputText | Size `xs\|sm\|md\|fill`; light-by-default InputText |
 | **ConfigPathChip** | `__path` / empty | Mono path display; fill width in StatusField control; empty = helper look (no field chrome) |
 | **ConfigStatusField** | `dsa-url-field` (neutral name) | Label + status + fill control + action; `compact` for short empty + adjacent action |
 | **ConfigBooleanRow** | `__quiet-row` + compact Checkbox | Compact checkbox + kit row-label typography + optional help |
@@ -113,7 +113,7 @@ When multiple v1 hosts map to one primitive or recipe, they share **one** paddin
 - **DSA/Globus after-upload:** LabeledRow + ChoiceChips + DetailPanel (pattern/metadata)
 - **Destination location:** Location `ConfigSubsection` → N× `ConfigStatusField` (label + optional help; body = fill control + action). Set: PathChip or Field fills the control column. Unset: helper/empty text in control (no field chrome) + Choose in action; use StatusField `compact` so the action sits next to short empty copy instead of floating at the card edge.
 - **Integration location:** Same location card chrome as destination locations (DSA/Globus). Per API: title + description → LabeledRow + ChoiceChips (enable) → when Enabled, show that integration’s body; when Disabled, collapse body (header + chips only). Each integration owns its own enable flag.
-- **Location secondary / quiet rows:** Under a location card, after StatusFields: `.cfg-location-secondary` stack with tighter gap → `ConfigBooleanRow` and/or inline label + `ConfigField` xs (same `$cfg-font-row-label` as StatusField labels).
+- **Location secondary / quiet rows:** Under a location card, after StatusFields: prefer the same `ConfigLabeledRow` grid as Status (shared label column) for SSL / numeric options so controls share one vertical edge. Helper text for a field lives in the controls column under that field. Optional `ConfigDivider` between endpoint StatusFields and the options stack. Avoid ad-hoc `.cfg-inline-field` stacks when multiple one-line controls would misalign.
 - **Stacked settings:** Subsection/Category → SettingHeader → controls → SettingHeader…; later SettingHeaders use kit top gap (`$cfg-space-lg` via sibling rule), not section-local margin.
 - **Filename/label sources:** Section + ChoiceChips + DetailPanel + TestPreview
 - **CSV / eSM density:** SectionPanel + Subsection + domain cards using Field/LabeledRow; eSM profiles live inside an Integration location card
@@ -139,9 +139,9 @@ Use this when migrating so structure is predetermined.
 | Section | Composition |
 |---------|-------------|
 | **Overview** | ConfigSection → tinted Callout? → `cfg-info-card-grid` of ConfigInfoCard (+ MonoExample / illustration / nested accent Callout) → ConfigCollapsible glossary (`config-overview-glossary`). |
-| **Audit** | ConfigSection → SectionPanel → LabeledRow×2 (enable chips; retention chips + Field xs + helper count in `__cluster`) → panel actions (View audit log Button onLight). |
+| **Audit** | ConfigSection → SectionPanel → LabeledRow×2 (enable chips; retention chips + Field xs + helper count in `__cluster`) → panel actions (View audit log Button). |
 | **Output name** | ConfigSection → Panel → Callout? / validation → ChoiceChips → DetailPanel (mode copy or pattern Field fill + PlaceholderChips) → ConfigTestPreview (+ shared `ConfigPreviewSandbox`). |
-| **Output delivery** | ConfigSection → Category×2 (Save locally; Upload). Locations: default save folder; DSA; Globus (StatusField×N → optional `.cfg-location-secondary`). Under Upload: **Upload internals** Subsection → SettingHeader + ChoiceChips (staging) → SettingHeader + Field xs (queue) [+ warn]. Globus: StatusField×2 → quiet secondary (SSL BooleanRow + max transfers xs) [+ warn]. |
+| **Output delivery** | ConfigSection → Category×2 (Save locally; Upload). Locations: default save folder; DSA; Globus (Status LabeledRow → StatusField×N → Divider → LabeledRow options: SSL checkbox, max transfers xs, batch size xs + helper). Under Upload: **Upload internals** Subsection → SettingHeader + ChoiceChips (staging) → SettingHeader + Field xs (queue) [+ warn]. |
 | **Data loading** | ConfigSection → Subsection (file picker) → Subsection CSV (field cards) → **Category** API Integrations → per-integration **location** card (eSlideManager: Status chips → enabled body with profile editors). Deep links: `config-file-picker`, `config-csv-import`, `config-api-integrations` (category), `config-esm-api` (eSM location). Future APIs = additional location cards with their own enable flags. eSM editors under transitional `_esm-host.scss`. |
 | **Slide label** | ConfigSection → FeatureBlock×3 (defaults = ChoiceChips + DetailPanel; icon = Load/Clear) → schematic/rendered preview (host styles) → ConfigTestPreview + shared `ConfigPreviewSandbox`. Deep link: `config-slide-label`. |
 | **Advanced** | ConfigSection → SectionPanel → SettingHeader + BooleanRow ×3 (overview image; unchanged copy; troubleshooting) → SettingHeader + `cfg-panel-actions` (Restore defaults / Hard reset). Deep link: `config-advanced`. |
@@ -187,10 +187,15 @@ src/components/config-v2/
 
 ## 7. Control skinning policy
 
-- Root wrapper: `.config-v2` inside ModalConfig content.
-- Buttons: existing onLight / filled patterns; prefer kit TextButton for tertiary actions.
-- Inputs: onLight + ConfigField size; no Modal nested InputText width patches for v2.
-- Checkboxes/Dropdowns: inherit config light skins; avoid beige legacy note/infobox styles inside v2.
+Shared form controls (**InputText**, **Button**, **Checkbox**, **HelpIconPopover**) default to **light** config/picker chrome. Do not re-skin them under `.config-v2` or Modal config hosts.
+
+- **Default / omit / `onLight` (legacy alias):** light panel chrome.
+- **`onDark`:** opt-in dark-modal field/icon chrome only where a blue modal surface still needs it.
+- **Button `--filled`:** primary CTA escape hatch on light surfaces (e.g. Globus login).
+- **Dropdown:** remains dark-by-default (CSV column pickers on dark modal chrome). Add a light variant only when a light surface needs Dropdown.
+- Prefer kit TextButton for tertiary actions.
+- Floating help popovers stay dark (`$black` / `$beige`) for contrast on both surfaces.
+- Avoid beige legacy note/infobox styles inside v2.
 
 ---
 

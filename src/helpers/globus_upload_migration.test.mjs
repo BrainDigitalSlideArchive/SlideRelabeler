@@ -16,6 +16,16 @@ test('migrates remembered endpoint into config default', () => {
   assert.equal(r.default_target_endpoint_label, 'Lab DTN');
   assert.equal(r.source_endpoint, 'src-uuid');
   assert.equal(r.disable_ssl_verification, true);
+  assert.equal(r.integrationEnabled, false);
+});
+
+test('preserves max_upload_batch_size null and numbers', () => {
+  const unlimited = migrateGlobusUploadConfig({ max_upload_batch_size: null }, null);
+  assert.equal(unlimited.max_upload_batch_size, null);
+  const sized = migrateGlobusUploadConfig({ max_upload_batch_size: 4 }, null);
+  assert.equal(sized.max_upload_batch_size, 4);
+  const missing = migrateGlobusUploadConfig({}, null);
+  assert.equal(missing.max_upload_batch_size, 1);
 });
 
 test('migrates live target when remember off', () => {
@@ -31,6 +41,7 @@ test('migrates live target when remember off', () => {
 test('keeps existing config defaults', () => {
   const r = migrateGlobusUploadConfig(
     {
+      integrationEnabled: true,
       default_target_endpoint_id: 'cfg',
       default_target_endpoint_label: 'Config',
       source_endpoint: 'cfg-src',
@@ -45,4 +56,5 @@ test('keeps existing config defaults', () => {
   assert.equal(r.default_target_endpoint_id, 'cfg');
   assert.equal(r.source_endpoint, 'cfg-src');
   assert.equal(r.disable_ssl_verification, false);
+  assert.equal(r.integrationEnabled, true);
 });

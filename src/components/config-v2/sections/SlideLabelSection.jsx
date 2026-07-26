@@ -125,7 +125,7 @@ export default function SlideLabelSection() {
     <ConfigSection
       id="config-slide-label"
       title="Slide label"
-      description="What is printed on each slide label, and how empty Label/QR cells are filled."
+      description="What appears on each slide's new label, and how empty Label text and QR content cells are filled."
       help={SLIDE_LABEL_HELP}
       helpLabel="Slide label help"
     >

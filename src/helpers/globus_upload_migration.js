@@ -1,3 +1,5 @@
+import { resolveMaxUploadBatchSize } from './globus_upload_batch.js';
+
 /**
  * Migrate legacy state.globus preference fields into config.globus_upload.
  *
@@ -11,6 +13,7 @@ export function migrateGlobusUploadConfig(globusUpload, globus) {
     default_target_endpoint_label: '',
     source_endpoint: '',
     disable_ssl_verification: false,
+    max_upload_batch_size: 1,
     ...(globusUpload && typeof globusUpload === 'object' ? globusUpload : {}),
   };
 
@@ -42,10 +45,26 @@ export function migrateGlobusUploadConfig(globusUpload, globus) {
     base.disable_ssl_verification = globus.disable_ssl_verification;
   }
 
+  let maxUploadBatchSize = 1;
+  if (
+    globusUpload
+    && typeof globusUpload === 'object'
+    && Object.prototype.hasOwnProperty.call(globusUpload, 'max_upload_batch_size')
+  ) {
+    if (globusUpload.max_upload_batch_size === null || globusUpload.max_upload_batch_size === '') {
+      maxUploadBatchSize = null;
+    } else {
+      const resolved = resolveMaxUploadBatchSize(globusUpload.max_upload_batch_size);
+      maxUploadBatchSize = resolved === null ? 1 : resolved;
+    }
+  }
+
   return {
+    integrationEnabled: base.integrationEnabled === true,
     default_target_endpoint_id: String(base.default_target_endpoint_id || '').trim(),
     default_target_endpoint_label: String(base.default_target_endpoint_label || '').trim(),
     source_endpoint: String(base.source_endpoint || '').trim(),
     disable_ssl_verification: Boolean(base.disable_ssl_verification),
+    max_upload_batch_size: maxUploadBatchSize,
   };
 }

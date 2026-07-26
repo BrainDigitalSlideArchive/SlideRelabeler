@@ -13,6 +13,10 @@ import {
   buildSlideErrorAuditEntry,
 } from '../../helpers/audit_log.js';
 import { recordAuditIfEnabled } from '../auditLog/export_audit_log.js';
+import {
+  pushDeferredGlobusUpload,
+  resolveMaxUploadBatchSize,
+} from '../../helpers/globus_upload_batch.js';
 
 export default function* process_file(file_row_idx, file_row) {
   try {
@@ -87,16 +91,23 @@ export default function* process_file(file_row_idx, file_row) {
     const source_endpoint = yield select((state) => state.globus.source_endpoint);
     if (ur.auto_upload && ur.destination === 'globus' && globus_api_auth) {
       const rowN = Number(file_row_idx);
-      yield put({
-        type: globus_actions.UPLOAD_FILE,
-        payload: {
-          row_idx: Number.isFinite(rowN) ? rowN : file_row_idx,
-          collection_path: collection_path,
-          file_path: output_path,
-          file: processed_file,
-          source_endpoint: source_endpoint,
-        },
-      });
+      const payload = {
+        row_idx: Number.isFinite(rowN) ? rowN : file_row_idx,
+        collection_path: collection_path,
+        file_path: output_path,
+        file: processed_file,
+        source_endpoint: source_endpoint,
+      };
+      const batchSize = resolveMaxUploadBatchSize(config?.globus_upload?.max_upload_batch_size);
+      if (batchSize === 1) {
+        yield put({
+          type: globus_actions.UPLOAD_FILE,
+          payload,
+        });
+      } else {
+        // null (whole run) or N > 1 — defer; process_files flushes batches
+        pushDeferredGlobusUpload(payload);
+      }
     }
   } catch (error) {
     const config = yield select(state => state.config);

@@ -32,24 +32,4 @@
   height: 100%;
   color: $cfg-ink;
   box-sizing: border-box;
-
-  // Light control skins inside the panel (Checkbox / InputText help already handled in primitives).
-  .HelpIconPopover--onLight .HelpIconPopover__icon,
-  .InputText .__help-icon {
-    border-color: $cfg-accent;
-    color: $cfg-accent;
-    background: rgba($cfg-accent, 0.12);
-    font-weight: 700;
-
-    &:hover:not(:disabled) {
-      border-color: darken($cfg-accent, 6%);
-      color: darken($cfg-accent, 6%);
-      background: rgba($cfg-accent, 0.2);
-    }
-
-    &:focus-visible {
-      outline: 2px solid rgba($cfg-accent, 0.45);
-      outline-offset: 2px;
-    }
-  }
 }

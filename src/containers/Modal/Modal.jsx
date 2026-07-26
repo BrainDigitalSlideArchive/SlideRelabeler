@@ -9,6 +9,7 @@ import ModalDebug from './ModalDebug';
 import ModalError from './ModalError';
 import ModalWarning from './ModalWarning';
 import ModalMetadata from './ModalMetadata';
+import ModalViewerDebug from './ModalViewerDebug';
 import ModalDsaFolderPicker from './ModalDsaFolderPicker';
 import ModalGlobusEndpointPicker from './ModalGlobusEndpointPicker';
 import ModalGlobusFolderPicker from './ModalGlobusFolderPicker';
@@ -40,6 +41,8 @@ function render_modal(type, props) {
       return <ModalGlobusLogin />;
     case 'metadata':
       return <ModalMetadata file={props.file} row_idx={props.row_idx}/>;
+    case 'viewerDebug':
+      return <ModalViewerDebug debug_status={props.debug_status} />;
     case 'esm':
       return <ModalESlideManager/>;
     case 'auditLog':

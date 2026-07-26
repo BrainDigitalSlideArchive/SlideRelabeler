@@ -4,7 +4,7 @@ import Checkbox from '../../controls/checkbox/Checkbox';
 
 /**
  * Compact boolean setting with kit row-label typography.
- * Wraps shared Checkbox; styles live under `.config-v2 .cfg-boolean-row`.
+ * Wraps shared Checkbox (light-by-default); layout under `.config-v2 .cfg-boolean-row`.
  */
 export default function ConfigBooleanRow({
   label,
@@ -12,7 +12,7 @@ export default function ConfigBooleanRow({
   onClick,
   disabled = false,
   tooltip,
-  helpVariant = 'onLight',
+  helpVariant,
   className = '',
 }) {
   return (

@@ -15,8 +15,8 @@ const FEATURES = [
   },
   {
     key: 'qr',
-    label: 'QR Encoding',
-    hint: 'Encode a QR code on the label.',
+    label: 'QR Code',
+    hint: 'Default content to embed into the QR code. Note: If the qr column specifies a value, it will be used instead.',
   },
   {
     key: 'icon',

@@ -12,6 +12,7 @@ import {
   GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE,
   globusParallelExceedsUploadQueue,
 } from '../../../selectors/uploadRouting.js';
+import { parseMaxUploadBatchSizeInput } from '../../../helpers/globus_upload_batch.js';
 import HelpIconPopover from '../../controls/HelpIconPopover';
 import Button from '../../controls/button/Button';
 import ConfigSection from '../primitives/ConfigSection';
@@ -26,6 +27,7 @@ import ConfigPathChip from '../primitives/ConfigPathChip';
 import ConfigTextButton from '../primitives/ConfigTextButton';
 import ConfigHelperText from '../primitives/ConfigHelperText';
 import ConfigWarnText from '../primitives/ConfigWarnText';
+import ConfigLabeledRow from '../primitives/ConfigLabeledRow';
 import DsaDefaultUrlField from './delivery/DsaDefaultUrlField';
 import DsaAfterUploadSettings from './delivery/DsaAfterUploadSettings';
 import GlobusSourceEndpointField from './delivery/GlobusSourceEndpointField';
@@ -46,6 +48,11 @@ const TEMP_FOLDER_HELP = (
     The default uses your system temporary folder. Choose a custom path if you need a specific scratch disk.
   </>
 );
+
+const ENABLE_OPTIONS = [
+  { value: 'enabled', label: 'Enabled' },
+  { value: 'disabled', label: 'Disabled' },
+];
 
 const STAGING_OPTIONS = [
   {
@@ -70,12 +77,15 @@ export default function OutputDeliverySection() {
 
   const ur = useSelector((state) => state.uploadRouting);
   const dsaUpload = useSelector((state) => state.config.dsa_upload);
+  const globusUpload = useSelector((state) => state.config.globus_upload);
   const [resolvedSystemPath, setResolvedSystemPath] = useState('');
 
   const defaultLocalPath = ur?.default_local_output_dir || '';
   const stagingMode = ur?.staging_dir_mode === 'custom' ? 'custom' : 'system';
   const customPath = ur?.staging_dir_custom || '';
   const defaultDsaUrl = dsaUpload?.default_api_url || '';
+  const dsaEnabled = dsaUpload?.integrationEnabled === true;
+  const globusEnabled = globusUpload?.integrationEnabled === true;
   const queueExceeded = globusParallelExceedsUploadQueue(ur);
 
   useEffect(() => {
@@ -181,15 +191,35 @@ export default function OutputDeliverySection() {
               </>
             )}
           >
-            <DsaDefaultUrlField
-              disabled={disabled}
-              value={defaultDsaUrl}
-              onChange={(value) => dispatch({
-                type: config_actions.SET_DSA_UPLOAD_CONFIG,
-                payload: { default_api_url: value },
-              })}
-            />
-            <DsaAfterUploadSettings disabled={disabled} />
+            <ConfigLabeledRow
+              label="Status:"
+              labelId="dsa-integration-enabled-label-v2"
+            >
+              <ConfigChoiceChips
+                name="dsa-integration-enabled-v2"
+                value={dsaEnabled ? 'enabled' : 'disabled'}
+                options={ENABLE_OPTIONS}
+                disabled={disabled}
+                ariaLabelledBy="dsa-integration-enabled-label-v2"
+                onChange={(next) => dispatch({
+                  type: config_actions.SET_DSA_UPLOAD_CONFIG,
+                  payload: { integrationEnabled: next === 'enabled' },
+                })}
+              />
+            </ConfigLabeledRow>
+            {dsaEnabled ? (
+              <>
+                <DsaDefaultUrlField
+                  disabled={disabled}
+                  value={defaultDsaUrl}
+                  onChange={(value) => dispatch({
+                    type: config_actions.SET_DSA_UPLOAD_CONFIG,
+                    payload: { default_api_url: value },
+                  })}
+                />
+                <DsaAfterUploadSettings disabled={disabled} />
+              </>
+            ) : null}
           </ConfigSubsection>
 
           <ConfigSubsection
@@ -203,37 +233,85 @@ export default function OutputDeliverySection() {
               </>
             )}
           >
-            <GlobusSourceEndpointField disabled={disabled} />
-            <GlobusDefaultEndpointField disabled={disabled} />
-            <div className="cfg-location-secondary">
-              <GlobusSslField disabled={disabled} />
-              <div className="cfg-inline-field">
-                <label
-                  className="cfg-inline-field__label"
+            <ConfigLabeledRow
+              label="Status:"
+              labelId="globus-integration-enabled-label-v2"
+            >
+              <ConfigChoiceChips
+                name="globus-integration-enabled-v2"
+                value={globusEnabled ? 'enabled' : 'disabled'}
+                options={ENABLE_OPTIONS}
+                disabled={disabled}
+                ariaLabelledBy="globus-integration-enabled-label-v2"
+                onChange={(next) => dispatch({
+                  type: config_actions.SET_GLOBUS_UPLOAD_CONFIG,
+                  payload: { integrationEnabled: next === 'enabled' },
+                })}
+              />
+            </ConfigLabeledRow>
+            {globusEnabled ? (
+              <>
+                <GlobusSourceEndpointField disabled={disabled} />
+                <GlobusDefaultEndpointField disabled={disabled} />
+                <ConfigDivider />
+                <GlobusSslField disabled={disabled} />
+                <ConfigLabeledRow
+                  label="Max transfers at once:"
                   htmlFor="output-delivery-max-globus-parallel-v2"
                 >
-                  Max transfers at once:
-                </label>
-                <ConfigField
-                  size="xs"
-                  omitLabel
-                  inputId="output-delivery-max-globus-parallel-v2"
-                  ariaLabel="Max transfers at once"
-                  type="number"
-                  disabled={disabled}
-                  value={String(ur?.max_globus_parallel_uploads ?? 2)}
-                  onChange={(value) => dispatch({
-                    type: upload_routing_actions.SET_MAX_GLOBUS_PARALLEL_UPLOADS,
-                    payload: value,
-                  })}
-                />
-              </div>
-              {queueExceeded ? (
-                <ConfigWarnText role="alert">
-                  {GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE}
-                </ConfigWarnText>
-              ) : null}
-            </div>
+                  <ConfigField
+                    size="xs"
+                    omitLabel
+                    inputId="output-delivery-max-globus-parallel-v2"
+                    ariaLabel="Max transfers at once"
+                    type="number"
+                    disabled={disabled}
+                    value={String(ur?.max_globus_parallel_uploads ?? 2)}
+                    onChange={(value) => dispatch({
+                      type: upload_routing_actions.SET_MAX_GLOBUS_PARALLEL_UPLOADS,
+                      payload: value,
+                    })}
+                  />
+                </ConfigLabeledRow>
+                <ConfigLabeledRow
+                  label="Batch size:"
+                  htmlFor="output-delivery-max-globus-batch-v2"
+                >
+                  <ConfigField
+                    size="xs"
+                    omitLabel
+                    inputId="output-delivery-max-globus-batch-v2"
+                    ariaLabel="Batch size"
+                    type="number"
+                    disabled={disabled}
+                    placeholder="All"
+                    value={
+                      globusUpload?.max_upload_batch_size == null
+                        ? ''
+                        : String(globusUpload.max_upload_batch_size)
+                    }
+                    onChange={(value) => dispatch({
+                      type: config_actions.SET_GLOBUS_UPLOAD_CONFIG,
+                      payload: {
+                        max_upload_batch_size: parseMaxUploadBatchSizeInput(value),
+                      },
+                    })}
+                  />
+                  <ConfigHelperText>
+                    How many finished files to include in each Globus transfer. Enter 1 to
+                    upload each file as soon as it is ready. Enter a larger number to wait
+                    until that many files are finished, then send them together in one
+                    transfer. Leave blank to finish the whole run first, then upload
+                    everything in one transfer.
+                  </ConfigHelperText>
+                </ConfigLabeledRow>
+                {queueExceeded ? (
+                  <ConfigWarnText role="alert">
+                    {GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE}
+                  </ConfigWarnText>
+                ) : null}
+              </>
+            ) : null}
           </ConfigSubsection>
 
           <ConfigSubsection

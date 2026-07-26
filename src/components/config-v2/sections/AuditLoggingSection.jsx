@@ -21,7 +21,7 @@ import ConfigHelperText from '../primitives/ConfigHelperText';
 const AUDIT_LOGGING_HELP = (
   <>
     SlideRelabeler keeps an internal audit history of processing events—similar to browser
-    history. Entries are stored in the app until you clear them; clearing the file table does
+    history. Entries are stored in the app until you clear them; clearing the file list does
     not remove audit history. When a retention limit is set, the oldest entries are removed
     automatically as new ones are recorded. Use <strong>View audit log</strong> to browse,
     filter, and export entries to CSV when you need an external record. Export chooses the

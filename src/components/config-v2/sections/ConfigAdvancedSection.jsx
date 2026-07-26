@@ -47,7 +47,7 @@ export default function ConfigAdvancedSection() {
       <ConfigSectionPanel>
         <ConfigSettingHeader
           title="Macro image (overview)"
-          description="By default the large overview photo inside the slide file is removed because it can show patient details. Turn this on only if that image is safe to keep in saved files."
+          description="By default the macro image (overview photo) inside the slide file is removed because it can show patient details. Turn this on only if that image is safe to keep in saved files."
         />
         <ConfigBooleanRow
           label="Keep the macro image (overview)"

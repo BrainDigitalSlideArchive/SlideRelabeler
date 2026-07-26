@@ -90,3 +90,19 @@ test('formatBackendError falls back when details are generic internal_error', ()
   const msg = formatBackendError(err, 'Error getting metadata');
   assert.match(msg, /could not be processed|metadata could not be read/i);
 });
+
+test('buildUserFacingErrorSummary maps FORMAT NOT AVAILABLE for deid', () => {
+  const cause = 'Exception: {"error": "FORMAT NOT AVAILABLE FOR DEID YET: None"}';
+  const summary = buildUserFacingErrorSummary(cause, 'Metadata preview failed');
+  assert.match(summary, /not supported for de-identification/i);
+  assert.doesNotMatch(summary, /metadata could not be read/i);
+});
+
+test('buildFileRowErrorFromBackend maps FORMAT NOT AVAILABLE from PreviewMetadata', () => {
+  const err = {
+    details: 'internal_error:PreviewMetadata: Exception: {"error": "FORMAT NOT AVAILABLE FOR DEID YET: None"}',
+    message: '13 INTERNAL: internal_error:PreviewMetadata: Exception: {"error": "FORMAT NOT AVAILABLE FOR DEID YET: None"}',
+  };
+  const { summary } = buildFileRowErrorFromBackend(err, 'Metadata preview failed');
+  assert.match(summary, /not supported for de-identification/i);
+});

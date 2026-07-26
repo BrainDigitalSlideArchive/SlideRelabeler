@@ -5,13 +5,14 @@
   display: inline-flex;
   align-items: center;
 
+  // Light icon chrome is the default (config / pickers).
   &__icon {
     width: 1.25em;
     height: 1.25em;
     border-radius: 999px;
-    border: 1px solid $beige;
-    background: transparent;
-    color: $beige;
+    border: 1px solid $darker-blue;
+    background: rgba($darker-blue, 0.12);
+    color: $darker-blue;
     font-size: 0.85em;
     line-height: 1;
     padding: 0;
@@ -20,6 +21,18 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    font-weight: 700;
+
+    &:hover:not(:disabled) {
+      border-color: darken($darker-blue, 6%);
+      color: darken($darker-blue, 6%);
+      background: rgba($darker-blue, 0.2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($darker-blue, 0.45);
+      outline-offset: 2px;
+    }
 
     &:disabled {
       opacity: 0.3;
@@ -27,6 +40,7 @@
     }
   }
 
+  // Floating help popover stays dark for contrast on both surfaces.
   &__popover {
     position: fixed;
     background-color: $black;
@@ -53,22 +67,22 @@
     }
   }
 
-  &--onLight {
+  // Opt-in dark-modal icon chrome.
+  &--onDark {
     .HelpIconPopover__icon {
-      border-color: $darker-blue;
-      color: $darker-blue;
-      background: rgba($darker-blue, 0.12);
-      font-weight: 700;
+      border: 1px solid $beige;
+      background: transparent;
+      color: $beige;
+      font-weight: normal;
 
       &:hover:not(:disabled) {
-        border-color: darken($darker-blue, 6%);
-        color: darken($darker-blue, 6%);
-        background: rgba($darker-blue, 0.2);
+        border-color: $beige;
+        color: $beige;
+        background: transparent;
       }
 
       &:focus-visible {
-        outline: 2px solid rgba($darker-blue, 0.45);
-        outline-offset: 2px;
+        outline: none;
       }
     }
   }

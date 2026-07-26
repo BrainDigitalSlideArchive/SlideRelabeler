@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { GLOBUS_ENDPOINT_UUID_RE } from '../helpers/globus_helpers';
+import { buildGlobusBatchStdin } from '../helpers/globus_upload_batch.js';
 import {
     GLOBUS_LS_FAILURE_KIND,
     formatGlobusLoginError,
@@ -282,6 +283,7 @@ class GlobusAPI {
             env: finalEnv,
             windowsHide: true,
             shell: false,
+            stdio: additionalEnv?.stdin != null ? ['pipe', 'pipe', 'pipe'] : undefined,
         };
 
         const timeoutMs = 30000;
@@ -293,6 +295,15 @@ class GlobusAPI {
             let settled = false;
 
             const child = spawn(this._pathToGlobus, commandArgs, spawnOptions);
+
+            if (additionalEnv?.stdin != null && child.stdin) {
+                try {
+                    child.stdin.write(String(additionalEnv.stdin));
+                    child.stdin.end();
+                } catch (e) {
+                    // ignore write errors; close handler will report failure
+                }
+            }
 
             const timer = setTimeout(() => {
                 if (settled) return;
@@ -1136,6 +1147,27 @@ class GlobusAPI {
         // Format: globus transfer <source> <dest>
         const args = ['transfer', source_path, destination_collection_path];
         return this.executeCommand(args);
+    }
+
+    /**
+     * Submit one Globus transfer task with many path pairs via CLI --batch.
+     * @param {string} sourceEndpointId
+     * @param {string} destEndpointId
+     * @param {{ sourcePath: string, destPath: string }[]} pairs
+     * @returns {Promise<[boolean, object]>}
+     */
+    async submit_transfer_batch(sourceEndpointId, destEndpointId, pairs) {
+        const srcEp = String(sourceEndpointId || '').trim();
+        const destEp = String(destEndpointId || '').trim();
+        if (!srcEp || !destEp) {
+            return [false, { message: 'Source and destination endpoint IDs are required for batch transfer.' }];
+        }
+        if (!Array.isArray(pairs) || pairs.length === 0) {
+            return [false, { message: 'Batch transfer requires at least one path pair.' }];
+        }
+        const stdin = buildGlobusBatchStdin(pairs);
+        const args = ['transfer', srcEp, destEp, '--batch', '-'];
+        return this.executeCommand(args, true, { stdin });
     }
 
     async get_transfer_status(task_id) {

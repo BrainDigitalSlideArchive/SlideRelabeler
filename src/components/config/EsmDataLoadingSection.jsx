@@ -12,7 +12,7 @@ export default function EsmDataLoadingSection({
 }) {
   const dispatch = useDispatch();
   const profiles = useSelector((s) => s.esm?.profiles) || [];
-  const [expandedProfileId, setExpandedProfileId] = useState(() => profiles[0]?.id ?? null);
+  const [expandedProfileId, setExpandedProfileId] = useState(null);
 
   function addProfile() {
     const profile = makeEsmProfile({ name: 'New profile', url: '' });

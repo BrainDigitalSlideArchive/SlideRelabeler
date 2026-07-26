@@ -224,6 +224,9 @@ export function buildUserFacingErrorSummary(cause, context = '', errCode = '') {
   if (lower.includes('no ifds')) {
     return 'This file does not appear to be a valid whole-slide image (missing image data).';
   }
+  if (lower.includes('format not available for deid')) {
+    return 'This file format is not supported for de-identification / metadata preview.';
+  }
   if (context.toLowerCase().includes('metadata')) {
     return 'Metadata could not be read for this file. The file may be unreadable or in an unsupported format.';
   }

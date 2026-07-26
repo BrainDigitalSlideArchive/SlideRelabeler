@@ -498,9 +498,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(preview_actions.SET_METADATA_PREVIEW, (state, action) => {
       return produce(state, draft => {
-        if (!draft.ifds[action.payload.path]) {
-          draft.ifds[action.payload.path] = action.payload.table;
-        }
+        draft.ifds[action.payload.path] = action.payload.table;
       })
     })
     .addCase(files_actions.SET_UPLOADING, (state, action) => {

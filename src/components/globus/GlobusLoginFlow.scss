@@ -86,7 +86,7 @@
   border-radius: 0.35rem;
 }
 
-// Primary CTA inside light config chrome (Modal.scss skips .Button--filled).
+// Primary CTA inside light config chrome (escapes default outlined Button skin).
 .globus-login-flow {
   .Button--filled .__button {
     background: $darker-blue;

@@ -174,8 +174,13 @@ const globus_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(globus_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, (state, action) => {
       return produce(state, draft => {
+        const p = action.payload;
+        if (p && typeof p === 'object' && p.batchId != null) {
+          draft.upload_queue = draft.upload_queue.filter((q) => q?.batchId !== p.batchId);
+          return;
+        }
         for (let idx in draft.upload_queue) {
-          if (draft.upload_queue[idx].row_idx === action.payload) {
+          if (draft.upload_queue[idx].row_idx === p) {
             draft.upload_queue.splice(idx, 1);
             break;
           }
@@ -192,12 +197,14 @@ const globus_reducer = createReducer(default_state, (builder) => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })
     })
-    .addCase(globus_actions.UPLOAD_FILE_COMPLETE, (state) => {
+    .addCase(globus_actions.UPLOAD_FILE_COMPLETE, (state, action) => {
+      if (action.meta?.skipInFlight) return state;
       return produce(state, draft => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })
     })
-    .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state) => {
+    .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state, action) => {
+      if (action.meta?.skipInFlight) return state;
       return produce(state, draft => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })

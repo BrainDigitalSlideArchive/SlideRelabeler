@@ -115,7 +115,7 @@
     align-items: center;
     gap: 0.35rem 0.5rem;
 
-    .InputText.InputText--onLight {
+    .InputText {
       flex: 1 1 8rem;
       min-width: 6rem;
       margin-bottom: 0;
@@ -467,7 +467,7 @@
     row-gap: 0.35rem;
     align-items: center;
 
-    .InputText.InputText--onLight {
+    .InputText {
       display: contents;
       margin-bottom: 0;
 
@@ -489,7 +489,7 @@
     }
   }
 
-  .InputText.InputText--onLight {
+  .InputText {
     flex-direction: column;
     align-items: stretch;
     margin-bottom: 0.25rem;
@@ -619,7 +619,7 @@
         grid-template-columns: 1fr auto;
       }
 
-      .InputText.InputText--onLight {
+      .InputText {
         margin-bottom: 0;
         min-width: 0;
       }
@@ -639,7 +639,7 @@
       gap: 0.35rem;
       margin-top: 0;
 
-      .InputText.InputText--onLight {
+      .InputText {
         flex: 1 1 8rem;
         min-width: 6rem;
         margin-bottom: 0;
@@ -659,7 +659,7 @@
       gap: 0.35rem;
       margin-top: 0.35rem;
 
-      .InputText.InputText--onLight {
+      .InputText {
         margin-bottom: 0;
       }
     }

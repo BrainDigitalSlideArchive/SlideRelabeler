@@ -11,12 +11,11 @@ const SIZE_CLASS = {
 
 /**
  * InputText wrapper with kit size contract (xs|sm|md|fill).
- * Always onLight inside config-v2. Does not use InputText compact (avoids v1 width wars).
+ * Shared InputText defaults to light chrome; does not use InputText compact (avoids v1 width wars).
  */
 export default function ConfigField({
   size = 'md',
   className = '',
-  variant = 'onLight',
   ...rest
 }) {
   const sizeClass = SIZE_CLASS[size] || SIZE_CLASS.md;
@@ -24,7 +23,7 @@ export default function ConfigField({
 
   return (
     <div className={rootClass}>
-      <InputText variant={variant} {...rest} />
+      <InputText {...rest} />
     </div>
   );
 }

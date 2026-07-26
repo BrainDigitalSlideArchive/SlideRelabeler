@@ -2,7 +2,9 @@
 
 Describes **Configuration** controls, actions, section IDs, states, and side effects. Visual presentation is owned by the kit ([config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md)); this doc is the behavioral oracle. Update it when product behavior intentionally changes.
 
-Related: [config-ui-migration.md](./config-ui-migration.md) (cutover complete), [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md).
+**Status:** Kit Configuration (`config-v2/`) is the only Configuration dialog. Do not revive v1 section UIs. User-facing vocabulary for terms in Overview is owned by `OVERVIEW_GLOSSARY` in `ConfigOverviewSection.jsx`.
+
+Related: [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md).
 
 ---
 
@@ -148,17 +150,22 @@ Reserved keys: `filePath`, `outputName`, `labelText`, `qrContent`.
 #### DSA (`config-dsa-upload`)
 | Control | Redux |
 |---------|--------|
+| Status Enabled / Disabled (opt-in; default off; body hidden when disabled) | `SET_DSA_UPLOAD_CONFIG` `{ integrationEnabled }` (`=== true` only) |
 | Default server URL + Check | `SET_DSA_UPLOAD_CONFIG` `{ default_api_url }`; reachability via `electronAPI.dsaCheckServerUrl` |
 | Item name radios + pattern/chips | `dsaAlias`, `rename_item_after_upload` → may `RECOMPUTE_ALL_NAMING` |
-| Attach metadata radios + column chips | `itemMetadata.{mode,column}` |
+| Attach metadata radios + visible helper; Single column = free-text column name + optional chips when file list has columns (configurable with no files loaded) | `itemMetadata.{mode,column}` |
 
 #### Globus (`config-globus-upload`)
 | Control | Redux |
 |---------|--------|
+| Status Enabled / Disabled (opt-in; default off; body hidden when disabled) | `SET_GLOBUS_UPLOAD_CONFIG` `{ integrationEnabled }` (`=== true` only) |
 | Source endpoint + Auto-detect | `SET_GLOBUS_UPLOAD_CONFIG` `{ source_endpoint }` |
 | Default destination Choose/Change/Clear | durable endpoint picker modal |
 | Disable SSL | `disable_ssl_verification` |
 | Max transfers | `SET_MAX_GLOBUS_PARALLEL_UPLOADS` |
+| Upload batch size (empty = whole run then one CLI `--batch` transfer; `1` = per-file ASAP) | `SET_GLOBUS_UPLOAD_CONFIG` `{ max_upload_batch_size }` (`null` \| `≥ 1`, default `1`) |
+
+Delivery panel (main window): Via pills list only configured methods. If neither DSA nor Globus is configured, Upload toggle is checked and disabled; show empty-state copy (“No upload methods are configured…”) + **Open upload settings** → `openConfigSettings(..., 'config-upload')`.
 
 #### Staging (`config-staging-directory`) / Queue (`config-upload-queue`)
 | Control | Redux |
@@ -202,7 +209,7 @@ Reserved keys: `filePath`, `outputName`, `labelText`, `qrContent`.
 Used as segmented radios for: Output name source, Label/QR defaults, DSA item name & metadata, staging mode, Audit enable/retention, eSM integration enable.
 
 ### Pattern + `PlaceholderChips`
-Hosts: Output name, Label text/QR defaults, DSA item name pattern, eSM column mappings. DSA metadata chips select a column (not always `{token}` insert).
+Hosts: Output name, Label text/QR defaults, DSA item name pattern, eSM column mappings. DSA metadata Single column uses a free-text field; optional chips set the column name (not `{token}` insert).
 
 ### Test it out / preview
 `ConfigTestPreview` + `ConfigPreviewRowEditor` on Output name and Slide label (shared `ConfigPreviewSandbox`). Overview illustration is static. DSA URL / Globus detect are status, not naming preview.
@@ -259,7 +266,7 @@ Deleted at cutover: v1 section trees and orphans (`AssembledNameSection`, `Label
 - `filename.{source,pattern}`
 - `label.{add_text,add_qr,add_icon,icon_file,labelText,qrContent,…}`
 - `csv.reservedColumns.*.aliases`
-- `dsa_upload.{default_api_url,rename_item_after_upload,dsaAlias,itemMetadata}`
-- `globus_upload.{source_endpoint,default_target_endpoint_*,disable_ssl_verification}`
+- `dsa_upload.{integrationEnabled,default_api_url,rename_item_after_upload,dsaAlias,itemMetadata}`
+- `globus_upload.{integrationEnabled,source_endpoint,default_target_endpoint_*,disable_ssl_verification,max_upload_batch_size}`
 - `wsi.save_macro_image`, `copy.enable_copy_mode`, `debug.enable_debug`
 - Plus slices: `uploadRouting.*`, `auditLog.settings`, `esm.*`

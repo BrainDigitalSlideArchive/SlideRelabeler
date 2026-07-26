@@ -61,6 +61,7 @@ export const default_state = {
     },
   },
   dsa_upload: {
+    integrationEnabled: false,
     default_api_url: '',
     rename_item_after_upload: false,
     dsaAlias: { mode: 'label_text', pattern: '' },
@@ -73,10 +74,12 @@ export const default_state = {
     },
   },
   globus_upload: {
+    integrationEnabled: false,
     default_target_endpoint_id: '',
     default_target_endpoint_label: '',
     source_endpoint: '',
     disable_ssl_verification: false,
+    max_upload_batch_size: 1,
   },
   debug: {
     enable_debug: false

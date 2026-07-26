@@ -1,8 +1,15 @@
 import { isGlobusEndpointUuid } from '../helpers/globus_helpers.js';
+import {
+  isDsaUploadIntegrationEnabled,
+  isGlobusUploadIntegrationEnabled,
+} from '../helpers/upload_integrations.js';
 
 export const GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE =
   'Globus allows more simultaneous transfers than files allowed waiting to upload. '
   + 'Lower Max transfers at once or raise Max files waiting to upload.';
+
+export const UPLOAD_METHODS_DISABLED_MESSAGE =
+  'Enable DSA and/or Globus under Configuration → Output delivery → Upload.';
 
 /**
  * @param {{ max_globus_parallel_uploads?: unknown, max_local_pending?: unknown }} [ur]
@@ -33,7 +40,38 @@ export function selectUploadReadiness(state) {
     };
   }
 
+  const dsaEnabled = isDsaUploadIntegrationEnabled(state);
+  const globusEnabled = isGlobusUploadIntegrationEnabled(state);
+  if (!dsaEnabled && !globusEnabled) {
+    return {
+      ready: false,
+      destination: ur.destination === 'globus' ? 'globus' : 'dsa',
+      blockers: [UPLOAD_METHODS_DISABLED_MESSAGE],
+      label: 'Auto-upload is on, but no upload methods are enabled.',
+    };
+  }
+
   const dest = ur.destination === 'globus' ? 'globus' : 'dsa';
+  if (dest === 'dsa' && !dsaEnabled) {
+    return {
+      ready: false,
+      destination: 'dsa',
+      blockers: [
+        'DSA upload is disabled. Enable it under Configuration → Output delivery → Upload, or choose another method.',
+      ],
+      label: 'Auto-upload is on for DSA, but DSA is disabled.',
+    };
+  }
+  if (dest === 'globus' && !globusEnabled) {
+    return {
+      ready: false,
+      destination: 'globus',
+      blockers: [
+        'Globus upload is disabled. Enable it under Configuration → Output delivery → Upload, or choose another method.',
+      ],
+      label: 'Auto-upload is on for Globus, but Globus is disabled.',
+    };
+  }
 
   if (dest === 'dsa') {
     const blockers = [];
