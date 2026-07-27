@@ -70,7 +70,7 @@ function buildDeleteCheckedConfirmMessage(activeTab, selectedCount) {
 
 export default function AuditLogViewerModal() {
   const dispatch = useDispatch();
-  const entries = useSelector((state) => state.auditLog?.entries ?? []);
+  const entries = useSelector((state) => state.auditLog.entries);
   const gridRef = useRef(null);
   const [activeTab, setActiveTab] = useState('batches');
   const tabEntries = useMemo(

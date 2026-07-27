@@ -11,6 +11,7 @@ import DataLoadingSection from './sections/DataLoadingSection';
 import SlideLabelSection from './sections/SlideLabelSection';
 import AuditLoggingSection from './sections/AuditLoggingSection';
 import ConfigAdvancedSection from './sections/ConfigAdvancedSection';
+import ConfigProfilesSection from './sections/ConfigProfilesSection';
 
 function renderSection(item) {
   switch (item.id) {
@@ -28,6 +29,8 @@ function renderSection(item) {
       return <AuditLoggingSection />;
     case 'config-advanced':
       return <ConfigAdvancedSection />;
+    case 'config-profiles':
+      return <ConfigProfilesSection />;
     default:
       return null;
   }

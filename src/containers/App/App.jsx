@@ -2,9 +2,6 @@ import React, {useEffect} from 'react';
 import bdsaLogo from "../../assets/BDSA_folder_clear.png";
 import {useSelector, useDispatch} from "react-redux";
 
-import {Provider} from "react-redux";
-import store from '../../store/index';
-
 import * as modal_actions from '../../actions/modal';
 import { selectOutputReadiness, summarizeDestinationDirectories } from '../../selectors/outputReadiness';
 import * as file_actions from "../../actions/files";
@@ -15,7 +12,7 @@ import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import GridHoverTooltip from "../../components/AgGrid/GridHoverTooltip";
 import AddFilesControl from "../../components/AddFilesControl";
 import ApiLoadControl from "../../components/ApiLoadControl";
-import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
+import ProcessingStatus from "../../components/ProcessingStatus/ProcessingStatus";
 import DeliveryPanel from "../../components/DeliveryPanel/DeliveryPanel";
 
 import './App.scss';
@@ -80,16 +77,11 @@ function render_process_files_button(uploadRouting, outputReadiness, disable_cha
   )
 }
 const App = (props) => {
-  // const { } = useSelector(state => state.app.get('app'));
   let output_dir = useSelector(state => state.files.output_dir);
-  let input_dir = useSelector(state => state.files.input_dir);
-  let totalBytes = useSelector(state => state.files.totalBytes);
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
-  let metadata_updating = useSelector(state => state.files.metadata_updating);
   let disable_changes = useSelector(state => state.files.disable_changes);
   let debug_config = useSelector(state => state.config.debug);
-  let csv = useSelector(state => state.files.csv);
   let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
@@ -97,9 +89,7 @@ const App = (props) => {
 
   const dispatch = useDispatch();
   const destSummary = summarizeDestinationDirectories(file_rows);
-  const showOutputDirPanel = csv.needs_output_dir || !csv.headers;
   const controlsDisabled = disable_changes || processing;
-  const showFileHeaderInfo = count > 0 || processing || metadata_updating;
   
   useEffect(() => {
     dispatch({type: file_actions.START_FILES_SAGA});
@@ -172,26 +162,20 @@ const App = (props) => {
                 <i className="fi fi-rr-settings"></i>
               </button>
             </div>
-            {showFileHeaderInfo && (
-              <div className={"__list-controls"}>
-                <div className={"__list-controls-group _bottom-border"}>
-                  <FileHeaderInfo/>
-                </div>
-              </div>
-            )}
-            {showOutputDirPanel && (
-              <div className="__list-controls __list-controls_output-dir">
-                <DeliveryPanel
-                      uploadRouting={uploadRouting}
-                      destSummary={destSummary}
-                      outputDir={output_dir}
-                      disabled={controlsDisabled}
-                      onChooseFolder={() => dispatch({
-                        type: file_actions.CHOOSE_OUTPUT_DIR,
-                      })}
-                    />
-              </div>
-            )}
+            <div className="__list-controls __list-controls_output-dir">
+              <DeliveryPanel
+                    uploadRouting={uploadRouting}
+                    destSummary={destSummary}
+                    outputDir={output_dir}
+                    disabled={controlsDisabled}
+                    onChooseFolder={() => dispatch({
+                      type: file_actions.CHOOSE_OUTPUT_DIR,
+                    })}
+                  />
+            </div>
+            <div className="__list-controls __list-controls_progress">
+              <ProcessingStatus/>
+            </div>
           </div>
         </div>
         <div className='__controls-csv-xlsx'>

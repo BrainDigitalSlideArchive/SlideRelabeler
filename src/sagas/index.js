@@ -20,6 +20,7 @@ import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
 import choose_staging_dir from './uploadRouting/choose_staging_dir';
 import choose_default_local_output_dir from './uploadRouting/choose_default_local_output_dir';
 import sync_default_local_output_dir from './uploadRouting/sync_default_local_output_dir';
+import configProfilesSaga, { load_config_profiles } from './configProfiles';
 
 function* sagas() {
     yield fork(watchSyncLegacyUpload);
@@ -42,6 +43,7 @@ function* sagas() {
     }
 
     yield load_saved_store()
+    yield load_config_profiles()
 
     yield put({type: files_actions.NOT_PROCESSING});
 
@@ -49,6 +51,7 @@ function* sagas() {
     yield fork(watch_save_store);
     yield fork(watch_delete_store);
     yield fork(watch_restore_defaults);
+    yield fork(configProfilesSaga);
 };
 
 export default sagas;

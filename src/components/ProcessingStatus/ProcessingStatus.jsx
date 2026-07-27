@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 
 import { useSelector } from 'react-redux';
 
-import { headerInfo, countPendingUploadFiles } from '../../helpers/fe_helpers';
+import { renderProcessingStatus, countPendingUploadFiles } from '../../helpers/fe_helpers';
 
-import './FileHeaderInfo.scss';
+import './ProcessingStatus.scss';
 
-export default function FileHeaderInfo(props) {
+export default function ProcessingStatus() {
   const totalBytes = useSelector((state) => state.files.totalBytes);
   const file_rows = useSelector((state) => state.files.file_rows);
   const remainingBytes = useSelector((state) => state.files.remainingBytes);
@@ -40,24 +40,29 @@ export default function FileHeaderInfo(props) {
   const nowMs = Date.now();
 
   return (
-    <h3 className={'FileHeaderInfo'}>
-      {headerInfo(
-        file_rows,
-        count,
-        totalBytes,
-        processing,
-        metadata_updating,
-        remainingBytes,
-        transfer_rate,
-        upload_transfer_rate_bytes_per_ms,
-        upload_destination,
-        auto_upload,
-        dsa_upload_queue,
-        globus_upload_queue,
-        session_metrics,
-        nowMs,
-        uploading
-      )}
-    </h3>
+    <section className="processing-status" role="status" aria-live="polite" aria-label="Progress">
+      <div className="processing-status__header">
+        <h2 className="processing-status__title">Progress</h2>
+      </div>
+      <div className="processing-status__body">
+        {renderProcessingStatus(
+          file_rows,
+          count,
+          totalBytes,
+          processing,
+          metadata_updating,
+          remainingBytes,
+          transfer_rate,
+          upload_transfer_rate_bytes_per_ms,
+          upload_destination,
+          auto_upload,
+          dsa_upload_queue,
+          globus_upload_queue,
+          session_metrics,
+          nowMs,
+          uploading
+        )}
+      </div>
+    </section>
   );
 }

@@ -37,10 +37,7 @@ const baseState = {
   files: {
     output_dir: null,
     file_rows: [],
-    csv: {
-      needs_output_dir: true,
-      headers: null,
-    },
+    csv: {},
   },
   uploadRouting: {
     local_output_enabled: false,
@@ -282,10 +279,6 @@ describe('selectOutputReadiness', () => {
       files: {
         ...baseState.files,
         file_rows: [rowWithDest('/out/a'), rowWithDest('/out/b')],
-        csv: {
-          needs_output_dir: false,
-          headers: ['path', 'copyTo'],
-        },
       },
       config: baseConfig,
     });
@@ -304,7 +297,6 @@ describe('selectOutputReadiness', () => {
           { __reserved: { renameSource: 'default', uuid: 'u1', destinationDirectory: '/out' } },
         ],
         file_cols: [],
-        csv: { ...baseState.files.csv, needs_output_dir: false },
       },
       config: {
         filename: { source: 'pattern', pattern: '{blockId}' },

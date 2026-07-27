@@ -10,8 +10,8 @@ import ConfigSettingHeader from '../primitives/ConfigSettingHeader';
 import ConfigBooleanRow from '../primitives/ConfigBooleanRow';
 
 const RESTORE_CONFIRM =
-  'Restore default settings and clear the file list? The app will stay open.';
-const HARD_RESET_CONFIRM =
+  'Restore default settings and clear the file list? The app will stay open. Your saved configuration profiles are kept.';
+const HARD_RESET_CONFIRM_EMPTY =
   'Clear all saved app data and close SlideRelabeler? You will need to open the app again.';
 
 /**
@@ -23,6 +23,9 @@ export default function ConfigAdvancedSection() {
   const processing = useSelector((state) => state.files.processing);
   const disableChanges = useSelector((state) => state.files.disable_changes);
   const disabled = processing || disableChanges;
+  const profileCount = useSelector(
+    (state) => state.configProfiles?.profiles?.length ?? 0,
+  );
 
   const saveMacro = useSelector((state) => !!state.config.wsi?.save_macro_image);
   const copyUnchanged = useSelector((state) => !!state.config.copy?.enable_copy_mode);
@@ -34,7 +37,17 @@ export default function ConfigAdvancedSection() {
   };
 
   const hardReset = () => {
-    if (!window.confirm(HARD_RESET_CONFIRM)) return;
+    const message =
+      profileCount > 0
+        ? `Clear all saved app data and close SlideRelabeler?\n\n` +
+          `This also permanently deletes your saved configuration profiles (${profileCount} profile${
+            profileCount === 1 ? '' : 's'
+          }).\n\n` +
+          `To keep them, click Cancel, open Configuration → Profiles, and use Export selected… ` +
+          `(or export all), then return here.\n\n` +
+          `Continue without exporting?`
+        : HARD_RESET_CONFIRM_EMPTY;
+    if (!window.confirm(message)) return;
     dispatch({ type: app_actions.DELETE_STORE });
   };
 
@@ -80,7 +93,7 @@ export default function ConfigAdvancedSection() {
 
         <ConfigSettingHeader
           title="Reset"
-          description="Restore defaults keeps the app open. Clear all saved data closes SlideRelabeler — open the app again to start fresh."
+          description="Restore defaults resets settings and keeps your profiles. Clear all saved data deletes profiles and closes the app — export profiles first if you need them."
         />
         <div className="cfg-panel-actions">
           <Button

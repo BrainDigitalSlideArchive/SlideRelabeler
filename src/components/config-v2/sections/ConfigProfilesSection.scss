@@ -1,0 +1,89 @@
+@import '../styles/tokens';
+@import '../styles/typography';
+
+.config-v2 {
+  .cfg-profiles__active {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    color: $cfg-ink;
+  }
+
+  .cfg-profiles__empty {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-faint;
+  }
+
+  .cfg-profiles__list {
+    list-style: none;
+    margin: 0 0 $cfg-space-md;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+  }
+
+  .cfg-profiles__row-label {
+    display: flex;
+    align-items: center;
+    gap: $cfg-space-sm;
+    font-size: $cfg-font-row-label;
+    color: $cfg-ink-muted;
+    cursor: pointer;
+  }
+
+  .cfg-profiles__name {
+    display: inline-flex;
+    align-items: center;
+    gap: $cfg-space-sm;
+  }
+
+  .cfg-profiles__badge {
+    font-size: $cfg-font-detail;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: $cfg-accent;
+  }
+
+  .cfg-profiles__name-editor {
+    margin: 0 0 $cfg-space-md;
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+    max-width: 24rem;
+  }
+
+  .cfg-profiles__name-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $cfg-space-sm;
+  }
+
+  .cfg-profiles__name-error {
+    margin: 0;
+    font-size: $cfg-font-warn;
+    color: $cfg-warn;
+  }
+
+  .cfg-profiles__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $cfg-space-sm;
+  }
+
+  .cfg-profiles__share {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $cfg-space-md;
+    margin-top: $cfg-space-sm;
+  }
+
+  .cfg-callout p {
+    margin: 0;
+    font-size: $cfg-font-helper;
+    line-height: 1.45;
+    color: $cfg-ink-muted;
+  }
+}

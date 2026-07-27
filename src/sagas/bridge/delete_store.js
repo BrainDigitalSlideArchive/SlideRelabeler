@@ -1,6 +1,7 @@
-import { take, put, select } from 'redux-saga/effects';
+import { take, put, select, call } from 'redux-saga/effects';
 
 import * as app_actions from '../../actions/app';
+import * as config_profiles_actions from '../../actions/configProfiles';
 import set_store from './set_store';
 import { buildPersistedStore } from '../../helpers/persisted_store';
 import { resetLoadSavedStoreDedup } from './load_saved_store';
@@ -20,6 +21,21 @@ function* watch_restore_defaults() {
     const store = yield select();
     yield set_store(buildPersistedStore(store));
     resetLoadSavedStoreDedup();
+
+    // Keep the profile library; clear active markers only.
+    try {
+      const profiles = yield call(electronAPI.getConfigProfiles);
+      const doc = {
+        schemaVersion: 1,
+        activeProfileId: null,
+        activeFingerprint: null,
+        profiles: Array.isArray(profiles?.profiles) ? profiles.profiles : [],
+      };
+      yield call(electronAPI.setConfigProfiles, doc);
+      yield put({ type: config_profiles_actions.HYDRATE_CONFIG_PROFILES, payload: doc });
+    } catch (err) {
+      console.error('Failed to clear active config profile after restore defaults', err);
+    }
   }
 }
 

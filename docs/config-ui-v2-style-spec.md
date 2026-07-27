@@ -145,6 +145,7 @@ Use this when migrating so structure is predetermined.
 | **Data loading** | ConfigSection → Subsection (file picker) → Subsection CSV (field cards) → **Category** API Integrations → per-integration **location** card (eSlideManager: Status chips → enabled body with profile editors). Deep links: `config-file-picker`, `config-csv-import`, `config-api-integrations` (category), `config-esm-api` (eSM location). Future APIs = additional location cards with their own enable flags. eSM editors under transitional `_esm-host.scss`. |
 | **Slide label** | ConfigSection → FeatureBlock×3 (defaults = ChoiceChips + DetailPanel; icon = Load/Clear) → schematic/rendered preview (host styles) → ConfigTestPreview + shared `ConfigPreviewSandbox`. Deep link: `config-slide-label`. |
 | **Advanced** | ConfigSection → SectionPanel → SettingHeader + BooleanRow ×3 (overview image; unchanged copy; troubleshooting) → SettingHeader + `cfg-panel-actions` (Restore defaults / Hard reset). Deep link: `config-advanced`. |
+| **Profiles** | ConfigSection → Callout → SectionPanel → active strip → SettingHeader + multi-select list + `cfg-panel-actions` (Switch / Save as / Save / Rename / Delete) → SettingHeader + Share text buttons (Export current / Export selected / Import). Deep link: `config-profiles`. |
 
 Deep-link IDs from the reference doc must remain on the corresponding Subsection/Location roots.
 

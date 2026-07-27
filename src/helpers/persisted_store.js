@@ -8,7 +8,7 @@ import { makeEmptySearchFeedback } from './esm_search_feedback';
 export function buildPersistedStore(store) {
   if (!store || typeof store !== 'object') return store;
 
-  return {
+  const out = {
     ...store,
     esm: store.esm ? {
       integrationEnabled: store.esm.integrationEnabled,
@@ -89,4 +89,8 @@ export function buildPersistedStore(store) {
       lastSelectedId: store.apiIntegrations.lastSelectedId,
     } : store.apiIntegrations,
   };
+
+  // Configuration profiles live in a dedicated userData file, not deid.tmp.
+  delete out.configProfiles;
+  return out;
 }

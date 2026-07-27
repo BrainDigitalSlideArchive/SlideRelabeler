@@ -1090,6 +1090,10 @@ ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) =
     dialog_options.filters.push({ name: 'Excel Files', extensions: ['xlsx'] });
   }
 
+  if (file_types.includes('json')) {
+    dialog_options.filters.push({ name: 'JSON Files', extensions: ['json'] });
+  }
+
   return dialog.showSaveDialog(dialog_options).then(d => {
     if (d.canceled) {
       return { error: true, message: 'No file selected' };
@@ -1242,7 +1246,87 @@ ipcMain.handle('delete-store', async () => {
   if (exists) {
     await fs.unlink(app_data_path);
   }
+  const profiles_path = join(user_data_path, 'config-profiles.json');
+  if (existsSync(profiles_path)) {
+    try {
+      await fs.unlink(profiles_path);
+    } catch (err) {
+      console.error('Cannot delete config profiles store', profiles_path, err);
+    }
+  }
   app.exit(0);
+});
+
+const CONFIG_PROFILES_FILENAME = 'config-profiles.json';
+
+function configProfilesPath() {
+  return join(app.getPath('userData'), CONFIG_PROFILES_FILENAME);
+}
+
+function emptyConfigProfilesDoc() {
+  return {
+    schemaVersion: 1,
+    activeProfileId: null,
+    activeFingerprint: null,
+    profiles: [],
+  };
+}
+
+ipcMain.handle('get-config-profiles', async () => {
+  const path = configProfilesPath();
+  if (!existsSync(path)) {
+    return emptyConfigProfilesDoc();
+  }
+  try {
+    const raw = readFileSync(path, { encoding: 'utf8' });
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return emptyConfigProfilesDoc();
+    return {
+      schemaVersion: 1,
+      activeProfileId: parsed.activeProfileId ?? null,
+      activeFingerprint: parsed.activeFingerprint ?? null,
+      profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+    };
+  } catch (err) {
+    console.error('Cannot read config profiles', path, err);
+    return emptyConfigProfilesDoc();
+  }
+});
+
+ipcMain.handle('set-config-profiles', async (event, data) => {
+  const path = configProfilesPath();
+  const doc = {
+    schemaVersion: 1,
+    activeProfileId: data?.activeProfileId ?? null,
+    activeFingerprint: data?.activeFingerprint ?? null,
+    profiles: Array.isArray(data?.profiles) ? data.profiles : [],
+  };
+  writeFileSync(path, JSON.stringify(doc, null, 2), { encoding: 'utf8' });
+  return { ok: true };
+});
+
+ipcMain.handle('open-json-file-dialog', async () => {
+  const customFilter = { name: 'JSON Files', extensions: ['json'] };
+  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then((d) => {
+    if (d.canceled || !d.filePaths?.length) {
+      return { error: true, message: 'No file selected' };
+    }
+    return d.filePaths[0];
+  });
+});
+
+ipcMain.handle('write-text-file', async (event, filePath, contents) => {
+  writeFileSync(filePath, contents, { encoding: 'utf8' });
+  return { ok: true };
+});
+
+ipcMain.handle('read-text-file', async (event, filePath) => {
+  try {
+    const contents = readFileSync(filePath, { encoding: 'utf8' });
+    return { ok: true, contents };
+  } catch (err) {
+    return { error: true, message: err?.message || 'Cannot read file' };
+  }
 });
 
 // open-file-dialog: let the user pick files from the operating system

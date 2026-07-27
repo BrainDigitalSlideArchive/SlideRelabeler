@@ -152,7 +152,7 @@ export function computeUploadBacklogBytes(
   return bytes;
 }
 
-export function headerInfo(
+export function renderProcessingStatus(
   file_rows,
   count,
   totalBytes,
@@ -278,7 +278,7 @@ export function headerInfo(
   }
 
   if (file_rows.length === 0) {
-    return null;
+    return <p>No files selected</p>;
   } else if (count < file_rows.length) {
     return <p>Found info for {count} of {file_rows.length} files; {file_rows.length - count} remaining.</p>
   } else {

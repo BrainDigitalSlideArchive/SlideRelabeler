@@ -1,3 +1,5 @@
+import { createSelector } from '@reduxjs/toolkit';
+
 export const API_INTEGRATIONS = [
   {
     id: 'esm',
@@ -12,17 +14,25 @@ export function getApiIntegrationById(id) {
   return API_INTEGRATIONS.find((integration) => integration.id === id) ?? null;
 }
 
-export function getEnabledApiIntegrations(state) {
-  return API_INTEGRATIONS.filter((integration) => integration.isEnabled(state));
-}
+/** Inputs used by catalog `isEnabled` checks — keep in sync when adding integrations. */
+const selectApiIntegrationEnableFlags = (state) => state.esm?.integrationEnabled;
 
-export function resolveSelectedApiIntegration(state) {
-  const enabled = getEnabledApiIntegrations(state);
-  if (enabled.length === 0) return null;
+export const getEnabledApiIntegrations = createSelector(
+  [selectApiIntegrationEnableFlags],
+  (integrationEnabled) => {
+    const sliceState = { esm: { integrationEnabled } };
+    return API_INTEGRATIONS.filter((integration) => integration.isEnabled(sliceState));
+  },
+);
 
-  const lastSelectedId = state.apiIntegrations?.lastSelectedId;
-  const persisted = enabled.find((integration) => integration.id === lastSelectedId);
-  if (persisted) return persisted;
+export const resolveSelectedApiIntegration = createSelector(
+  [getEnabledApiIntegrations, (state) => state.apiIntegrations?.lastSelectedId],
+  (enabled, lastSelectedId) => {
+    if (enabled.length === 0) return null;
 
-  return enabled[0];
-}
+    const persisted = enabled.find((integration) => integration.id === lastSelectedId);
+    if (persisted) return persisted;
+
+    return enabled[0];
+  },
+);

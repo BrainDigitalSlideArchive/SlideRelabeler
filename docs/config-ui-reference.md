@@ -32,6 +32,7 @@ Related: [config-ui-v2-style-spec.md](./config-ui-v2-style-spec.md).
 | Output delivery | `config-output-delivery` |
 | Audit logging | `config-audit-logging` |
 | Advanced | `config-advanced` |
+| Profiles | `config-profiles` |
 
 ### Deep-link / subsection IDs (not in sticky nav)
 
@@ -198,8 +199,32 @@ Delivery panel (main window): Via pills list only configured methods. If neither
 | Keep the overview image | `TOGGLE_SAVE_MACRO` → `wsi.save_macro_image` |
 | Copy files without changing them | `TOGGLE_ENABLE_COPY_MODE` → `copy.enable_copy_mode` |
 | Show troubleshooting tools | `TOGGLE_ENABLE_DEBUG` → `debug.enable_debug` |
-| Restore defaults | `RESTORE_DEFAULTS` → `RESET_STORE` + rewrite persisted defaults (app stays open) |
-| Hard reset | `DELETE_STORE` → `RESET_STORE` + delete persisted store + exit app |
+| Restore defaults | `RESTORE_DEFAULTS` → `RESET_STORE` + rewrite persisted defaults (app stays open). Profile library kept; active profile cleared. |
+| Hard reset | `DELETE_STORE` → `RESET_STORE` + delete `deid.tmp` **and** `config-profiles.json` + exit. Confirm names profile wipe and nudges Export from Profiles first when library non-empty. |
+
+---
+
+### 2.8 Profiles — `config-profiles`
+
+**Component:** `config-v2/sections/ConfigProfilesSection.jsx`. Not eSM connection profiles (Data loading). All controls honor `processing || disable_changes`.
+
+Live settings continue to auto-save to `deid.tmp`. Profiles are named checkpoints in `{userData}/config-profiles.json`.
+
+| Control | Behavior |
+|---------|----------|
+| Active strip | `Active: “Name”` / `Modified from “Name”` / `No profile selected` (fingerprint vs live snapshot) |
+| Save as… | Prompt name → unique (case-insensitive), max 80 → new profile + set active |
+| Save | Overwrite active profile payload when dirty (name unchanged) |
+| Switch… | Confirm → apply selected profile payload to live settings (not file list) |
+| Rename… | Unique name rules; id unchanged |
+| Delete… | Confirm; clears active if deleted |
+| Export current… | Single portable JSON; prompts for name if not cleanly on an active profile |
+| Export selected… | 1 → single file; 2+ or none selected (all) → bundle |
+| Import… | Single or bundle; collision suffixes `(imported)`; Apply offered for single only |
+
+**Portable kinds:** `slideRelabeler.configProfile` / `slideRelabeler.configProfileBundle` (`schemaVersion: 1`). Snapshots omit passwords, auth tokens, file list, and audit entry history.
+
+**Naming:** Library names unique case-insensitively; import never overwrites by name.
 
 ---
 

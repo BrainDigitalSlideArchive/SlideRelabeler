@@ -11,6 +11,7 @@ import globus from './globus';
 import uploadRouting from './uploadRouting';
 import auditLog from './auditLog';
 import apiIntegrations from './apiIntegrations';
+import configProfiles from './configProfiles';
 
 export const root_reducer = combineReducers({
     files: files,
@@ -25,6 +26,7 @@ export const root_reducer = combineReducers({
     uploadRouting: uploadRouting,
     auditLog: auditLog,
     apiIntegrations: apiIntegrations,
+    configProfiles: configProfiles,
 });
 
 export default root_reducer;

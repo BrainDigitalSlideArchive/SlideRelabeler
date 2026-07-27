@@ -18,7 +18,7 @@ import '../../components/esm/esm_portal.scss';
 function ModalESlideManager() {
   const esmState = useSelector((state) => state.esm);
   const profile = getActiveProfile(esmState);
-  const profiles = useSelector((state) => state.esm?.profiles) || [];
+  const profiles = useSelector((state) => state.esm.profiles);
   const activeProfileId = useSelector((state) => state.esm?.activeProfileId);
   const profileSwitchOpen = useSelector((state) => state.esm?.profileSwitchOpen === true);
   const { requestBase } = getEsmConnectionConfig(esmState);

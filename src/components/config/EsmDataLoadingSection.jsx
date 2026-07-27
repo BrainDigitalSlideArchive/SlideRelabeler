@@ -11,7 +11,7 @@ export default function EsmDataLoadingSection({
   rootId = 'config-esm-api',
 }) {
   const dispatch = useDispatch();
-  const profiles = useSelector((s) => s.esm?.profiles) || [];
+  const profiles = useSelector((s) => s.esm.profiles);
   const [expandedProfileId, setExpandedProfileId] = useState(null);
 
   function addProfile() {

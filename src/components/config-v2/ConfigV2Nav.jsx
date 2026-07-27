@@ -14,6 +14,7 @@ export const CONFIG_NAV_ITEMS = [
   { id: 'config-output-delivery', label: 'Output delivery' },
   { id: 'config-audit-logging', label: 'Audit logging' },
   { id: 'config-advanced', label: 'Advanced' },
+  { id: 'config-profiles', label: 'Profiles' },
 ];
 
 /** @deprecated Use CONFIG_NAV_ITEMS */
