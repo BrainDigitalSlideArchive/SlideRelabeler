@@ -197,7 +197,7 @@ export function setupDestinationDirectoryColumn(file_cols) {
   )
 }
 
-function formatGlobusCompleteDuration(sec) {
+function formatUploadCompleteDuration(sec) {
   if (sec == null || Number.isNaN(Number(sec))) return 'Complete';
   const s = Math.round(Number(sec));
   if (s < 60) return `Complete (${s}s)`;
@@ -206,10 +206,20 @@ function formatGlobusCompleteDuration(sec) {
   return r > 0 ? `Complete (${m}m ${r}s)` : `Complete (${m}m)`;
 }
 
+function isUploadComplete(data) {
+  const r = data?.__reserved;
+  if (!r) return false;
+  if (r.upload_duration_sec != null) return true;
+  return typeof r.upload_progress === 'number' && r.upload_progress === 100;
+}
+
 function render_progress_text(data) {
   try {
-    if (data && data.__reserved && data.__reserved.globus_upload_duration_sec != null) {
-      return formatGlobusCompleteDuration(data.__reserved.globus_upload_duration_sec);
+    if (isUploadComplete(data)) {
+      return formatUploadCompleteDuration(data.__reserved.upload_duration_sec);
+    }
+    if (data && data.__reserved && data.__reserved.upload_queued) {
+      return 'Queued';
     }
     if (data && data.__reserved && data.__reserved.upload_progress_indeterminate) {
       return 'Uploading…';
@@ -229,27 +239,41 @@ function render_progress_text(data) {
   }
 }
 
+/** Composite so AG Grid change detection refreshes when upload fields change (process % may stay 100). */
+function progressColumnValue(data) {
+  const r = data?.__reserved;
+  if (!r) return '';
+  return [
+    `p:${r.progress ?? ''}`,
+    `u:${r.upload_progress ?? ''}`,
+    `i:${r.upload_progress_indeterminate ? 1 : 0}`,
+    `q:${r.upload_queued ? 1 : 0}`,
+    `d:${r.upload_duration_sec ?? ''}`,
+  ].join('|');
+}
+
 export function setupProgressColumn(file_cols) {
-  return addCellRenderer(
+  let cols = addCellRenderer(
     file_cols,
     '__reserved.progress',
     ({ data }) => {
-      const globusDone = data && data.__reserved && data.__reserved.globus_upload_duration_sec != null;
+      const uploadDone = isUploadComplete(data);
+      const queued = data && data.__reserved && data.__reserved.upload_queued && !uploadDone;
       return (
         <div className={'__progress-indicator'}>
           {
-            (data && data.__reserved && data.__reserved.upload_progress_indeterminate && !globusDone) && (
+            (data && data.__reserved && data.__reserved.upload_progress_indeterminate && !uploadDone && !queued) && (
               <div className={'__progress-indicator-upload-fill __progress-indicator-upload-fill--indeterminate'} />
             )
           }
           {
-            (data && data.__reserved && typeof data.__reserved.upload_progress === 'number' && !data.__reserved.upload_progress_indeterminate && !globusDone) && (
+            (data && data.__reserved && typeof data.__reserved.upload_progress === 'number' && !data.__reserved.upload_progress_indeterminate && !uploadDone && !queued) && (
               <div className={'__progress-indicator-upload-fill'} style={data.__reserved.upload_progress && data.__reserved.upload_progress !== 0 ? { width: `${Math.trunc(data.__reserved.upload_progress)}%` } : { width: '0%' }}>
               </div>
             )
           }
           {
-            data && data.__reserved && data.__reserved.progress && data.__reserved.progress !== 0 && typeof data.__reserved.upload_progress !== 'number' && (
+            data && data.__reserved && data.__reserved.progress && data.__reserved.progress !== 0 && typeof data.__reserved.upload_progress !== 'number' && !queued && (
               <div className={'__progress-indicator-process-fill'} style={data.__reserved.progress && data.__reserved.progress !== 0 ? { width: `${Math.trunc(data.__reserved.progress)}%` } : { width: '0%' }}>
               </div>
             )
@@ -260,7 +284,8 @@ export function setupProgressColumn(file_cols) {
         </div>
       )
     }
-  )
+  );
+  return addFieldToColumn(cols, '__reserved.progress', 'valueGetter', (params) => progressColumnValue(params.data));
 }
 
 export function setupRenameCellRenderer(file_cols, config) {

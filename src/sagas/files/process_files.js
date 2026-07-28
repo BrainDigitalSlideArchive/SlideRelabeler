@@ -43,9 +43,11 @@ function countPendingUploads(file_rows, dsa_upload_queue, globus_upload_queue) {
     if (row?.__reserved?.deleted_after === true) continue;
 
     const uploadProgress = row?.__reserved?.upload_progress;
+    const isQueued = row?.__reserved?.upload_queued === true;
     const isInQueue = queuedRowIds.has(String(row_idx));
 
     if (
+      isQueued ||
       uploadProgress === undefined ||
       uploadProgress < 100 ||
       isInQueue

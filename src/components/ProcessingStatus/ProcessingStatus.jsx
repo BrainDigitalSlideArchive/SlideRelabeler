@@ -44,7 +44,13 @@ export default function ProcessingStatus() {
       <div className="processing-status__header">
         <h2 className="processing-status__title">Progress</h2>
       </div>
-      <div className="processing-status__body">
+      <div
+        className={
+          auto_upload
+            ? 'processing-status__body processing-status__body--with-upload'
+            : 'processing-status__body'
+        }
+      >
         {renderProcessingStatus(
           file_rows,
           count,

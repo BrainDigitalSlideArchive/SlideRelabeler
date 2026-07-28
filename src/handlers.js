@@ -205,56 +205,100 @@ ipcMain.handle('debug-append-log-line', async (event, line) => {
   }
 });
 
+/** Girder may return a completed File doc on the last chunk (upload already finalized). */
+function isGirderCompletedFileDoc(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  if (doc._modelType === 'file') return true;
+  return doc.itemId != null && doc.received == null && (doc.sha512 != null || typeof doc.size === 'number');
+}
+
+function emitDsaUploadComplete(window, file_row_idx, fileDoc) {
+  window.webContents.send('dsa-upload-file-complete', {
+    row_idx: file_row_idx,
+    itemId: fileDoc.itemId,
+    fileId: fileDoc._id,
+    fileName: fileDoc.name,
+  });
+}
+
 function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     read(fd, file_buffer, 0, chunk_size, -1, async (err, bytesRead, buffer) => {
       const start_time = new Date();
       if (err) {
         console.error("Error reading file", err);
         reject(false);
+        return;
       }
-      let response = null;
-      let finalize = false;
-      if (bytesRead < chunk_size) {
-        response = await dsa_client.upload_file_chunk(upload_id, buffer.slice(0, bytesRead), data_offset);
-        finalize = true;
-      } else {
-        response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
-      }
-      const end_time = new Date();
-      const time_diff_ms = end_time - start_time;
-      const rate_bytes_per_ms = bytesRead / time_diff_ms;
-
-
-
-      data_offset += bytesRead;
-      if (response && response[0]) {
-        const progress = (response[1].received / file_size) * 100;
-
-        if (finalize) {
-          const complete = await dsa_client.upload_file_complete(upload_id);
-          close(fd);
-          if (complete && complete[0]) {
-            const fileDoc = complete[1];
-            window.webContents.send('dsa-upload-file-complete', {
-              row_idx: file_row_idx,
-              itemId: fileDoc.itemId,
-              fileId: fileDoc._id,
-              fileName: fileDoc.name,
-            });
-            resolve(true);
-          } else {
-            const errMsg = complete?.[1]?.message || 'Upload completion failed';
-            window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
-            reject(false);
-          }
-          return;
+      try {
+        let response = null;
+        let finalize = false;
+        if (bytesRead < chunk_size) {
+          response = await dsa_client.upload_file_chunk(upload_id, buffer.slice(0, bytesRead), data_offset);
+          finalize = true;
+        } else {
+          response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
         }
-        window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
-        resolve(true);
-      } else {
-        window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: response[1].message, row_idx: file_row_idx });
-        close(fd);
+        const end_time = new Date();
+        const time_diff_ms = Math.max(1, end_time - start_time);
+        const rate_bytes_per_ms = bytesRead / time_diff_ms;
+
+        if (response && response[0]) {
+          const doc = response[1];
+
+          // Last chunk often auto-finalizes; calling /completion then fails with "Invalid upload id".
+          if (isGirderCompletedFileDoc(doc)) {
+            close(fd);
+            emitDsaUploadComplete(window, file_row_idx, doc);
+            resolve(true);
+            return;
+          }
+
+          const received = doc?.received;
+          const progress =
+            typeof received === 'number' && file_size > 0 ? (received / file_size) * 100 : 0;
+
+          if (finalize) {
+            const complete = await dsa_client.upload_file_complete(upload_id);
+            close(fd);
+            if (complete && complete[0]) {
+              emitDsaUploadComplete(window, file_row_idx, complete[1]);
+              resolve(true);
+            } else {
+              const errMsg = complete?.[1]?.message || 'Upload completion failed';
+              window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
+              reject(false);
+            }
+            return;
+          }
+          window.webContents.send('dsa-upload-file-progress', {
+            file_path: file_path,
+            progress: progress,
+            row_idx: file_row_idx,
+            rate_bytes_per_ms: rate_bytes_per_ms,
+          });
+          resolve(true);
+        } else {
+          window.webContents.send('dsa-upload-file-error', {
+            file_path: file_path,
+            error: response?.[1]?.message || 'Upload chunk failed',
+            row_idx: file_row_idx,
+          });
+          close(fd);
+          reject(false);
+        }
+      } catch (e) {
+        console.error('Error sending file chunk', e);
+        try {
+          close(fd);
+        } catch {
+          /* ignore */
+        }
+        window.webContents.send('dsa-upload-file-error', {
+          file_path: file_path,
+          error: e?.message || 'Upload chunk failed',
+          row_idx: file_row_idx,
+        });
         reject(false);
       }
     });
@@ -268,13 +312,24 @@ async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
   open(file_path, 'r', async (err, fd) => {
     if (err) {
       console.error("Error opening file", err);
+      window.webContents.send('dsa-upload-file-error', {
+        file_path: file_path,
+        error: err?.message || 'Failed to open file for upload',
+        row_idx: file_row_idx,
+      });
       return;
     }
     const file_buffer = Buffer.alloc(chunk_size);
 
     for (let data_offset = 0; data_offset < file_size; data_offset += chunk_size) {
-      const success = await read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size);
-      if (!success) {
+      try {
+        const success = await read_and_send_file_chunk(
+          window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size,
+        );
+        if (!success) {
+          break;
+        }
+      } catch {
         break;
       }
     }
@@ -284,11 +339,20 @@ async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
 
 ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_path) => {
   let response = await dsa_client.begin_upload_file_to_folder(folder_id, file_path);
+  const window = get_browser_window_by_title('SlideRelabeler');
   if (response[0]) {
-    const window = get_browser_window_by_title('SlideRelabeler');
     if (window) {
       await send_file_chunks(window, response[1]._id, file_row_idx, file_path);
+    } else {
+      console.error('dsa-upload-file: SlideRelabeler window not found');
     }
+  } else if (window && !window.isDestroyed()) {
+    // Unblock DSA saga waiter (join on COMPLETE/ERROR).
+    window.webContents.send('dsa-upload-file-error', {
+      file_path,
+      error: response?.[1]?.message || 'Failed to begin DSA upload',
+      row_idx: file_row_idx,
+    });
   }
   return response;
 });

@@ -89,9 +89,10 @@ export function countPendingUploadFiles(file_rows, dsa_upload_queue, globus_uplo
     if (row.__reserved.deleted_after === true) continue;
 
     const uploadProgress = row?.__reserved?.upload_progress;
+    const isQueued = row?.__reserved?.upload_queued === true;
     const isInQueue = queuedRowIds.has(String(row_idx));
 
-    if (uploadProgress === undefined || uploadProgress < 100 || isInQueue) {
+    if (isQueued || uploadProgress === undefined || uploadProgress < 100 || isInQueue) {
       n++;
     }
   }
@@ -152,6 +153,32 @@ export function computeUploadBacklogBytes(
   return bytes;
 }
 
+/**
+ * Bytes uploaded so far for Progress display: completed rows (full size) plus
+ * determinate in-progress fraction. Skips queued and indeterminate (e.g. Globus)
+ * rows so Globus stays at finalized totals until Complete.
+ */
+export function computeLiveUploadedBytes(file_rows) {
+  if (!Array.isArray(file_rows)) return 0;
+  let bytes = 0;
+  for (let i = 0; i < file_rows.length; i++) {
+    const r = file_rows[i]?.__reserved;
+    if (!r) continue;
+    const sz = typeof r.bytes === 'number' ? r.bytes : 0;
+    if (!(sz > 0)) continue;
+    if (r.upload_queued) continue;
+    if (r.upload_progress_indeterminate) continue;
+    const p = r.upload_progress;
+    if (typeof p !== 'number' || Number.isNaN(p)) continue;
+    if (p >= 100 || r.upload_duration_sec != null) {
+      bytes += sz;
+    } else if (p > 0) {
+      bytes += sz * (p / 100);
+    }
+  }
+  return bytes;
+}
+
 export function renderProcessingStatus(
   file_rows,
   count,
@@ -169,21 +196,18 @@ export function renderProcessingStatus(
   nowMs,
   uploading
 ) {
-  const isGlobusDestination = upload_destination === 'globus';
-  const isDsaDestination = upload_destination === 'dsa';
+  // upload_destination kept for call-site compatibility; layout gates on auto_upload only.
+  void upload_destination;
+
   const pendingUploadFiles = countPendingUploadFiles(file_rows, dsa_upload_queue, globus_upload_queue);
-  const estimateFullListUpload =
-    auto_upload && (isGlobusDestination || isDsaDestination);
   const uploadBacklogBytes = computeUploadBacklogBytes(
     file_rows,
     dsa_upload_queue,
     globus_upload_queue,
-    estimateFullListUpload
+    !!auto_upload
   );
-  const showUploadStatsRow =
-    auto_upload &&
-    (isGlobusDestination || isDsaDestination) &&
-    (processing || pendingUploadFiles > 0);
+  // Reserve upload chrome whenever uploads are enabled so layout does not jump at start.
+  const showUploadStatsRow = !!auto_upload;
 
   let bytes_being_copied = 0;
 
@@ -246,15 +270,47 @@ export function renderProcessingStatus(
   const hasUploadSession =
     upload_bytes > 0 || upload_ms_closed > 0 || upload_wall_start_ms != null;
   const uploadModeActive = !!uploading || pendingUploadFiles > 0;
+  const filesReady = file_rows.length > 0 && count >= file_rows.length;
+  // Live DSA (determinate) progress; finalized session counter alone stays 0 until each file completes.
+  const liveUploadedBytes = uploadModeActive
+    ? computeLiveUploadedBytes(file_rows)
+    : upload_bytes;
 
   let sessionLine = null;
-  if (file_rows.length > 0 && count >= file_rows.length) {
-    if (uploadModeActive) {
-      sessionLine = (
-        <p>
-          Upload session: {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
-        </p>
-      );
+  if (filesReady) {
+    if (auto_upload) {
+      if (uploadModeActive) {
+        sessionLine = (
+          <p>
+            Upload session: {displayBytes(liveUploadedBytes)} in {formatDuration(uploadDisplayMs)}
+          </p>
+        );
+      } else if (!processing && hasCopySession && hasUploadSession) {
+        sessionLine = (
+          <p>
+            Session totals: copied {displayBytes(copy_bytes)} in {formatDuration(copyDisplayMs)}; uploaded{' '}
+            {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
+          </p>
+        );
+      } else if (processing || hasCopySession) {
+        sessionLine = (
+          <p>
+            Copy session: {displayBytes(copy_bytes)} in {formatDuration(copyDisplayMs)}
+          </p>
+        );
+      } else if (hasUploadSession) {
+        sessionLine = (
+          <p>
+            Upload session: {displayBytes(upload_bytes)} in {formatDuration(uploadDisplayMs)}
+          </p>
+        );
+      } else {
+        sessionLine = (
+          <p>
+            Upload session: not started
+          </p>
+        );
+      }
     } else if (!processing && hasCopySession && hasUploadSession) {
       sessionLine = (
         <p>
@@ -277,6 +333,19 @@ export function renderProcessingStatus(
     }
   }
 
+  const uploadRateLabel =
+    upload_transfer_rate_bytes_per_ms != null && upload_transfer_rate_bytes_per_ms > 0
+      ? displayUploadRate(upload_transfer_rate_bytes_per_ms)
+      : (processing || uploadModeActive || hasUploadSession)
+        ? '—'
+        : 'not started';
+  const uploadEtaLabel =
+    upload_timeDisplay.length > 0
+      ? upload_timeDisplay
+      : (processing || uploadModeActive || hasUploadSession)
+        ? '—'
+        : 'not started';
+
   if (file_rows.length === 0) {
     return <p>No files selected</p>;
   } else if (count < file_rows.length) {
@@ -295,13 +364,9 @@ export function renderProcessingStatus(
     {
       showUploadStatsRow && (
       <p>
-        Upload rate:{' '}
-        {upload_transfer_rate_bytes_per_ms != null && upload_transfer_rate_bytes_per_ms > 0
-          ? displayUploadRate(upload_transfer_rate_bytes_per_ms)
-          : '—'}{' '}
-        &nbsp;
-        Estimated upload time remaining:{' '}
-        {upload_timeDisplay.length > 0 ? upload_timeDisplay : '—'}
+        Upload rate: {uploadRateLabel}
+        {' '}&nbsp;
+        Estimated upload time remaining: {uploadEtaLabel}
       </p>
       )
     }

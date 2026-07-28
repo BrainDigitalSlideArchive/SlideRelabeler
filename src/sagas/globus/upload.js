@@ -3,6 +3,8 @@ import { select, take, put, fork, call, join, cancel, delay } from 'redux-saga/e
 import * as globus_actions from '../../actions/globus';
 import * as files_actions from '../../actions/files';
 import { isGlobusEndpointUuid } from '../../helpers/globus_helpers';
+import { isGlobusUploadRoutingActive } from '../../helpers/upload_activity.js';
+import { syncDerivedUploading } from '../upload_activity.js';
 
 const electronAPI = typeof window !== 'undefined' ? window.electronAPI : null;
 
@@ -92,22 +94,20 @@ function* finalizeGlobusRowAfterBatch(row_idx) {
     }
 }
 
-function* syncGlobusDerivedUploading() {
-    const qLen = yield select(state => state.globus.upload_queue.length);
-    const inFlight = yield select(state => state.globus.upload_in_flight);
-    const cur = yield select(state => state.files.uploading);
-    const want = qLen > 0 || inFlight > 0;
-    if (Boolean(cur) !== want) {
-        yield put({ type: files_actions.SET_UPLOADING, payload: want });
-    }
-}
-
 /**
  * Bounded parallel Globus queue: dequeue on start, fork uploads while upload_in_flight < max.
  * Main must keep using event.sender per globus-upload-file invoke so concurrent polls target the right renderer.
  */
 function* upload_queue() {
     while (true) {
+        const uploadRouting = yield select((state) => state.uploadRouting);
+        if (!isGlobusUploadRoutingActive(uploadRouting)) {
+            // Still sync so leftover in_flight keeps files.uploading correct during DSA runs.
+            yield call(syncDerivedUploading);
+            yield delay(1000);
+            continue;
+        }
+
         if (electronAPI?.ensureGlobusUploadIpcSubscribed) {
             if (window.redux_store?.dispatch) {
                 yield call(electronAPI.ensureGlobusUploadIpcSubscribed, window.redux_store.dispatch);
@@ -123,7 +123,7 @@ function* upload_queue() {
         let inFlight = yield select((state) => state.globus.upload_in_flight);
         let maxConcurrent = yield select(selectMaxGlobusParallelUploads);
         while (queue.length > 0 && inFlight < maxConcurrent) {
-            yield call(syncGlobusDerivedUploading);
+            yield call(syncDerivedUploading);
             const upload_payload = queue[0];
             if (upload_payload?.kind === 'batch') {
                 yield put({
@@ -141,7 +141,7 @@ function* upload_queue() {
             inFlight = yield select((state) => state.globus.upload_in_flight);
             maxConcurrent = yield select(selectMaxGlobusParallelUploads);
         }
-        yield call(syncGlobusDerivedUploading);
+        yield call(syncDerivedUploading);
         yield delay(1000);
     }
 }
@@ -240,6 +240,10 @@ function* upload_file(payload) {
 
     if (api?.globusUploadFileWithSize) {
         const watchTask = yield fork(watch_complete_upload, row_idx);
+        yield put({
+            type: files_actions.UPLOAD_FILE_STARTED,
+            payload: { row_idx, indeterminate: true },
+        });
         const upload_response = yield call(
             api.globusUploadFileWithSize,
             source_path,
@@ -264,6 +268,10 @@ function* upload_file(payload) {
     }
 
     const watchTask = yield fork(watch_complete_upload, row_idx);
+    yield put({
+        type: files_actions.UPLOAD_FILE_STARTED,
+        payload: { row_idx, indeterminate: true },
+    });
     const upload_response = yield call(api.globusUploadFile, source_path, dest_path, file_path, row_idx);
     if (!upload_response || !upload_response[0]) {
         yield cancel(watchTask);
@@ -366,6 +374,13 @@ function* upload_batch(payload) {
     if (!destEndpointId) {
         yield* failAll('Globus destination endpoint is not set.');
         return;
+    }
+
+    for (const item of items) {
+        yield put({
+            type: files_actions.UPLOAD_FILE_STARTED,
+            payload: { row_idx: item.row_idx, indeterminate: true },
+        });
     }
 
     const upload_response = yield call(api.globusUploadBatch, {
