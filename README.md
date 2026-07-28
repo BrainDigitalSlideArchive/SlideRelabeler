@@ -21,45 +21,47 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
 2. Create the conda env:
    - macOS: `conda env create -f environment-macos.yml`
    - Windows: `conda env create -f environment-windows.yml`
+   - Linux: `conda env create -f environment-linux.yml`
 3. Activate: `conda activate sliderelabeler`
 4. Install JS deps: `npm install`
-5. Launch: `npm run dev`
+5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`.
+6. **Package:** when you want a distributable, run `npm run package` (app only) or `npm run make` (installer / zip / deb / rpm). These use the same conda wrapper so `pyinstaller` comes from the env. Output is under `out/`.
 
-`npm run dev` resolves the `sliderelabeler` env, sets `PYTHON` / `CONDA_PREFIX`, and puts that env’s `bin` first on `PATH` (avoids pyenv / Homebrew shims). Use bare `npm start` only if your shell already points `python` at the correct interpreter.
-
-If the Python backend fails to start:
-
-```bash
-conda run -n sliderelabeler python -c "import grpc; import large_image"
-```
-
-### macOS Apple Silicon
-
-On arm64, `large_image_source_tiff.tiff_reader` clears/extends pylibtiff’s `TIFFGetField.argtypes` in ways that break the Mac variadic ABI (SIGBUS/SIGSEGV when opening Aperio `.svs` via `TiffFileTileSource`). The engine auto-installs a compatibility guard (`src/python/libtiff_guard.py`) at startup. Plain `npm run dev` is enough for Aperio slides. To force the guard on or off: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or `./scripts/dev-patch-libtiff.sh` (force on).
-
-> Note: on some Apple Silicon setups, `pip install large-image[common]` failed because `rawpy` was missing on PyPI for that architecture. Cloning/installing `rawpy` after `brew install cmake` unblocked `large-image` — see [rawpy#171](https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513).
-
-## Building a distributable
-
-- **`npm run package`** / **`npm run make`** — conda-wrapped Electron Forge. Prefer these so `pyinstaller` comes from the env, not a system shim. Output is under `out/`.
-- Do not run bare `electron-forge package` / `make` unless the env is activated and `which pyinstaller` points at conda.
-- **`npm run startpib`** — rebuild the PyInstaller engine and start Electron using that binary (good for packaging smoke tests).
-- **`npm run startpi`** — start with an already-built PyInstaller engine (skips rebuild).
-
-More detail: [build_readme/macosx/README.md](build_readme/macosx/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
+Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
 
 ## Documentation
 
 | Doc | Contents |
 |-----|----------|
 | [docs/index.html](docs/index.html) | Project homepage (GitHub Pages) |
-| [docs/config-ui-reference.md](docs/config-ui-reference.md) | Settings UI behavior (sections, actions, side effects) |
-| [docs/config-ui-v2-style-spec.md](docs/config-ui-v2-style-spec.md) | Configuration visual kit / tokens |
-| [src/components/config-v2/README.md](src/components/config-v2/README.md) | Short pointer for the Settings kit |
+| [src/components/config-v2/README.md](src/components/config-v2/README.md) | Settings (Configuration) UI kit |
 
-## `debug/mac-arm64-pylibtiff-sigbus/`
+## Troubleshooting
 
-Standalone Python repro kit for the Apple Silicon **pylibtiff / `large_image` ctypes crash**. Root cause: `large_image_source_tiff.tiff_reader.patchLibtiff()` clears [pylibtiff #189](https://github.com/pearu/pylibtiff/pull/189) `TIFFGetField.argtypes`, then related call sites re-extend them incorrectly for variadic args → **SIGBUS/SIGSEGV** on normal Aperio `.svs` via `TiffFileTileSource`. Scripts run outside Electron/gRPC for layer-by-layer isolation; share [`UPSTREAM_BRIEF.md`](debug/mac-arm64-pylibtiff-sigbus/UPSTREAM_BRIEF.md) with maintainers. App mitigation: `src/python/libtiff_guard.py`. Details: [debug/mac-arm64-pylibtiff-sigbus/README.md](debug/mac-arm64-pylibtiff-sigbus/README.md).
+### Python backend won’t start
+
+`npm run dev` / `package` / `make` refuse to launch if the `sliderelabeler` env can’t import required packages. Confirm outside npm:
+
+```bash
+conda run -n sliderelabeler python -c "import grpc; import large_image"
+```
+
+Failure means that env is incomplete or broken (not an npm issue). Recreate or update from `environment-macos.yml` / `environment-windows.yml` / `environment-linux.yml`. On some Apple Silicon machines, installing `large-image` failed because `rawpy` lacked a wheel — cloning/installing `rawpy` after `brew install cmake` unblocked it ([rawpy#171](https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513)).
+
+Do not run bare `electron-forge package` / `make` unless the env is activated and `which pyinstaller` points at conda.
+
+### PyInstaller packaging of the Python engine
+
+Freezing Python with PyInstaller is often a sticking point in Electron+Python apps. To verify the standalone engine without a full installer build (conda-wrapped):
+
+- `npm run startpib` — rebuild the engine with PyInstaller, then launch the app using it
+- `npm run startpi` — launch using an engine you already built (skips rebuild)
+
+### Apple Silicon (libtiff / large_image)
+
+On arm64, the engine **auto-installs** a compatibility guard (`src/python/libtiff_guard.py`) so Aperio `.svs` opens don’t SIGBUS via `TiffFileTileSource`. You normally don’t need to set anything. Overrides: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or `./scripts/dev-patch-libtiff.sh` (force on).
+
+Repro kit and upstream brief: [debug/mac-arm64-pylibtiff-sigbus/](debug/mac-arm64-pylibtiff-sigbus/) ([README](debug/mac-arm64-pylibtiff-sigbus/README.md), [UPSTREAM_BRIEF.md](debug/mac-arm64-pylibtiff-sigbus/UPSTREAM_BRIEF.md)).
 
 ## Useful links
 

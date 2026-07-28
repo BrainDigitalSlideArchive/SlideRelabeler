@@ -2,7 +2,8 @@
 #
 #   macOS (Intel or Apple Silicon):  conda env create -f environment-macos.yml
 #   Windows:                         conda env create -f environment-windows.yml
+#   Linux:                           conda env create -f environment-linux.yml
 #
 # The build scripts (build_macos.sh, build_windows.ps1) select the correct file
 # automatically. Do not add Windows-only packages (vc, vc14_runtime, vs2015_runtime)
-# to environment-macos.yml.
+# to environment-macos.yml or environment-linux.yml.

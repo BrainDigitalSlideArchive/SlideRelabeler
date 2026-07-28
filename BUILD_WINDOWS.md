@@ -842,6 +842,8 @@ For development workflows, see the main [README.md](README.md) for information a
 ## Additional Resources
 
 - **Main README:** [README.md](README.md)
+- **macOS build:** [build_readme/macosx/README.md](build_readme/macosx/README.md)
+- **Linux build:** [build_readme/linux/README.md](build_readme/linux/README.md)
 - **Electron Forge Docs:** https://www.electronforge.io/
 - **PyInstaller Docs:** https://pyinstaller.org/
 - **Conda Docs:** https://docs.conda.io/

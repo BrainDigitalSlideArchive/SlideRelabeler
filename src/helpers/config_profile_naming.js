@@ -1,6 +1,5 @@
 /**
  * Naming rules for configuration profiles (library + portable files).
- * @see docs/config-ui-reference.md § Profiles
  */
 
 export const PROFILE_NAME_MAX_LEN = 80;

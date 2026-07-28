@@ -1,4 +1,4 @@
-// Semantic aliases for config-v2. See docs/config-ui-v2-style-spec.md §2.
+// Semantic aliases for config-v2.
 @use '../../../styles/colors' as *;
 @forward '../../../styles/colors';
 
@@ -14,9 +14,8 @@ $cfg-ok: #2d8a54;
 $cfg-callout-bg: $config-callout-bg;
 $cfg-callout-border: $config-callout-border;
 
-// Spacing scale: one shared ladder for all v2 sections (see docs/config-ui-v2-style-spec.md §2).
-// Values are provisional starting points chosen for harmonization — not sacred v1 archaeology.
-// Amend the style spec before changing; do not add section-local spacing forks.
+// Spacing scale: one shared ladder for all v2 sections.
+// Do not add section-local spacing forks.
 $cfg-space-xs: 0.25rem;
 $cfg-space-sm: 0.35rem;
 $cfg-space-md: 0.5rem;

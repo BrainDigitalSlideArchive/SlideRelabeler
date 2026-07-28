@@ -7,10 +7,10 @@ const { execSync } = require('child_process');
 
 let extraResource = [];
 
-if(os.platform() === 'darwin') {
+// PyInstaller COLLECT names: engine.app / globus_cli.app on darwin; engine / globus_cli elsewhere.
+if (os.platform() === 'darwin') {
   extraResource = ['./dist/engine.app', './dist/globus_cli.app'];
-}
-else {
+} else {
   extraResource = ['./dist/engine', './dist/globus_cli'];
 }
 
@@ -101,14 +101,16 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb',
+      platforms: ['linux'],
       config: {
         options: {
-          icon: '/src/assets/BDSA-icon.png'
-        }
-      }
+          icon: path.resolve(__dirname, 'src/assets/BDSA-icon.png'),
+        },
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
+      platforms: ['linux'],
       config: {},
     },
   ],
