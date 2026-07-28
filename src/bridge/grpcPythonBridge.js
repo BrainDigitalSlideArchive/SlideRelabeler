@@ -129,10 +129,15 @@ function resolveEngineLaunch(opts = {}) {
     return { command: pythonExe, args: [scriptPath] };
   }
 
+  // macOS PyInstaller COLLECT names the folder "engine.app" but it is not a
+  // real .app bundle — binary lives at engine.app/engine (see forge extraResource).
   const binaryPath = firstExistingPath([
     join(process.cwd(), "dist", "engine", engineBinary),
+    join(process.cwd(), "dist", "engine.app", engineBinary),
     join(process.resourcesPath || "", engineBinary),
     join(process.resourcesPath || "", "engine", engineBinary),
+    join(process.resourcesPath || "", "engine.app", engineBinary),
+    join(process.resourcesPath || "", "engine.app", "Contents", "MacOS", engineBinary),
     join(process.resourcesPath || "", "engine", "engine.exe"), // windows explicit
     join(process.resourcesPath || "", "engine", "engine"), // non-windows explicit
     join(process.resourcesPath || "", "engine.exe", "engine"), // legacy packaging layout

@@ -18,7 +18,7 @@ incorporates modified code from https://github.com/DigitalSlideArchive/DSA-WSI-D
 5) Install npm dependencies: `npm install`;
 6) Launch the dev app: `npm run dev`;
 
-`npm run dev` resolves the `sliderelabeler` conda environment and sets `PYTHON` to that env’s interpreter directly (bypassing pyenv or other shims on PATH). Use `npm start` only if your shell already points `python` at the correct interpreter.
+`npm run dev` resolves the `sliderelabeler` conda environment, sets `PYTHON` / `CONDA_PREFIX`, and puts that env’s `bin` first on `PATH` (bypassing pyenv or other shims). Use `npm start` only if your shell already points `python` at the correct interpreter.
 
 On **macOS Apple Silicon**, the Python engine auto-enables a `libtiff` / `tiff_reader` compatibility guard at startup (ARM64 variadic ctypes fix; see `debug/mac-metadata-sigbus/README.md`). Plain `npm run dev` is sufficient for processing Aperio slides. To force the guard on or off explicitly: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or use `./scripts/dev-patch-libtiff.sh` (force on). The old `dev-mac-metadata.sh` name is deprecated and forwards to `dev-patch-libtiff.sh`.
 
@@ -38,7 +38,7 @@ with a flag to use this python app rather than the system python. This is useful
 
 Running `npm run startpi` (start **P**y**I**installer) will use a pre-built `pyinstaller` executable, but won't build it to save startup time. You can use this if you haven't changed your python code since the last build.
 
-To build a stand-alone electron application, run `npm run make`. This will run `pyinstaller` followed by `electron-forge` to create the application. The app can be found in the `out/` directory.
+To build a stand-alone electron application, run `npm run make` (or `npm run package` for package-only). These scripts wrap `electron-forge` with the `sliderelabeler` conda env so `pyinstaller` comes from that env, not a system/Homebrew shim. Do not run bare `electron-forge package` / `make` unless the env is activated and `which pyinstaller` points at the conda env. The app can be found in the `out/` directory.
 
 
 Initial templating was done by:
