@@ -11,9 +11,9 @@ The project is modeled on https://github.com/pearcetm/svs-deidentifier and incor
 | **Electron main** (`src/main.js`, `src/handlers.js`) | Windows, dialogs, IPC, persistence; launches the Python engine |
 | **Renderer** (React / Redux / Redux-Saga) | Main UI: file list, Settings (`config-v2`), delivery, Help; Viewer window uses OpenSeadragon |
 | **Python engine** (`src/python/`, gRPC bridge) | WSI metadata/label work via DeidTools / large_image; packaged with PyInstaller for distributables |
-| **Integrations** | Local save; optional upload to Digital Slide Archive (Girder) and Globus |
+| **Integrations** | Local save; optional DSA / Globus upload; optional eSlide Manager input (see [Integrations](#integrations)) |
 
-Development runs the engine as a live Python process from the `sliderelabeler` conda env. Packaged builds ship a PyInstaller `engine` binary as an Electron extra resource.
+Development runs the engine as a live Python process from the `sliderelabeler` conda env. Packaged builds ship the Python engine (and Globus tools — see below) inside the app.
 
 ## Getting started
 
@@ -28,6 +28,42 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
 6. **Package:** when you want a distributable, run `npm run package` (app only) or `npm run make` (installer / zip / deb / rpm). These use the same conda wrapper so `pyinstaller` comes from the env. Output is under `out/`.
 
 Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
+
+## Integrations
+
+SlideRelabeler can save de-identified files locally and optionally talk to a few external systems. Turn each one on in **Configuration** when you need it.
+
+### Upload / output
+
+| Integration | What it does | What you need |
+|-------------|--------------|---------------|
+| **Digital Slide Archive (DSA)** | Upload finished slides to a DSA / Girder server | Server URL, username, and password |
+| **Globus** | Transfer finished slides to a Globus collection | Globus account login, a destination collection, and this computer set up as a Globus endpoint (see below) |
+
+### Input / data loading
+
+| Integration | What it does | What you need |
+|-------------|--------------|---------------|
+| **eSlide Manager** | Pull slide / case data from an eSlide Manager API | API endpoint URL and credentials |
+
+DSA and eSlide Manager are straightforward: point at a server and sign in. Globus is a bit different because transfers go through Globus’s own tools and network.
+
+### Globus specifics
+
+**If you want to use Globus to transfer files, your computer must be a Globus endpoint.** Install and run [Globus Connect Personal](https://docs.globus.org/globus-connect-personal/) on the machine that runs SlideRelabeler so files can be read from here during upload. In the app, set that local endpoint ID under Configuration → Output delivery (Auto-detect will try to find it). Platform install guides: [Mac](https://docs.globus.org/globus-connect-personal/install/mac/), [Windows](https://docs.globus.org/globus-connect-personal/install/windows/), [Linux](https://docs.globus.org/globus-connect-personal/install/linux/).
+
+**The packaged installers include the Globus CLI tools - end users *do not* need to install them.** People who download a packaged SlideRelabeler build don't need to install the Globus CLI themselves — it is bundled into the app when you run `npm run package` / `npm run make`.
+
+**Developers and people building installers DO need the Globus CLI available in the conda env.** The build does not download it automatically. Install it into the `sliderelabeler` environment before packaging (and to use Globus features during `npm run dev`).
+
+For example:
+
+```bash
+conda activate sliderelabeler
+pip install globus-cli
+```
+
+See the [Globus CLI installation guide](https://docs.globus.org/cli/) for details. Confirm with `globus --version` (or `python -c "import globus_cli"`).
 
 ## Documentation
 
