@@ -19,7 +19,7 @@
     min-width: 0;
     background-color: $darker-blue;
     color: $beige;
-    padding: 0.55rem 0.75rem;
+    padding: 0.35rem 0.65rem;
     box-shadow: 0 1px 2px rgba($black, 0.12);
   }
 
@@ -27,6 +27,8 @@
     flex: 1;
     min-width: 0;
     margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
     line-height: 1.3;
     color: $beige;
   }
@@ -58,7 +60,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem 0.35rem;
+    padding: 0.35rem 0.65rem 0.3rem;
     border-bottom: 1px solid rgba($border-surface, 0.65);
   }
 
@@ -94,9 +96,9 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
     min-height: 0;
-    padding: 0.5rem 0.75rem 0.65rem;
+    padding: 0.4rem 0.65rem 0.5rem;
 
     &._disabled {
       justify-content: flex-start;

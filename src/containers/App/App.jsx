@@ -145,21 +145,27 @@ const App = (props) => {
                   </button>
                 )
               }
-              <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}>
-                <i
-                  className=
-                    "fi fi-rr-interrogation"
-                ></i>
+              <button
+                type="button"
+                className="__button __button--segmented __button--utility"
+                aria-label="Help"
+                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}
+              >
+                <span className="__button__label">Help</span>
+                <span className="__button__icon" aria-hidden="true">
+                  <i className="fi fi-rr-interrogation" />
+                </span>
               </button>
               <button
-                className={"__button-icon"}
                 type="button"
-                aria-label="Configuration"
-                title="Configuration"
+                className="__button __button--segmented __button--utility"
+                aria-label="Settings"
                 onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'config'}})}
               >
-                <i className="fi fi-rr-settings"></i>
+                <span className="__button__label">Settings</span>
+                <span className="__button__icon" aria-hidden="true">
+                  <i className="fi fi-rr-settings" />
+                </span>
               </button>
             </div>
             <div className="__list-controls __list-controls_output-dir">

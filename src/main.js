@@ -140,6 +140,8 @@ app.on("ready", async () => {
     title: "SlideRelabeler",
     width: 1200,
     height: 900,
+    minWidth: 960,
+    minHeight: 600,
     ...options,
   });
 
@@ -287,6 +289,8 @@ app.on("activate", () => {
       title: "SlideRelabeler",
       width: 1200,
       height: 900,
+      minWidth: 960,
+      minHeight: 600,
       ...options,
     });
 
