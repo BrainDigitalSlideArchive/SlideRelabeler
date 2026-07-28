@@ -1,6 +1,7 @@
 import { delay, call, put, takeEvery, takeLatest, fork } from 'redux-saga/effects';
 
 import load_saved_store from './bridge/load_saved_store';
+import { ensureDisclaimerPrompt } from '../helpers/ensure_disclaimer_prompt.js';
 
 import * as files_actions from '../actions/files';
 
@@ -43,6 +44,7 @@ function* sagas() {
     }
 
     yield load_saved_store()
+    yield* ensureDisclaimerPrompt()
     yield load_config_profiles()
 
     yield put({type: files_actions.NOT_PROCESSING});

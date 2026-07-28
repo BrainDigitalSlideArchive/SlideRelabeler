@@ -18,7 +18,6 @@ import * as auditLog_actions from '../../actions/auditLog';
 import * as api_integrations_actions from '../../actions/apiIntegrations';
 import { syncDsaUrlsAfterLoad } from '../dsa/sync_default_url.js';
 import { syncGlobusUploadAfterLoad } from '../globus/sync_upload_config.js';
-import { ensureDisclaimerPrompt } from '../../helpers/ensure_disclaimer_prompt.js';
 
 let lastPersistedSnapshotJson = null;
 
@@ -30,7 +29,6 @@ function* load_saved_store() {
   const store = yield get_store();
   if (!store) {
     logViewerDebug('loadSavedStoreEmpty', { reason: 'get_store_returned_null' });
-    yield* ensureDisclaimerPrompt();
     return;
   }
 
@@ -45,7 +43,6 @@ function* load_saved_store() {
       localRows,
       diskRows,
     });
-    yield* ensureDisclaimerPrompt();
     return;
   }
   lastPersistedSnapshotJson = nextSnapshot;
@@ -121,8 +118,6 @@ function* load_saved_store() {
   if (store.files?.file_rows?.length > 0) {
     yield put({ type: config_actions.RECOMPUTE_ALL_NAMING });
   }
-
-  yield* ensureDisclaimerPrompt();
 }
 
 export default load_saved_store
