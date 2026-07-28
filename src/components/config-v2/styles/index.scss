@@ -1,26 +1,26 @@
 // Config v2 styles — public entry. See docs/config-ui-v2-style-spec.md
-@import './tokens';
-@import './typography';
-@import './mixins';
+@use './tokens' as *;
+@use './typography' as *;
+@use './mixins' as *;
 
-@import './_primitives/shell';
-@import './_primitives/section';
-@import './_primitives/choice-chips';
-@import './_primitives/labeled-row';
-@import './_primitives/detail-panel';
-@import './_primitives/field';
-@import './_primitives/path-chip';
-@import './_primitives/status-field';
-@import './_primitives/boolean-row';
-@import './_primitives/feedback';
-@import './_primitives/actions';
-@import './_primitives/preview';
-@import './_primitives/feature-block';
-@import './_primitives/collapsible';
-@import './_primitives/info-card';
-@import './_primitives/data-loading';
-@import './_primitives/esm-host';
-@import './_primitives/slide-label-host';
+@use './_primitives/shell' as *;
+@use './_primitives/section' as *;
+@use './_primitives/choice-chips' as *;
+@use './_primitives/labeled-row' as *;
+@use './_primitives/detail-panel' as *;
+@use './_primitives/field' as *;
+@use './_primitives/path-chip' as *;
+@use './_primitives/status-field' as *;
+@use './_primitives/boolean-row' as *;
+@use './_primitives/feedback' as *;
+@use './_primitives/actions' as *;
+@use './_primitives/preview' as *;
+@use './_primitives/feature-block' as *;
+@use './_primitives/collapsible' as *;
+@use './_primitives/info-card' as *;
+@use './_primitives/data-loading' as *;
+@use './_primitives/esm-host' as *;
+@use './_primitives/slide-label-host' as *;
 
 .config-v2 {
   // Root scope for all v2 config UI (avoids Modal.scss mega-nesting).

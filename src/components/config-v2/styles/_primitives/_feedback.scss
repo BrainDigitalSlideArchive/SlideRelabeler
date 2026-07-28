@@ -1,6 +1,6 @@
 // ConfigWarnText / ConfigHelperText / ConfigCallout
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-warn-text {

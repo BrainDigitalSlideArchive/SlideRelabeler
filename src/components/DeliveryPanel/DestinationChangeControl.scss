@@ -1,4 +1,4 @@
-@import '../../styles/colors';
+@use '../../styles/colors' as *;
 
 /* Shared destination-change pencil popover (DSA URL / Globus endpoint). */
 .destination-change {

@@ -1,5 +1,5 @@
-@import '../../styles/colors';
-@import '../../styles/surfaces';
+@use "sass:color";
+@use '../../styles/surfaces' as *;
 
 .delivery-panel {
   display: flex;
@@ -201,7 +201,7 @@
     line-height: 1.35;
 
     &._ready {
-      color: darken($green, 20%);
+      color: color.adjust($green, $lightness: -20%);
       font-weight: 600;
     }
 
@@ -253,7 +253,7 @@
     white-space: nowrap;
 
     &:hover:not(._disabled):not(:disabled) {
-      color: darken($darker-blue, 8%);
+      color: color.adjust($darker-blue, $lightness: -8%);
     }
 
     &._disabled,
@@ -329,7 +329,7 @@
   &__progress-fill {
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, $green 0%, darken($green, 8%) 100%);
+    background: linear-gradient(90deg, $green 0%, color.adjust($green, $lightness: -8%) 100%);
     transition: width 0.25s ease;
   }
 
@@ -386,7 +386,7 @@
     transition: background-color 0.2s, opacity 0.2s;
 
     &:hover:not(._disabled):not(:disabled) {
-      background: darken($darker-blue, 6%);
+      background: color.adjust($darker-blue, $lightness: -6%);
     }
 
     &._disabled,

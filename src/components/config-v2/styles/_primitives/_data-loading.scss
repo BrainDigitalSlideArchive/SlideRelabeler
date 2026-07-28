@@ -1,6 +1,6 @@
 // CSV reserved-field cards + mappings stack (kit domain card)
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-csv-lead {

@@ -1,5 +1,6 @@
 // Semantic aliases for config-v2. See docs/config-ui-v2-style-spec.md §2.
-@import '../../../styles/colors';
+@use '../../../styles/colors' as *;
+@forward '../../../styles/colors';
 
 $cfg-bg: $config-panel-bg;
 $cfg-surface: $config-panel-surface;

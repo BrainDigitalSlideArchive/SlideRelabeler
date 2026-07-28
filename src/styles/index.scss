@@ -1,4 +1,5 @@
-@import './colors';
+@use "sass:color";
+@use './colors' as *;
 
 // Electron shell colors live in main/main.scss (teal chrome + $beige).
 // Do not set content ink here — light panels must set their own dark text via
@@ -21,7 +22,7 @@ a {
   text-decoration: inherit;
 }
 a:hover {
-  color: darken($darker-blue, 8%);
+  color: color.adjust($darker-blue, $lightness: -8%);
 }
 
 body {

@@ -1,5 +1,5 @@
 // ConfigField — size contract xs|sm|md|fill (no InputText--compact)
-@import '../tokens';
+@use '../tokens' as *;
 
 .config-v2 {
   .cfg-field {

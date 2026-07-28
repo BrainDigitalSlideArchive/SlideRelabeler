@@ -1,9 +1,9 @@
 // Transitional host: label schematic/mockup under config-v2.
 // Reuses LabelCompositionMockup + SlideLabelLayout mixins; kit tokens only.
 // Keep zone/caption layout in sync with Modal.scss mockup + OverviewLabelIllustration.
-@import '../tokens';
-@import '../typography';
-@import '../../../config/SlideLabelLayout.scss';
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../../../config/SlideLabelLayout' as *;
 
 .config-v2 {
 .label-composer {

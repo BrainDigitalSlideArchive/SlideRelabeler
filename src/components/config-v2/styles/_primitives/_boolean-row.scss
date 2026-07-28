@@ -1,6 +1,6 @@
 // ConfigBooleanRow — compact checkbox + kit row-label typography
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-boolean-row {

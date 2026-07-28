@@ -1,5 +1,5 @@
-@import '../../../styles/colors.scss';
-@import '../../../styles/variables.scss';
+@use '../../../styles/colors' as *;
+@use '../../../styles/variables' as *;
 
 .Checkbox {
   width: $modal_config_input_checkbox_width;

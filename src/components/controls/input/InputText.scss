@@ -1,5 +1,6 @@
-@import '../../../styles/colors.scss';
-@import '../../../styles/variables.scss';
+@use "sass:color";
+@use '../../../styles/colors' as *;
+@use '../../../styles/variables' as *;
 
 .InputText {
   display: flex;
@@ -49,8 +50,8 @@
     font-weight: 700;
 
     &:hover:not(:disabled) {
-      border-color: darken($darker-blue, 6%);
-      color: darken($darker-blue, 6%);
+      border-color: color.adjust($darker-blue, $lightness: -6%);
+      color: color.adjust($darker-blue, $lightness: -6%);
       background: rgba($darker-blue, 0.2);
     }
 

@@ -1,5 +1,4 @@
-@import '../../styles/colors';
-@import '../../styles/surfaces';
+@use '../../styles/surfaces' as *;
 
 body{
   margin:0;

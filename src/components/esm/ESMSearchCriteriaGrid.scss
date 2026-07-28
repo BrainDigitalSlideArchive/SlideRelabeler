@@ -1,5 +1,5 @@
 // Light sub-panel for eSM criteria (contrasts with dark modal chrome)
-@import './esm_light_panel_shared';
+@use './esm_light_panel_shared' as *;
 
 .esm-search-criteria {
   display: flex;

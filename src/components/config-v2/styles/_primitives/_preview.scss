@@ -1,6 +1,6 @@
 // ConfigTestPreview + hosted ConfigPreviewRowEditor (single-row AgGrid)
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-test-preview {

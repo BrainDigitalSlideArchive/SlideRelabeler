@@ -1,6 +1,6 @@
 // ConfigStatusField — neutral URL/path + status + action
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-status-field {

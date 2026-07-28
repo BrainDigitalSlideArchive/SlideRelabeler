@@ -1,7 +1,7 @@
 // ConfigChoiceChips — one recipe for all segmented radios
-@import '../tokens';
-@import '../typography';
-@import '../mixins';
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
 
 .config-v2 {
   .cfg-choice-chips {

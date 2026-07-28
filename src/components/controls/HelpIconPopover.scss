@@ -1,4 +1,5 @@
-@import '../../styles/colors.scss';
+@use "sass:color";
+@use '../../styles/colors' as *;
 
 .HelpIconPopover {
   position: relative;
@@ -24,8 +25,8 @@
     font-weight: 700;
 
     &:hover:not(:disabled) {
-      border-color: darken($darker-blue, 6%);
-      color: darken($darker-blue, 6%);
+      border-color: color.adjust($darker-blue, $lightness: -6%);
+      color: color.adjust($darker-blue, $lightness: -6%);
       background: rgba($darker-blue, 0.2);
     }
 
@@ -89,7 +90,7 @@
 
   &--warning {
     .HelpIconPopover__icon {
-      border-color: darken($surface-warning-text, 4%);
+      border-color: color.adjust($surface-warning-text, $lightness: -4%);
       color: #fff;
       background: $surface-warning-text;
       font-weight: 800;
@@ -97,9 +98,9 @@
       box-shadow: 0 1px 2px rgba($black, 0.12);
 
       &:hover:not(:disabled) {
-        border-color: darken($surface-warning-text, 10%);
+        border-color: color.adjust($surface-warning-text, $lightness: -10%);
         color: #fff;
-        background: darken($surface-warning-text, 6%);
+        background: color.adjust($surface-warning-text, $lightness: -6%);
       }
 
       &:focus-visible {

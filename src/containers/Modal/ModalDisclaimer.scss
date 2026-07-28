@@ -1,4 +1,5 @@
-@import '../../styles/colors';
+@use "sass:color";
+@use '../../styles/colors' as *;
 
 /* Slightly narrower than login compact shell */
 .Modal .__modal.modal-disclaimer {
@@ -36,7 +37,7 @@
     cursor: pointer;
 
     &:hover {
-      color: darken($darker-blue, 8%);
+      color: color.adjust($darker-blue, $lightness: -8%);
     }
 
     &:focus-visible {
@@ -92,8 +93,8 @@
     font-weight: 600;
 
     &:hover:not(:disabled):not(._disabled) {
-      background: darken($darker-blue, 6%);
-      border-color: darken($darker-blue, 6%);
+      background: color.adjust($darker-blue, $lightness: -6%);
+      border-color: color.adjust($darker-blue, $lightness: -6%);
     }
   }
 }

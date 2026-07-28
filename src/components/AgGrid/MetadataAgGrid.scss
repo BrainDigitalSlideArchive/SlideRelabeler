@@ -1,4 +1,4 @@
-@import '../../styles/colors.scss';
+@use '../../styles/colors' as *;
 
 .__ag-grid {
     height: 100%;

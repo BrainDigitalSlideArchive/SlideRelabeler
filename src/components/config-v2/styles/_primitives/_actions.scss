@@ -1,7 +1,8 @@
+@use "sass:color";
 // ConfigTextButton
-@import '../tokens';
-@import '../typography';
-@import '../mixins';
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
 
 .config-v2 {
   .cfg-text-btn {
@@ -20,7 +21,7 @@
     @include cfg-focus-ring;
 
     &:hover:not(:disabled) {
-      color: darken($cfg-accent, 8%);
+      color: color.adjust($cfg-accent, $lightness: -8%);
     }
 
     &:disabled {

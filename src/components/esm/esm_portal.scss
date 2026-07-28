@@ -1,5 +1,6 @@
-@import '../../styles/colors.scss';
-@import './esm_light_panel_shared';
+@use "sass:color";
+@use '../../styles/colors' as *;
+@use './esm_light_panel_shared' as *;
 
 .esm-portal {
   .config-panel {
@@ -42,7 +43,7 @@
 
   &:hover:not(:disabled) {
     background: $config-panel-surface;
-    border-color: darken($config-border, 6%);
+    border-color: color.adjust($config-border, $lightness: -6%);
   }
 
   &:focus-visible {

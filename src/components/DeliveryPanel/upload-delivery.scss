@@ -1,4 +1,5 @@
-@import '../../styles/colors';
+@use "sass:color";
+@use '../../styles/colors' as *;
 
 /* Shared Delivery upload-destination chrome (DSA + Globus). */
 .upload-delivery {
@@ -47,7 +48,7 @@
   text-decoration: underline;
 
   &:hover:not(._disabled):not(:disabled) {
-    color: darken($darker-blue, 8%);
+    color: color.adjust($darker-blue, $lightness: -8%);
   }
 
   &._disabled,

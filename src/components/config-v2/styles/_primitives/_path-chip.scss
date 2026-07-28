@@ -1,7 +1,7 @@
 // ConfigPathChip
-@import '../tokens';
-@import '../typography';
-@import '../mixins';
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
 
 .config-v2 {
   .cfg-path-chip {

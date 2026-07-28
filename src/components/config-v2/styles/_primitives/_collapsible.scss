@@ -1,7 +1,8 @@
+@use "sass:color";
 // ConfigCollapsible + glossary list used inside disclosures
-@import '../tokens';
-@import '../typography';
-@import '../mixins';
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
 
 .config-v2 {
   .cfg-collapsible {
@@ -28,7 +29,7 @@
     @include cfg-focus-ring;
 
     &:hover {
-      background: darken($cfg-surface, 2%);
+      background: color.adjust($cfg-surface, $lightness: -2%);
     }
   }
 

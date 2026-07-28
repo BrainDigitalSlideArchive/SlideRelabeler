@@ -1,4 +1,4 @@
-@import './esm_light_panel_shared';
+@use './esm_light_panel_shared' as *;
 
 .esm-light-panel__card {
   background: $esm-panel-bg;

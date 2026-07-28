@@ -1,4 +1,5 @@
-@import './colors';
+@use './colors' as *;
+@forward './colors';
 
 // Two-scope UI lock:
 // - Teal chrome ($dark-blue / $darker-blue + $beige) for shells and panel headers

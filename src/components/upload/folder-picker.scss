@@ -1,4 +1,5 @@
-@import '../../styles/colors';
+@use "sass:color";
+@use '../../styles/colors' as *;
 
 /* Shared folder/destination picker chrome (DSA + Globus). */
 .folder-picker__intro {
@@ -112,7 +113,7 @@
   text-decoration: underline;
 
   &:hover {
-    color: darken($config-accent, 8%);
+    color: color.adjust($config-accent, $lightness: -8%);
   }
 }
 

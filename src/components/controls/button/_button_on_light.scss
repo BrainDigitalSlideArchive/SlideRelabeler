@@ -1,4 +1,4 @@
-@import '../../../styles/colors';
+@use '../../../styles/colors' as *;
 
 // Shared outlined light-surface button skin (Config / light modals).
 @mixin button-on-light-skin {

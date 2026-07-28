@@ -1,4 +1,4 @@
-@import '../../styles/colors.scss';
+@use '../../styles/colors' as *;
 
 @mixin slide-label-layout-text-band {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

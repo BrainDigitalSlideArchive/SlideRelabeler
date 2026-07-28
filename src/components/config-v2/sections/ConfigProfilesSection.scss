@@ -1,5 +1,5 @@
-@import '../styles/tokens';
-@import '../styles/typography';
+@use '../styles/tokens' as *;
+@use '../styles/typography' as *;
 
 .config-v2 {
   .cfg-profiles__list-box {

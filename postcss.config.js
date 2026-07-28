@@ -8,6 +8,7 @@ module.exports = {
 
         }),
         postcssSass({
+            silenceDeprecations: ['legacy-js-api'],
         })
     ]
 };

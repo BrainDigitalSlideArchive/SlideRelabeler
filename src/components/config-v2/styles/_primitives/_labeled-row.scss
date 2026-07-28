@@ -1,6 +1,6 @@
 // ConfigLabeledRow — single label | controls grid
-@import '../tokens';
-@import '../typography';
+@use '../tokens' as *;
+@use '../typography' as *;
 
 .config-v2 {
   .cfg-labeled-row {

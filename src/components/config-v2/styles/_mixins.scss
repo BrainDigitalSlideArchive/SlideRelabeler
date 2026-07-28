@@ -1,5 +1,5 @@
 // Shared mixins for config-v2 primitives.
-@import './tokens';
+@use './tokens' as *;
 
 @mixin cfg-focus-ring {
   &:focus-visible {
