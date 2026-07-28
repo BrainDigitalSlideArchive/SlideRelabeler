@@ -40,3 +40,5 @@ dependencies:
       - pyproj
       - qrcode
       - pyvips[all]
+      # Needed for Globus upload in dev, and for PyInstaller to freeze globus_cli into packaged builds
+      - globus-cli

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol } from "electron";
+import { app, BrowserWindow, protocol, shell } from "electron";
 import { join } from "path";
 import { bridge } from "./handlers"; // side effects - sets up ipcMain handlers
 import { registerRoute } from "./routers/main-electron-router";
@@ -17,6 +17,21 @@ if (require("electron-squirrel-startup")) {
 if (handleSquirrelEvent()) {
   app.quit();
 }
+
+/** Open http(s) from target=_blank / window.open in the system browser, not a blank Electron window. */
+app.on("web-contents-created", (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        shell.openExternal(url);
+      }
+    } catch {
+      // ignore invalid URLs
+    }
+    return { action: "deny" };
+  });
+});
 
 function handleSquirrelEvent() {
   if (process.argv.length === 1) return false;

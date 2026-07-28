@@ -45,8 +45,16 @@
   min-width: 0;
 
   .InputText {
-    flex: 1 1 12rem;
+    flex: 1 1 auto;
     min-width: 0;
+    width: auto;
+    align-self: stretch;
+
+    .InputText__control-row,
+    .__input-text {
+      width: 100%;
+      max-width: none;
+    }
   }
 }
 

@@ -50,20 +50,11 @@ DSA and eSlide Manager are straightforward: point at a server and sign in. Globu
 
 ### Globus specifics
 
-**If you want to use Globus to transfer files, your computer must be a Globus endpoint.** Install and run [Globus Connect Personal](https://docs.globus.org/globus-connect-personal/) on the machine that runs SlideRelabeler so files can be read from here during upload. In the app, set that local endpoint ID under Configuration → Output delivery (Auto-detect will try to find it). Platform install guides: [Mac](https://docs.globus.org/globus-connect-personal/install/mac/), [Windows](https://docs.globus.org/globus-connect-personal/install/windows/), [Linux](https://docs.globus.org/globus-connect-personal/install/linux/).
+**Endpoint.** To be used as a source of Globus file transfers, your computer must be configured as a Globus endpoint. Install and run [Globus Connect Personal](https://docs.globus.org/globus-connect-personal/) on the machine that runs SlideRelabeler so files can be read from here during upload. In the app, set that local endpoint ID under Configuration → Output delivery (Auto-detect will try to find it). Platform install guides: [Mac](https://docs.globus.org/globus-connect-personal/install/mac/), [Windows](https://docs.globus.org/globus-connect-personal/install/windows/), [Linux](https://docs.globus.org/globus-connect-personal/install/linux/).
 
-**The packaged installers include the Globus CLI tools - end users *do not* need to install them.** People who download a packaged SlideRelabeler build don't need to install the Globus CLI themselves — it is bundled into the app when you run `npm run package` / `npm run make`.
+**Packaged app users.** Installers built with `npm run package` / `npm run make` already include the Globus CLI. End users do not install it separately.
 
-**Developers and people building installers DO need the Globus CLI available in the conda env.** The build does not download it automatically. Install it into the `sliderelabeler` environment before packaging (and to use Globus features during `npm run dev`).
-
-For example:
-
-```bash
-conda activate sliderelabeler
-pip install globus-cli
-```
-
-See the [Globus CLI installation guide](https://docs.globus.org/cli/) for details. Confirm with `globus --version` (or `python -c "import globus_cli"`).
+**Developers and builders.** `globus-cli` is part of the `sliderelabeler` conda environment (`environment-macos.yml` / `environment-windows.yml` / `environment-linux.yml`). Creating or updating the env as in Getting started is enough for Globus CLI inclusion in `npm run dev` and for packaging. Confirm with `globus --version` or `python -c "import globus_cli"`. Further reading: [Globus CLI](https://docs.globus.org/cli/). If an existing env was created before this dependency was listed, refresh it once with `conda env update -f environment-<platform>.yml`. *Important*: If you want to test Globus uploads with `npm run dev` or the built package, you still need to configure your machine as an endpoint (see above). If you are just building the app but not wanting to actually use Globus, this is not needed.
 
 ## Documentation
 

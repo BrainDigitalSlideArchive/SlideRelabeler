@@ -114,6 +114,11 @@ class GlobusAPI {
 
         const resourcesRoot = process.resourcesPath || '';
         const localDistRoot = path.join(process.cwd(), 'dist');
+        const isDev = process.env.NODE_ENV === 'development';
+        const forceBinary = process.env.SLIDERELABELER_USE_GLOBUS_BINARY === '1';
+        // Match engine launch: live conda/PATH in normal npm run dev; frozen only when
+        // packaged/production or SLIDERELABELER_USE_GLOBUS_BINARY=1.
+        const preferFrozen = !isDev || forceBinary;
 
         if (resourcesRoot && fs.existsSync(resourcesRoot)) {
             try {
@@ -123,43 +128,49 @@ class GlobusAPI {
             }
         }
 
-        // Priority 1: Production / packaged — Forge extraResource under resourcesPath
-        const bundled = resolveBundledGlobusCli([resourcesRoot]);
-        if (bundled) {
-            this._pathToGlobus = bundled;
-            this._status = 'Globus: using bundled executable from resourcesPath';
-            globusApiVLog('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
-        } else {
-            // Priority 2: Local PyInstaller output under ./dist
-            const local = resolveBundledGlobusCli([localDistRoot]);
-            if (local) {
-                this._pathToGlobus = local;
-                this._status = 'Globus: using local build';
-                globusApiVLog('[GlobusAPI] Found local build at:', this._pathToGlobus);
-            } else if (process.env.NODE_ENV === 'development' || !process.resourcesPath) {
-                // Priority 3: Development — conda env `globus` shim, then PATH
-                const condaPrefix = process.env.CONDA_PREFIX;
-                if (condaPrefix) {
-                    const condaGlobusPath = process.platform === 'win32'
-                        ? path.join(condaPrefix, 'Scripts', 'globus.exe')
-                        : path.join(condaPrefix, 'bin', 'globus');
-                    globusApiVLog('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
-                    if (fs.existsSync(condaGlobusPath)) {
-                        this._pathToGlobus = condaGlobusPath;
-                        this._status = 'Globus: using conda environment globus-cli';
-                        this._usingCondaEnv = true;
-                        this._condaPrefix = condaPrefix;
-                        globusApiVLog('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
-                    }
-                }
-                if (!this._pathToGlobus) {
-                    this._pathToGlobus = 'globus';
-                    this._status = 'Globus: using system globus (development mode)';
-                    globusApiVLog('[GlobusAPI] Using system globus');
+        globusApiVLog('[GlobusAPI] preferFrozen:', preferFrozen, 'forceBinary:', forceBinary);
+
+        if (preferFrozen) {
+            const bundled = resolveBundledGlobusCli([resourcesRoot]);
+            if (bundled) {
+                this._pathToGlobus = bundled;
+                this._status = 'Globus: using bundled executable from resourcesPath';
+                globusApiVLog('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
+            } else {
+                const local = resolveBundledGlobusCli([localDistRoot]);
+                if (local) {
+                    this._pathToGlobus = local;
+                    this._status = 'Globus: using local build';
+                    globusApiVLog('[GlobusAPI] Found local build at:', this._pathToGlobus);
                 }
             }
         }
-        
+
+        // Dev default (and safety net if frozen missing): conda env `globus`, then PATH
+        if (!this._pathToGlobus) {
+            const condaPrefix = process.env.CONDA_PREFIX;
+            if (condaPrefix) {
+                const condaGlobusPath = process.platform === 'win32'
+                    ? path.join(condaPrefix, 'Scripts', 'globus.exe')
+                    : path.join(condaPrefix, 'bin', 'globus');
+                globusApiVLog('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
+                if (fs.existsSync(condaGlobusPath)) {
+                    this._pathToGlobus = condaGlobusPath;
+                    this._status = 'Globus: using conda environment globus-cli';
+                    this._usingCondaEnv = true;
+                    this._condaPrefix = condaPrefix;
+                    globusApiVLog('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
+                }
+            }
+            if (!this._pathToGlobus) {
+                this._pathToGlobus = 'globus';
+                this._status = isDev
+                    ? 'Globus: using system globus (development mode)'
+                    : 'Globus: using system globus';
+                globusApiVLog('[GlobusAPI] Using system globus');
+            }
+        }
+
         // If no path was found, set error status
         if (!this._pathToGlobus) {
             this._status = 'Globus: No path detected, not available';
@@ -385,7 +396,7 @@ class GlobusAPI {
 
     async getLocalEndpointId() {
         if (!this._pathToGlobus) {
-            return [false, { message: 'Globus CLI not available.' }];
+            return [false, { code: 'cli_unavailable', message: 'Globus CLI not available.' }];
         }
         const result = await this.executeCommand(['endpoint', 'local-id', '--quiet'], false);
         if (!result || !result[0]) {
@@ -393,22 +404,38 @@ class GlobusAPI {
             const stderr = (err.stderr || '').trim();
             const message = (err.message || '').trim();
             const combined = `${stderr}\n${message}`.toLowerCase();
-            let userMessage =
-                'Globus Connect Personal does not appear configured for this Windows user on this machine, or the local endpoint could not be read.';
             if (
                 err.exitCode === 4 ||
-                /consent|login required|authentication|auth.*required|not logged in|consentrequired/.test(
+                /consent|login required|authentication|auth.*required|not logged in|consentrequired|missinglogin/.test(
                     combined
                 )
             ) {
-                userMessage =
-                    'Log in to Globus in this app (Authentication) or run globus login, and ensure Globus Connect Personal is installed for this user.';
-            } else if (stderr) {
+                return [
+                    false,
+                    {
+                        code: 'login_required',
+                        message: 'Sign in to Globus before Auto-detect can read this computer’s endpoint ID.',
+                        stderr: err.stderr,
+                        exitCode: err.exitCode,
+                    },
+                ];
+            }
+            let userMessage =
+                'Globus Connect Personal does not appear configured on this machine, or the local endpoint could not be read. Install and run Globus Connect Personal, then try Auto-detect again.';
+            if (stderr) {
                 const lines = stderr.split(/\r?\n/).filter((line) => !/\[PYI-|^\s*LOADER:/i.test(line));
                 const cleaned = lines.join(' ').trim();
                 if (cleaned) userMessage = cleaned;
             }
-            return [false, { message: userMessage, stderr: err.stderr, exitCode: err.exitCode }];
+            return [
+                false,
+                {
+                    code: 'gcp_unavailable',
+                    message: userMessage,
+                    stderr: err.stderr,
+                    exitCode: err.exitCode,
+                },
+            ];
         }
         const text = (result[1]?.message || '').trim();
         const firstLine = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l);
@@ -416,6 +443,7 @@ class GlobusAPI {
             return [
                 false,
                 {
+                    code: 'invalid_response',
                     message:
                         'Globus CLI did not return a valid endpoint UUID. Ensure Globus Connect Personal is installed and running for this user.',
                 },

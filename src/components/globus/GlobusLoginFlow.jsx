@@ -125,7 +125,6 @@ export default function GlobusLoginFlow({
         <div className="globus-login-flow__code-row">
           <InputText
             omitLabel
-            compact
             variant="onLight"
             inputId="globus-login-authorization-code"
             ariaLabel="Authorization code from browser"
