@@ -1,33 +1,28 @@
 @import '../../styles/colors';
+@import '../../styles/surfaces';
 
 .processing-status {
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 54rem;
-  border-radius: 0.5rem;
-  background: $config-callout-bg;
-  border: 1px solid $border-surface;
-  color: $on-surface;
+  @include surface-panel($config-callout-bg, $on-surface);
   overflow: hidden;
 
   &__header {
+    @include chrome-header;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
     min-width: 0;
-    background-color: $darker-blue;
-    color: $beige;
-    padding: 0.35rem 0.65rem;
-    box-shadow: 0 1px 2px rgba($black, 0.12);
   }
 
   &__title {
     flex: 1;
     min-width: 0;
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 1.15rem;
     font-weight: 600;
     line-height: 1.3;
     color: $beige;

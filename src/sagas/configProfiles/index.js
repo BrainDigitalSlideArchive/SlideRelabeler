@@ -33,6 +33,7 @@ import {
 import { createProfileId } from '../../helpers/config_profile_ids.js';
 import set_store from '../bridge/set_store';
 import { buildPersistedStore } from '../../helpers/persisted_store';
+import { ensureDisclaimerPrompt } from '../../helpers/ensure_disclaimer_prompt.js';
 
 function* persistProfilesDoc(partial = {}) {
   const state = yield select((s) => s.configProfiles);
@@ -209,6 +210,8 @@ function* watch_switch() {
     if (!ok) continue;
 
     yield* applyConfigProfilePayload(profile.payload);
+    yield put({ type: config_actions.CLEAR_DISCLAIMER_ACCEPTED });
+    yield* ensureDisclaimerPrompt();
     yield* persistProfilesDoc({
       activeProfileId: profile.id,
       activeFingerprint: profile.fingerprint || fingerprintPayload(profile.payload),
@@ -383,6 +386,8 @@ function* watch_import() {
       );
       if (apply) {
         yield* applyConfigProfilePayload(created[0].payload);
+        yield put({ type: config_actions.CLEAR_DISCLAIMER_ACCEPTED });
+        yield* ensureDisclaimerPrompt();
         yield* persistProfilesDoc({
           activeProfileId: created[0].id,
           activeFingerprint: created[0].fingerprint,

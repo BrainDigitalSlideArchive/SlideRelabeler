@@ -245,7 +245,7 @@
   width: 100%;
   height: 100vh;
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto 1fr;
   min-height: 0;
   overflow: hidden;
 
@@ -263,7 +263,7 @@
       > .__list-controls:first-child {
         h2 {
           margin: 0 0 0.15rem;
-          font-size: 1.05rem;
+          font-size: 1.4rem;
           font-weight: 600;
           line-height: 1.25;
         }
@@ -309,17 +309,8 @@
 
   .delivery-panel__title,
   .processing-status__title {
-    font-size: 0.95rem;
+    font-size: 1.15rem;
     font-weight: 600;
-  }
-
-  .__disclaimer {
-    display: flex;
-    justify-content: end;
-    font-style: italic;
-    font-size: 0.7rem;
-    padding: 0 0.65rem;
-    margin: 0;
   }
 }
 

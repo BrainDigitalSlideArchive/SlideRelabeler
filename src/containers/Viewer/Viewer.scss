@@ -1,4 +1,5 @@
 @import '../../styles/colors';
+@import '../../styles/surfaces';
 
 body{
   margin:0;
@@ -16,7 +17,7 @@ body{
     padding-right: 1em;
     width: 70%;
   }
-    .__preview {
+  .__preview {
     width: 30%;
     display: flex;
     flex-direction: column;
@@ -24,44 +25,94 @@ body{
     justify-content: center;
     padding: 0.5em;
 
-    table {
-      padding: 1em;
-      background-color: $dark-blue;
+    &-panel {
+      @include surface-panel($config-callout-bg, $on-surface);
       width: 100%;
-      border-radius: 1em;
-      box-shadow: 5px 5px 5px 0 $black;
-      thead {
-        width: 100%;
-        font-weight: bolder;
-        tr {
-          width: 100%;
-          td {
-            width: 33%;
-            font-size: 1.5em;
-            text-align: center;
-          }
-        }
+      display: flex;
+      flex-direction: column;
+    }
+
+    &-header {
+      @include chrome-header;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+
+      &-label {
+        min-width: 0;
       }
+    }
+
+    &-body {
+      padding: 0.65rem 0.5rem 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: $on-surface;
+
       tbody {
         width: 100%;
         tr {
           width: 100%;
           td {
             text-align: center;
-            width: 50%;
-            margin-left: 0.5em;
-            margin-right: 0.5em;
-            justify-content: center;
+            width: 33%;
+            padding: 0.35rem 0.25rem;
+            font-size: 0.85rem;
+            color: $on-surface;
+            vertical-align: middle;
+
+            &:first-child {
+              text-align: left;
+              font-weight: 600;
+              color: $on-surface-muted;
+            }
+
             img {
               cursor: pointer;
               width: 100px;
+              max-width: 100%;
+              border-radius: 0.25rem;
+              border: 1px solid $border-surface;
+              background: $config-panel-bg;
             }
-            &[colspan] button {
-              width: 100%;
-              box-sizing: border-box;
+
+            &[colspan] {
+              text-align: left;
             }
           }
         }
+      }
+    }
+
+    .__preview-action {
+      width: 100%;
+      box-sizing: border-box;
+      height: 2.25rem;
+      padding: 0 0.85rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 0.35rem;
+      border: 1px solid $config-border;
+      background: $config-panel-bg;
+      color: $config-text-primary;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+
+      &:hover {
+        background: $config-panel-surface;
+        border-color: $darker-blue;
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgba($darker-blue, 0.35);
+        outline-offset: 1px;
       }
     }
   }

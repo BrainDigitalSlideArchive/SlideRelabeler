@@ -16,6 +16,7 @@ Kit for the live Configuration dialog under `src/components/config-v2/`. Compose
 - Kill class theft and misnamed BEM (`config-filename-style`, `dsa-url-*` for Globus, `data-loading-section__*` stolen by delivery).
 - End InputText compact width wars via explicit field size variants.
 - Modal.scss remains **shell chrome** — not a dumping ground for section layouts or control skins (shared controls are light-by-default).
+- **Two-scope color lock:** teal chrome (`$dark-blue` / `$darker-blue` + `$beige`) for shells and panel headers; **all readable body copy and controls** live inside a light surface (`.config-panel`, `@mixin surface-panel` in [`src/styles/surfaces.scss`](../src/styles/surfaces.scss), or `.config-v2`) that sets dark ink. Unset text on a light surface that inherits body `$beige` is a bug.
 - **Harmonize similar components:** when v1 shows near-duplicate patterns with small spacing, size, or alignment differences, treat those as accidental bolt-on drift unless the reference doc marks them as intentional. v2 uses **one** recipe per primitive, not a preserved quirk per host.
 
 ### Non-goals
@@ -24,7 +25,8 @@ Kit for the live Configuration dialog under `src/components/config-v2/`. Compose
 - A second color palette (purple themes, etc.). Reuse `$config-*` via semantic aliases.
 - Pixel-matching unfinished v1 Advanced.
 - **Pixel-faithful reproduction of every v1 spacing/size/alignment quirk** across otherwise identical controls (e.g. audit vs DSA vs API chip rows, path chips, compact input widths).
-
+- Flipping Dropdown’s dark-by-default skin (still the remaining dark-default control; add a light variant when a light surface needs it).
+- Removing `Button--onDark` — keep for rare teal chrome hosts; **do not use for content actions inside light panels**.
 ---
 
 ## 2. Design tokens
@@ -191,8 +193,8 @@ src/components/config-v2/
 Shared form controls (**InputText**, **Button**, **Checkbox**, **HelpIconPopover**) default to **light** config/picker chrome. Do not re-skin them under `.config-v2` or Modal config hosts.
 
 - **Default / omit / `onLight` (legacy alias):** light panel chrome.
-- **`onDark`:** opt-in dark-modal field/icon chrome only where a blue modal surface still needs it.
-- **Button `--filled`:** primary CTA escape hatch on light surfaces (e.g. Globus login).
+- **`onDark`:** opt-in for teal chrome hosts only (deprecated for content actions inside light panels / `.config-panel`). Prefer light default + `Button--filled` for primary CTAs.
+- **Button `--filled`:** primary CTA escape hatch on light surfaces (e.g. Globus login, Disclaimer agree).
 - **Dropdown:** remains dark-by-default (CSV column pickers on dark modal chrome). Add a light variant only when a light surface needs Dropdown.
 - Prefer kit TextButton for tertiary actions.
 - Floating help popovers stay dark (`$black` / `$beige`) for contrast on both surfaces.

@@ -14,6 +14,7 @@ import {
   CSV_RESERVED_FIELD_SPECS,
   syncCsvLegacyColumnValue,
 } from '../../helpers/csv_column_config.js';
+import { DISCLAIMER_TEXT_VERSION } from '../../helpers/disclaimer.js';
 
 function syncFilenameLegacyFields(draft) {
   const normalized = normalizeFilenameConfig(draft.filename);
@@ -191,6 +192,38 @@ const config_reducer  = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         draft.copy.enable_copy_mode = !state.copy.enable_copy_mode;
       })
+    })
+    .addCase(config_actions.SET_DISCLAIMER_PROMPT_MODE, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        const mode = action.payload === 'allowRemember' ? 'allowRemember' : 'everyLaunch';
+        draft.disclaimer.promptMode = mode;
+        if (mode === 'everyLaunch') {
+          draft.disclaimer.acceptedVersion = null;
+        }
+      });
+    })
+    .addCase(config_actions.CLEAR_DISCLAIMER_ACCEPTED, (state) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        draft.disclaimer.acceptedVersion = null;
+      });
+    })
+    .addCase(config_actions.ACCEPT_DISCLAIMER, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        const remember = !!action.payload?.remember
+          && draft.disclaimer.promptMode === 'allowRemember';
+        if (remember) {
+          draft.disclaimer.acceptedVersion = DISCLAIMER_TEXT_VERSION;
+        }
+      });
     })
     .addCase(config_actions.SET_NAMING_CONFIG, (state, action) => {
       return produce(state, draft => {

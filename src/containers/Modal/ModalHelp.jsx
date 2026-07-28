@@ -1,29 +1,48 @@
-import React from 'react';
-import {useDispatch} from "react-redux";
+import React, { useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
-import * as modal_actions from "../../actions/modal";
-import ModalHeader from "./ModalHeader";
+import * as modal_actions from '../../actions/modal';
+import ModalHeader from './ModalHeader';
 
-function ModalHelp(props) {
+import './ModalHelp.scss';
+
+function ModalHelp() {
   const dispatch = useDispatch();
+  const helpFocusSection = useSelector((s) => s.modal.helpFocusSection);
+  const applicationSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (helpFocusSection !== 'application') return;
+    const el = applicationSectionRef.current;
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+    dispatch({ type: modal_actions.CLEAR_HELP_FOCUS_SECTION });
+  }, [helpFocusSection, dispatch]);
+
   return (
-    <div className="__modal">
+    <div className="__modal modal-help">
       <ModalHeader title={"Help"} type={"help"}/>
-      <div className={"__content"}>
-        <div className={"__content-section"}>
+      <div className="__content __content--config">
+        <div className="config-panel">
+          <div className="config-panel__body modal-help__body">
+        <div
+          className={"__content-section"}
+          id="help-section-application"
+          ref={applicationSectionRef}
+        >
           <h2>Application</h2>
           <p>
-            The SlideRelabeler application is designed to simplify the process of deidentifying whole slide images so
-          that they can be shared for research purposes.  Deidentification protects patients from the
-            misuse of their personal information.  The SlideRelabeler application is designed to remove personal health information (PHI) from
-            whole slide images that could be used to identify a patient.  Although the application is designed to do so
-            you should make sure that the application is working as expected before sharing the images given differences
-            can exist between how universities and hospitals conduct whole slide imaging and how this application works
-            with those whole slide images.  Given this application's <b>developers accept no liability in a failure of this application
-            to remove sensitive patient information from whole slide images, the user of this application is liable for its'
-            inappropriate use and the failure to check if an output file has been completely deidentified.</b>  We encourage users
-            having issues with the deidentification of this program to share information that can be used to reproduce the
-            isuee and improve the program.
+            SlideRelabeler is an open-source application intended to help remove identifying information from
+            whole slide images so they can be shared appropriately. It provides no guarantee that all patient
+            identifiers are automatically removed.{' '}
+            <b>
+              The developers accept no liability for a failure to fully de-identify any given whole slide image file.
+            </b>{' '}
+            You alone are responsible for ensuring adequate de-identification for your use case before sharing
+            resulting files. Because imaging practices differ across institutions, verify that outputs meet your
+            requirements. If something fails to de-identify as expected, please share reproducible details so the
+            program can be improved.
           </p>
         </div>
         <div className={"__content-section"}>
@@ -138,6 +157,8 @@ function ModalHelp(props) {
             and ensure it works as expected.  If you have any feedback please provide it to the developers of the application
             <a href={"mailto:arosad2@protonmail.ch"}>Aaron Rosado</a> and <a href={"mailto:tmpearce@gmail.com"}>Tom Pierce</a>
           </p>
+        </div>
+          </div>
         </div>
       </div>
     </div>

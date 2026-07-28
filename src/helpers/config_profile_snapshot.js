@@ -21,6 +21,19 @@ function sortKeysDeep(value) {
   return out;
 }
 
+/** Remembered agreement is machine/session state — never export in profiles. */
+function stripDisclaimerAccepted(config) {
+  if (!config || typeof config !== 'object') return config;
+  if (!config.disclaimer || typeof config.disclaimer !== 'object') return config;
+  return {
+    ...config,
+    disclaimer: {
+      ...config.disclaimer,
+      acceptedVersion: null,
+    },
+  };
+}
+
 /**
  * Build a secret-stripped settings snapshot from the live Redux store.
  * Excludes files / session auth / audit entry history.
@@ -32,7 +45,7 @@ export function buildConfigProfilePayload(store) {
     : undefined;
 
   return {
-    config: persisted.config ? structuredCloneSafe(persisted.config) : undefined,
+    config: persisted.config ? structuredCloneSafe(stripDisclaimerAccepted(persisted.config)) : undefined,
     uploadRouting: persisted.uploadRouting
       ? structuredCloneSafe(persisted.uploadRouting)
       : undefined,

@@ -189,9 +189,6 @@ const App = (props) => {
           <div className={"__spacer"}/>
           {render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch)}
         </div>
-        <div className={"__disclaimer"}>
-          Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.
-        </div>
         <div id='table'>
           <AppAgGrid
             suppressMovableColumns={true}

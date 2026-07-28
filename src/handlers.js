@@ -1257,6 +1257,10 @@ ipcMain.handle('delete-store', async () => {
   app.exit(0);
 });
 
+ipcMain.handle('quit-app', async () => {
+  app.exit(0);
+});
+
 const CONFIG_PROFILES_FILENAME = 'config-profiles.json';
 
 function configProfilesPath() {

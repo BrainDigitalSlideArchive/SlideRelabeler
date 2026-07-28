@@ -1,0 +1,38 @@
+@import './colors';
+
+// Two-scope UI lock:
+// - Teal chrome ($dark-blue / $darker-blue + $beige) for shells and panel headers
+// - Light surfaces must set dark ink so body { color: $beige } cannot leak into content
+
+@mixin chrome-header {
+  background-color: $darker-blue;
+  color: $beige;
+  padding: 0.35rem 0.65rem;
+  box-shadow: 0 1px 2px rgba($black, 0.12);
+}
+
+@mixin surface-panel(
+  $bg: $config-panel-bg,
+  $ink: $config-text-primary,
+  $border: $border-surface
+) {
+  background: $bg;
+  color: $ink;
+  border: 1px solid $border;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba($black, 0.08);
+}
+
+.chrome-header {
+  @include chrome-header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.surface-panel {
+  @include surface-panel;
+}

@@ -240,14 +240,14 @@ function Viewer(props) {
     <div key={0} className="viewer-container">
       {OpenSeadragon(metadata)}
       <div className="__preview">
+        <div className="__preview-panel">
+          <div className="__preview-header">
+            <span className="__preview-header-label" />
+            <span>Current</span>
+            <span>After</span>
+          </div>
+          <div className="__preview-body">
         <table>
-          <thead>
-            <tr>
-              <td></td>
-              <td>Current</td>
-              <td>After</td>
-            </tr>
-          </thead>
           <tbody>
             {
               thumbnail_url && (
@@ -346,6 +346,7 @@ function Viewer(props) {
               <td colSpan={2}>
                 <button
                   type="button"
+                  className="__preview-action"
                   onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'metadata' } })}
                 >
                   Compare
@@ -358,6 +359,7 @@ function Viewer(props) {
                 <td colSpan={2}>
                   <button
                     type="button"
+                    className="__preview-action"
                     onClick={() => dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'viewerDebug' } })}
                   >
                     View
@@ -367,6 +369,8 @@ function Viewer(props) {
             )}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
     </div>,
     <Modal

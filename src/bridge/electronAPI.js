@@ -118,6 +118,7 @@ const API = {
   getOutputPath: (info) => ipcRenderer.invoke('get-output-path', info),
   getStagingDirectory: (options) => ipcRenderer.invoke('get-staging-directory', options),
   deleteStore: () => ipcRenderer.invoke('delete-store'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
   deleteFile: (file_path) => ipcRenderer.invoke('delete-file', file_path),
   previewMetadata: (output_dict) => ipcRenderer.invoke('preview-metadata', output_dict),
   dsaLogin: (api_url, username, password) => ipcRenderer.invoke('dsa-login', api_url, username, password),

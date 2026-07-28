@@ -1,0 +1,53 @@
+@import '../../styles/colors';
+
+.modal-help {
+  &__body {
+    padding-top: 1rem;
+
+    .__content-section {
+      margin-bottom: 1.25rem;
+
+      h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: $config-text-primary;
+      }
+
+      p {
+        margin: 0 0 0.75rem;
+        line-height: 1.5;
+        font-size: 0.9rem;
+        color: $config-text-secondary;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      code {
+        font-size: 0.85em;
+        padding: 0.1em 0.35em;
+        border-radius: 0.25rem;
+        background: $config-panel-surface;
+        color: $config-text-primary;
+      }
+
+      a {
+        color: $darker-blue;
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+
+        &:hover {
+          color: darken($darker-blue, 8%);
+        }
+      }
+
+      b {
+        color: $config-text-primary;
+        font-weight: 700;
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@ import ModalGlobusFolderPicker from './ModalGlobusFolderPicker';
 import ModalGlobusLogin from './ModalGlobusLogin';
 import ModalESlideManager from './ModalESlideManager';
 import AuditLogViewerModal from './AuditLogViewerModal';
+import ModalDisclaimer from './ModalDisclaimer';
 
 function render_modal(type, props) {
   switch(type) {
@@ -31,6 +32,8 @@ function render_modal(type, props) {
       return <ModalError/>;
     case 'warning':
       return <ModalWarning/>;
+    case 'disclaimer':
+      return <ModalDisclaimer/>;
     case 'dsaFolderPicker':
       return <ModalDsaFolderPicker />;
     case 'globusEndpointPicker':

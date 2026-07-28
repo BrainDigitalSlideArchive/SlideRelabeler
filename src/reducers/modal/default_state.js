@@ -10,6 +10,7 @@ export const default_state = {
   allow_select_csv_label_column: false,
   allow_select_csv_qr_column: false,
   display_changed_only: false,
+  helpFocusSection: null,
 };
 
 export default default_state;

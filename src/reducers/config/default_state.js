@@ -86,7 +86,11 @@ export const default_state = {
   },
   copy: {
     enable_copy_mode: false
-  }
+  },
+  disclaimer: {
+    promptMode: 'everyLaunch',
+    acceptedVersion: null,
+  },
 };
 
 export default default_state;

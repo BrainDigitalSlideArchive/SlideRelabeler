@@ -3,16 +3,29 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import * as config_actions from '../../../actions/config';
 import * as app_actions from '../../../actions/app';
+import * as modal_actions from '../../../actions/modal';
 import Button from '../../controls/button/Button';
 import ConfigSection from '../primitives/ConfigSection';
 import ConfigSectionPanel from '../primitives/ConfigSectionPanel';
 import ConfigSettingHeader from '../primitives/ConfigSettingHeader';
 import ConfigBooleanRow from '../primitives/ConfigBooleanRow';
+import ConfigChoiceChips from '../primitives/ConfigChoiceChips';
+import {
+  DISCLAIMER_PROMPT_ALLOW_REMEMBER,
+  DISCLAIMER_PROMPT_EVERY_LAUNCH,
+  DISCLAIMER_TEXT_VERSION,
+  needsDisclaimerPrompt,
+} from '../../../helpers/disclaimer.js';
 
 const RESTORE_CONFIRM =
   'Restore default settings and clear the file list? The app will stay open. Your saved configuration profiles are kept.';
 const HARD_RESET_CONFIRM_EMPTY =
   'Clear all saved app data and close SlideRelabeler? You will need to open the app again.';
+
+const DISCLAIMER_MODE_OPTIONS = [
+  { value: DISCLAIMER_PROMPT_EVERY_LAUNCH, label: 'Every launch' },
+  { value: DISCLAIMER_PROMPT_ALLOW_REMEMBER, label: 'Allow remember' },
+];
 
 /**
  * Advanced — Phase 2g.
@@ -30,6 +43,13 @@ export default function ConfigAdvancedSection() {
   const saveMacro = useSelector((state) => !!state.config.wsi?.save_macro_image);
   const copyUnchanged = useSelector((state) => !!state.config.copy?.enable_copy_mode);
   const showDebug = useSelector((state) => !!state.config.debug?.enable_debug);
+  const disclaimer = useSelector((state) => state.config.disclaimer);
+  const promptMode = disclaimer?.promptMode === DISCLAIMER_PROMPT_ALLOW_REMEMBER
+    ? DISCLAIMER_PROMPT_ALLOW_REMEMBER
+    : DISCLAIMER_PROMPT_EVERY_LAUNCH;
+  const hasRemembered =
+    promptMode === DISCLAIMER_PROMPT_ALLOW_REMEMBER
+    && disclaimer?.acceptedVersion === DISCLAIMER_TEXT_VERSION;
 
   const restoreDefaults = () => {
     if (!window.confirm(RESTORE_CONFIRM)) return;
@@ -50,6 +70,29 @@ export default function ConfigAdvancedSection() {
     if (!window.confirm(message)) return;
     dispatch({ type: app_actions.DELETE_STORE });
   };
+
+  function setPromptMode(mode) {
+    dispatch({ type: config_actions.SET_DISCLAIMER_PROMPT_MODE, payload: mode });
+    if (mode === DISCLAIMER_PROMPT_EVERY_LAUNCH || needsDisclaimerPrompt({
+      promptMode: mode,
+      acceptedVersion: mode === DISCLAIMER_PROMPT_EVERY_LAUNCH
+        ? null
+        : disclaimer?.acceptedVersion,
+    })) {
+      dispatch({
+        type: modal_actions.PUSH_MODAL_IF_ABSENT,
+        payload: { type: 'disclaimer' },
+      });
+    }
+  }
+
+  function clearRemembered() {
+    dispatch({ type: config_actions.CLEAR_DISCLAIMER_ACCEPTED });
+    dispatch({
+      type: modal_actions.PUSH_MODAL_IF_ABSENT,
+      payload: { type: 'disclaimer' },
+    });
+  }
 
   return (
     <ConfigSection
@@ -90,6 +133,32 @@ export default function ConfigAdvancedSection() {
           disabled={disabled}
           onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_DEBUG })}
         />
+
+        <ConfigSettingHeader
+          title="Startup disclaimer"
+          description="By default the liability disclaimer appears every time the app starts. Choose “Allow remember” to show a Remember my answer checkbox so you can skip it on future launches until cleared."
+        />
+        <ConfigChoiceChips
+          name="disclaimer-prompt-mode"
+          value={promptMode}
+          disabled={disabled}
+          options={DISCLAIMER_MODE_OPTIONS}
+          onChange={setPromptMode}
+          ariaLabel="Startup disclaimer mode"
+        />
+        {hasRemembered ? (
+          <div className="cfg-panel-actions" style={{ marginTop: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.8125rem' }}>
+              Agreement is remembered for this computer.
+            </p>
+            <Button
+              variant="onLight"
+              text="Clear remembered agreement"
+              disabled={disabled}
+              onClick={clearRemembered}
+            />
+          </div>
+        ) : null}
 
         <ConfigSettingHeader
           title="Reset"

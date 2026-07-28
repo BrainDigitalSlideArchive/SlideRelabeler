@@ -5,6 +5,7 @@ import * as config_profiles_actions from '../../actions/configProfiles';
 import set_store from './set_store';
 import { buildPersistedStore } from '../../helpers/persisted_store';
 import { resetLoadSavedStoreDedup } from './load_saved_store';
+import { ensureDisclaimerPrompt } from '../../helpers/ensure_disclaimer_prompt.js';
 
 function* watch_delete_store() {
   while (true) {
@@ -36,6 +37,8 @@ function* watch_restore_defaults() {
     } catch (err) {
       console.error('Failed to clear active config profile after restore defaults', err);
     }
+
+    yield* ensureDisclaimerPrompt();
   }
 }
 
