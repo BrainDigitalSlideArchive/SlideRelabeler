@@ -129,14 +129,14 @@ function ModalHelp() {
                   The developers are not liable for a failure to fully de-identify any given whole slide image file.
                 </b>{' '}
                 You alone are responsible for ensuring adequate de-identification for your use case before sharing
-                resulting files. Because imaging practices differ across institutions, verify that outputs meet your
+                resulting files. Because histology and slide scanning practices differ across institutions, verify that outputs meet your
                 requirements. If something fails to de-identify as expected, please share reproducible details so the
                 application can be improved.
               </p>
               <p>
                 You can change whether this disclaimer appears every time the app starts in{' '}
                 <SettingsLink sectionId="config-advanced">Settings → Advanced</SettingsLink>
-                {' '}(Startup disclaimer).
+                {' '}.
               </p>
             </div>
 
