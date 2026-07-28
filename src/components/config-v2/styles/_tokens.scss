@@ -1,0 +1,23 @@
+// Semantic aliases for config-v2.
+@use '../../../styles/colors' as *;
+@forward '../../../styles/colors';
+
+$cfg-bg: $config-panel-bg;
+$cfg-surface: $config-panel-surface;
+$cfg-ink: $config-text-primary;
+$cfg-ink-muted: $config-text-secondary;
+$cfg-ink-faint: $config-text-tertiary;
+$cfg-border: $config-border;
+$cfg-accent: $darker-blue; // intentional: stronger than $config-accent (== secondary)
+$cfg-warn: $surface-warning-text;
+$cfg-ok: #2d8a54;
+$cfg-callout-bg: $config-callout-bg;
+$cfg-callout-border: $config-callout-border;
+
+// Spacing scale: one shared ladder for all v2 sections.
+// Do not add section-local spacing forks.
+$cfg-space-xs: 0.25rem;
+$cfg-space-sm: 0.35rem;
+$cfg-space-md: 0.5rem;
+$cfg-space-lg: 0.75rem;
+$cfg-space-xl: 1.25rem;

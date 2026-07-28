@@ -1,0 +1,98 @@
+@use "sass:color";
+// ConfigCollapsible + glossary list used inside disclosures
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
+
+.config-v2 {
+  .cfg-collapsible {
+    margin-bottom: $cfg-space-md;
+    border: 1px solid $cfg-border;
+    border-radius: 0.35rem;
+    background: $cfg-bg;
+    overflow: hidden;
+  }
+
+  .cfg-collapsible__header {
+    display: flex;
+    align-items: flex-start;
+    gap: $cfg-space-sm;
+    width: 100%;
+    padding: $cfg-space-md $cfg-space-lg;
+    border: none;
+    background: $cfg-surface;
+    color: $cfg-ink;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+
+    @include cfg-focus-ring;
+
+    &:hover {
+      background: color.adjust($cfg-surface, $lightness: -2%);
+    }
+  }
+
+  .cfg-collapsible__chevron {
+    flex: 0 0 auto;
+    margin-top: 0.2em;
+    color: $cfg-ink-faint;
+    font-size: 0.85em;
+    line-height: 1;
+  }
+
+  .cfg-collapsible__heading {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-xs;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .cfg-collapsible__title {
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    color: $cfg-ink;
+    line-height: 1.3;
+  }
+
+  .cfg-collapsible__subtitle {
+    font-size: $cfg-font-detail;
+    font-weight: 400;
+    color: $cfg-ink-faint;
+    line-height: 1.35;
+  }
+
+  .cfg-collapsible__body {
+    padding: $cfg-space-md $cfg-space-lg $cfg-space-lg;
+    border-top: 1px solid $cfg-border;
+  }
+
+  .cfg-glossary-intro {
+    margin: 0 0 $cfg-space-md;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-muted;
+    line-height: 1.45;
+  }
+
+  .cfg-glossary {
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr);
+    gap: $cfg-space-sm $cfg-space-md;
+
+    dt {
+      margin: 0;
+      font-size: $cfg-font-row-label;
+      font-weight: 600;
+      color: $cfg-ink;
+    }
+
+    dd {
+      margin: 0;
+      font-size: $cfg-font-helper;
+      color: $cfg-ink-muted;
+      line-height: 1.45;
+    }
+  }
+}

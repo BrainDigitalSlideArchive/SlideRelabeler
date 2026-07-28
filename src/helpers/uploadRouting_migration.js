@@ -9,7 +9,7 @@ function clampPending(n) {
 function clampGlobusParallel(n) {
   const v = parseInt(n, 10);
   if (Number.isFinite(v) && v >= 1 && v <= 16) return v;
-  return 4;
+  return 2;
 }
 
 function migrateKeepLocalCopy(savedRouting, dsa, globus) {
@@ -79,7 +79,7 @@ export function migrateUploadRoutingFromLegacy(dsa, globus, savedRouting) {
     staging_dir_mode: 'system',
     staging_dir_custom: '',
     max_local_pending: clampPending(dsa?.upload_throttle_limit),
-    max_globus_parallel_uploads: 4,
+    max_globus_parallel_uploads: 2,
     destination,
     default_local_output_dir: '',
   };

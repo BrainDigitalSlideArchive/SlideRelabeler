@@ -14,6 +14,7 @@ export const SET_GLOBUS_SOURCE_ENDPOINT = 'globus/SET_GLOBUS_SOURCE_ENDPOINT';
 export const TOGGLE_UPLOAD_TO_GLOBUS = 'globus/TOGGLE_UPLOAD_TO_GLOBUS';
 export const TOGGLE_DELETE_AFTER_GLOBUS_UPLOAD = 'globus/TOGGLE_DELETE_AFTER_GLOBUS_UPLOAD';
 export const UPLOAD_FILE = 'globus/UPLOAD_FILE';
+export const UPLOAD_BATCH = 'globus/UPLOAD_BATCH';
 export const UPLOAD_FILE_SUCCESS = 'globus/UPLOAD_FILE_SUCCESS';
 export const UPLOAD_FILE_COMPLETE = 'globus/UPLOAD_FILE_COMPLETE';
 export const UPDATE_UPLOAD_STATUS = 'globus/UPDATE_UPLOAD_STATUS';
@@ -40,7 +41,10 @@ export const CHECK_AUTH = 'globus/CHECK_AUTH';
 export const SET_AUTHORIZATION_CODE_INPUT = 'globus/SET_AUTHORIZATION_CODE_INPUT';
 export const SUBMIT_AUTHORIZATION_CODE = 'globus/SUBMIT_AUTHORIZATION_CODE';
 export const TOGGLE_SSL_VERIFICATION = 'globus/TOGGLE_SSL_VERIFICATION';
+export const SET_DISABLE_SSL_VERIFICATION = 'globus/SET_DISABLE_SSL_VERIFICATION';
 export const RESTORE_GLOBUS_PERSISTED = 'globus/RESTORE_GLOBUS_PERSISTED';
 export const BUMP_GLOBUS_DIRECTORY_REFRESH = 'globus/BUMP_GLOBUS_DIRECTORY_REFRESH';
+/** 'session' | 'durable' — intent when ModalGlobusEndpointPicker confirms */
+export const SET_GLOBUS_ENDPOINT_PICKER_MODE = 'globus/SET_GLOBUS_ENDPOINT_PICKER_MODE';
 /** Internal: keep globus.upload / delete_after aligned with uploadRouting slice */
 export const SYNC_UPLOAD_PREFS_FROM_ROUTING = 'globus/SYNC_UPLOAD_PREFS_FROM_ROUTING';

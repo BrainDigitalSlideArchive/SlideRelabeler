@@ -4,7 +4,7 @@ import * as modal_actions from "../../actions/modal";
 import Switch from '../../components/controls/switch/Switch';
 
 function ModalHeader(props) {
-  const { title, type, onClose, display_changed_only} = props;
+  const { title, type, onClose, display_changed_only, hideClose = false} = props;
   const dispatch = useDispatch();
 
   return (
@@ -15,10 +15,15 @@ function ModalHeader(props) {
         type === "metadata" &&
         <Switch label="Changed Only" checked={display_changed_only} onChange={() => dispatch({type: modal_actions.TOGGLE_DISPLAY_CHANGED_ONLY})} />
       }
-      <button className={"__button-icon __close"}
-              onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: type}}) && onClose && onClose()}>
-        <i className={"fi fi-rr-cross"}></i>
-      </button>
+      {!hideClose ? (
+        <button className={"__button-icon __close"}
+                onClick={() => {
+                  dispatch({ type: modal_actions.CLOSE_MODAL });
+                  onClose?.();
+                }}>
+          <i className={"fi fi-rr-cross"}></i>
+        </button>
+      ) : null}
     </div>
   )
 }

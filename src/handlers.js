@@ -11,7 +11,7 @@ import walk from 'fs-walk';
 import DSAAPI from './api/DSAAPI';
 import ESMAPI from './api/ESMAPI';
 import GlobusAPI from './api/GlobusAPI';
-import { buildDeidUploadMetadata } from './helpers/dsa_upload_metadata.js';
+import { buildDsaItemMetadata } from './helpers/dsa_upload_metadata.js';
 import {
   checkSlidePathAccessible,
   buildPathErrorForIpc,
@@ -99,6 +99,12 @@ ipcMain.handle('dsa-login', async (event, api_url, username, password) => {
   dsa_client = new DSAAPI(api_url);
   let response = await dsa_client.login(username, password);
   return response;
+});
+
+/** Unauthenticated reachability check; does not touch the logged-in dsa_client. */
+ipcMain.handle('dsa-check-server-url', async (event, api_url) => {
+  const client = new DSAAPI(api_url);
+  return client.checkServerReachable();
 });
 
 ipcMain.handle('dsa-logout', async (event) => {
@@ -199,56 +205,100 @@ ipcMain.handle('debug-append-log-line', async (event, line) => {
   }
 });
 
+/** Girder may return a completed File doc on the last chunk (upload already finalized). */
+function isGirderCompletedFileDoc(doc) {
+  if (!doc || typeof doc !== 'object') return false;
+  if (doc._modelType === 'file') return true;
+  return doc.itemId != null && doc.received == null && (doc.sha512 != null || typeof doc.size === 'number');
+}
+
+function emitDsaUploadComplete(window, file_row_idx, fileDoc) {
+  window.webContents.send('dsa-upload-file-complete', {
+    row_idx: file_row_idx,
+    itemId: fileDoc.itemId,
+    fileId: fileDoc._id,
+    fileName: fileDoc.name,
+  });
+}
+
 function read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     read(fd, file_buffer, 0, chunk_size, -1, async (err, bytesRead, buffer) => {
       const start_time = new Date();
       if (err) {
         console.error("Error reading file", err);
         reject(false);
+        return;
       }
-      let response = null;
-      let finalize = false;
-      if (bytesRead < chunk_size) {
-        response = await dsa_client.upload_file_chunk(upload_id, buffer.slice(0, bytesRead), data_offset);
-        finalize = true;
-      } else {
-        response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
-      }
-      const end_time = new Date();
-      const time_diff_ms = end_time - start_time;
-      const rate_bytes_per_ms = bytesRead / time_diff_ms;
-
-
-
-      data_offset += bytesRead;
-      if (response && response[0]) {
-        const progress = (response[1].received / file_size) * 100;
-
-        if (finalize) {
-          const complete = await dsa_client.upload_file_complete(upload_id);
-          close(fd);
-          if (complete && complete[0]) {
-            const fileDoc = complete[1];
-            window.webContents.send('dsa-upload-file-complete', {
-              row_idx: file_row_idx,
-              itemId: fileDoc.itemId,
-              fileId: fileDoc._id,
-              fileName: fileDoc.name,
-            });
-            resolve(true);
-          } else {
-            const errMsg = complete?.[1]?.message || 'Upload completion failed';
-            window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
-            reject(false);
-          }
-          return;
+      try {
+        let response = null;
+        let finalize = false;
+        if (bytesRead < chunk_size) {
+          response = await dsa_client.upload_file_chunk(upload_id, buffer.slice(0, bytesRead), data_offset);
+          finalize = true;
+        } else {
+          response = await dsa_client.upload_file_chunk(upload_id, buffer, data_offset);
         }
-        window.webContents.send('dsa-upload-file-progress', { file_path: file_path, progress: progress, row_idx: file_row_idx, rate_bytes_per_ms: rate_bytes_per_ms });
-        resolve(true);
-      } else {
-        window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: response[1].message, row_idx: file_row_idx });
-        close(fd);
+        const end_time = new Date();
+        const time_diff_ms = Math.max(1, end_time - start_time);
+        const rate_bytes_per_ms = bytesRead / time_diff_ms;
+
+        if (response && response[0]) {
+          const doc = response[1];
+
+          // Last chunk often auto-finalizes; calling /completion then fails with "Invalid upload id".
+          if (isGirderCompletedFileDoc(doc)) {
+            close(fd);
+            emitDsaUploadComplete(window, file_row_idx, doc);
+            resolve(true);
+            return;
+          }
+
+          const received = doc?.received;
+          const progress =
+            typeof received === 'number' && file_size > 0 ? (received / file_size) * 100 : 0;
+
+          if (finalize) {
+            const complete = await dsa_client.upload_file_complete(upload_id);
+            close(fd);
+            if (complete && complete[0]) {
+              emitDsaUploadComplete(window, file_row_idx, complete[1]);
+              resolve(true);
+            } else {
+              const errMsg = complete?.[1]?.message || 'Upload completion failed';
+              window.webContents.send('dsa-upload-file-error', { file_path: file_path, error: errMsg, row_idx: file_row_idx });
+              reject(false);
+            }
+            return;
+          }
+          window.webContents.send('dsa-upload-file-progress', {
+            file_path: file_path,
+            progress: progress,
+            row_idx: file_row_idx,
+            rate_bytes_per_ms: rate_bytes_per_ms,
+          });
+          resolve(true);
+        } else {
+          window.webContents.send('dsa-upload-file-error', {
+            file_path: file_path,
+            error: response?.[1]?.message || 'Upload chunk failed',
+            row_idx: file_row_idx,
+          });
+          close(fd);
+          reject(false);
+        }
+      } catch (e) {
+        console.error('Error sending file chunk', e);
+        try {
+          close(fd);
+        } catch {
+          /* ignore */
+        }
+        window.webContents.send('dsa-upload-file-error', {
+          file_path: file_path,
+          error: e?.message || 'Upload chunk failed',
+          row_idx: file_row_idx,
+        });
         reject(false);
       }
     });
@@ -262,13 +312,24 @@ async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
   open(file_path, 'r', async (err, fd) => {
     if (err) {
       console.error("Error opening file", err);
+      window.webContents.send('dsa-upload-file-error', {
+        file_path: file_path,
+        error: err?.message || 'Failed to open file for upload',
+        row_idx: file_row_idx,
+      });
       return;
     }
     const file_buffer = Buffer.alloc(chunk_size);
 
     for (let data_offset = 0; data_offset < file_size; data_offset += chunk_size) {
-      const success = await read_and_send_file_chunk(window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size);
-      if (!success) {
+      try {
+        const success = await read_and_send_file_chunk(
+          window, fd, upload_id, file_row_idx, file_path, file_size, file_buffer, data_offset, chunk_size,
+        );
+        if (!success) {
+          break;
+        }
+      } catch {
         break;
       }
     }
@@ -278,11 +339,20 @@ async function send_file_chunks(window, upload_id, file_row_idx, file_path) {
 
 ipcMain.handle('dsa-upload-file', async (event, folder_id, file_row_idx, file_path) => {
   let response = await dsa_client.begin_upload_file_to_folder(folder_id, file_path);
+  const window = get_browser_window_by_title('SlideRelabeler');
   if (response[0]) {
-    const window = get_browser_window_by_title('SlideRelabeler');
     if (window) {
       await send_file_chunks(window, response[1]._id, file_row_idx, file_path);
+    } else {
+      console.error('dsa-upload-file: SlideRelabeler window not found');
     }
+  } else if (window && !window.isDestroyed()) {
+    // Unblock DSA saga waiter (join on COMPLETE/ERROR).
+    window.webContents.send('dsa-upload-file-error', {
+      file_path,
+      error: response?.[1]?.message || 'Failed to begin DSA upload',
+      row_idx: file_row_idx,
+    });
   }
   return response;
 });
@@ -297,11 +367,7 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
 
   try {
     if (opts.renameItem) {
-      const stem =
-        reserved.dsaAlias ||
-        reserved.labelText ||
-        reserved.rename ||
-        '';
+      const stem = reserved.dsaAlias || '';
       const fileName = opts.fileName || '';
       const ext = extname(fileName) || reserved.source?.parsed?.ext || '';
       if (stem && ext) {
@@ -314,12 +380,18 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
       }
     }
     if (opts.setMetadata) {
-      const metadata = buildDeidUploadMetadata(fileRow);
-      const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
-      if (!metaResp[0]) {
-        return [false, metaResp[1] || { message: 'Metadata update failed' }];
+      const metadata = buildDsaItemMetadata(
+        fileRow,
+        opts.itemMetadata,
+        opts.csvConfig,
+      );
+      if (metadata && Object.keys(metadata).length > 0) {
+        const metaResp = await dsa_client.setItemMetadata(itemId, metadata);
+        if (!metaResp[0]) {
+          return [false, metaResp[1] || { message: 'Metadata update failed' }];
+        }
+        results.metadata = metaResp[1];
       }
-      results.metadata = metaResp[1];
     }
     return [true, results];
   } catch (err) {
@@ -328,13 +400,44 @@ ipcMain.handle('dsa-enrich-uploaded-item', async (event, { itemId, fileRow, opti
 });
 
 ipcMain.handle('dsa-check-upload-folder', async (event, folder_id) => {
+  if (!dsa_client) {
+    return { message: 'Not logged in to DSA' };
+  }
   let response = await dsa_client.get_folder_by_id(folder_id);
   if (response[0]) {
     return response[1];
   } else {
     return response[1];
   }
-})
+});
+
+ipcMain.handle('dsa-get-resource-path', async (event, id, type = 'folder') => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_resource_path(id, type);
+});
+
+ipcMain.handle('dsa-list-folders', async (event, parentId, parentType = 'folder') => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_folder(parentId, parentType);
+});
+
+ipcMain.handle('dsa-list-collections', async (event) => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_collections();
+});
+
+ipcMain.handle('dsa-get-current-user', async (event) => {
+  if (!dsa_client) {
+    return [false, { message: 'Not logged in to DSA' }];
+  }
+  return dsa_client.get_current_user();
+});
 
 // Globus IPC handlers
 ipcMain.handle('globus-check-cli-available', async (event) => {
@@ -795,6 +898,102 @@ async function poll_globus_transfer_status(webContents, task_id, file_row_idx, f
   }
 }
 
+/**
+ * Poll one Globus task for a multi-file batch. Emits progress to all rows; does not emit
+ * complete/error IPC (caller/saga finalizes rows and upload slots).
+ * @returns {Promise<[boolean, object]>}
+ */
+async function poll_globus_batch_transfer_status(webContents, task_id, items, total_bytes = null) {
+  const max_polls = 1000;
+  const pollStartMs = Date.now();
+  let poll_count = 0;
+  let last_status = null;
+  let last_reported_progress = 0;
+  const rowList = (items || []).map((it) => ({
+    row_idx: it.row_idx,
+    file_path: it.file_path,
+  }));
+
+  while (poll_count < max_polls) {
+    const status_response = await globus_client.get_transfer_status(task_id);
+    if (!status_response[0]) {
+      const message = status_response?.[1]?.message || 'Task status check failed';
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', message, { task_id });
+      }
+      return [false, { message, task_id }];
+    }
+
+    const task = status_response[1];
+    const status = task.status || task.state;
+    if (status && status !== last_status) {
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(
+          webContents,
+          row.row_idx,
+          'status',
+          `Batch task status: ${status}${task?.nice_status ? ` (${task.nice_status})` : ''}`,
+          { task_id },
+        );
+      }
+      last_status = status;
+    }
+
+    const { progress: rawProgress, indeterminate } = globusTransferProgressFromTask(
+      task,
+      total_bytes,
+      last_reported_progress,
+    );
+    let progress = rawProgress;
+    if (status !== 'SUCCEEDED') {
+      progress = Math.max(last_reported_progress, progress);
+    }
+    last_reported_progress = progress;
+
+    if (webContents && !webContents.isDestroyed()) {
+      for (const row of rowList) {
+        try {
+          webContents.send('globus-upload-file-progress', {
+            file_path: row.file_path,
+            progress,
+            indeterminate,
+            status,
+            row_idx: row.row_idx,
+            globus: true,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    if (status === 'SUCCEEDED') {
+      const durationSec = Math.max(1, Math.round((Date.now() - pollStartMs) / 1000));
+      const effectiveBps = globusTaskNumericField(task, 'effective_bytes_per_second');
+      return [true, {
+        task_id,
+        duration_sec: durationSec,
+        effective_bytes_per_second: effectiveBps != null ? effectiveBps : 0,
+      }];
+    }
+    if (status === 'FAILED') {
+      const message = task?.message || `Transfer ${status}`;
+      for (const row of rowList) {
+        emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', message, { task_id });
+      }
+      return [false, { message, task_id }];
+    }
+
+    poll_count += 1;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  for (const row of rowList) {
+    emitGlobusUploadDebugLog(webContents, row.row_idx, 'stderr', 'Transfer polling timeout', { task_id });
+  }
+  return [false, { message: 'Transfer polling timeout', task_id }];
+}
+
 // Progress/poll callbacks must use this handler's event.sender (never title/focus/window lookup) so concurrent transfers reach the invoking renderer.
 ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_path, file_path, file_row_idx = 0, file_size_bytes = null) => {
   const rowIdxNum = Number(file_row_idx);
@@ -855,8 +1054,86 @@ ipcMain.handle('globus-upload-file', async (event, source_path, dest_collection_
   
   return [true, { task_id: task_id, message: 'Transfer initiated' }];
 });
+
+/**
+ * Submit and wait for a multi-file Globus --batch transfer.
+ * Payload: { sourceEndpointId, destEndpointId, pairs: [{sourcePath,destPath}], items: [{row_idx,file_path,file_size_bytes?}] }
+ * Returns when the task completes; does not emit complete/error IPC (saga finalizes rows).
+ */
+ipcMain.handle('globus-upload-batch', async (event, payload = {}) => {
+  const sender = event.sender;
+  if (sender.isDestroyed()) {
+    return [false, { message: 'Renderer webContents is destroyed' }];
+  }
+  if (!globus_client) {
+    globus_client = new GlobusAPI();
+  }
+  if (!globus_client.isAvailable()) {
+    return [false, { message: 'Globus CLI not available' }];
+  }
+
+  const sourceEndpointId = payload.sourceEndpointId;
+  const destEndpointId = payload.destEndpointId;
+  const pairs = payload.pairs || [];
+  const items = payload.items || [];
+  const totalBytes = items.reduce((sum, it) => {
+    const n = Number(it.file_size_bytes);
+    return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+  }, 0) || null;
+
+  const firstRow = items[0]?.row_idx ?? 0;
+  emitGlobusUploadDebugLog(sender, firstRow, 'stdout', `Submitting batch transfer (${pairs.length} files)`, {});
+
+  const transfer_response = await globus_client.submit_transfer_batch(
+    sourceEndpointId,
+    destEndpointId,
+    pairs,
+  );
+  if (!transfer_response[0]) {
+    emitGlobusUploadDebugLog(
+      sender,
+      firstRow,
+      'stderr',
+      transfer_response?.[1]?.message || 'Batch transfer submission failed',
+      {},
+    );
+    return transfer_response;
+  }
+
+  const task_id = transfer_response[1].task_id
+    || transfer_response[1].id
+    || transfer_response[1].DATA?.[0]?.task_id;
+  if (!task_id) {
+    return [false, { message: 'Could not extract task_id from batch transfer response', response: transfer_response[1] }];
+  }
+
+  emitGlobusUploadDebugLog(sender, firstRow, 'stdout', `Batch transfer task_id: ${task_id}`, { task_id });
+  if (!sender.isDestroyed()) {
+    for (const item of items) {
+      try {
+        sender.send('globus-upload-file-progress', {
+          file_path: item.file_path,
+          progress: 0,
+          indeterminate: true,
+          status: 'INITIATED',
+          row_idx: item.row_idx,
+          globus: true,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  return poll_globus_batch_transfer_status(sender, task_id, items, totalBytes);
+});
+
 ipcMain.handle('get-platform', async () => {
   return process.platform;
+})
+
+ipcMain.handle('get-app-version', async () => {
+  return app.getVersion();
 })
 
 /**
@@ -879,6 +1156,10 @@ ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) =
 
   if (file_types.includes('xlsx')) {
     dialog_options.filters.push({ name: 'Excel Files', extensions: ['xlsx'] });
+  }
+
+  if (file_types.includes('json')) {
+    dialog_options.filters.push({ name: 'JSON Files', extensions: ['json'] });
   }
 
   return dialog.showSaveDialog(dialog_options).then(d => {
@@ -1033,7 +1314,91 @@ ipcMain.handle('delete-store', async () => {
   if (exists) {
     await fs.unlink(app_data_path);
   }
+  const profiles_path = join(user_data_path, 'config-profiles.json');
+  if (existsSync(profiles_path)) {
+    try {
+      await fs.unlink(profiles_path);
+    } catch (err) {
+      console.error('Cannot delete config profiles store', profiles_path, err);
+    }
+  }
   app.exit(0);
+});
+
+ipcMain.handle('quit-app', async () => {
+  app.exit(0);
+});
+
+const CONFIG_PROFILES_FILENAME = 'config-profiles.json';
+
+function configProfilesPath() {
+  return join(app.getPath('userData'), CONFIG_PROFILES_FILENAME);
+}
+
+function emptyConfigProfilesDoc() {
+  return {
+    schemaVersion: 1,
+    activeProfileId: null,
+    activeFingerprint: null,
+    profiles: [],
+  };
+}
+
+ipcMain.handle('get-config-profiles', async () => {
+  const path = configProfilesPath();
+  if (!existsSync(path)) {
+    return emptyConfigProfilesDoc();
+  }
+  try {
+    const raw = readFileSync(path, { encoding: 'utf8' });
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return emptyConfigProfilesDoc();
+    return {
+      schemaVersion: 1,
+      activeProfileId: parsed.activeProfileId ?? null,
+      activeFingerprint: parsed.activeFingerprint ?? null,
+      profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+    };
+  } catch (err) {
+    console.error('Cannot read config profiles', path, err);
+    return emptyConfigProfilesDoc();
+  }
+});
+
+ipcMain.handle('set-config-profiles', async (event, data) => {
+  const path = configProfilesPath();
+  const doc = {
+    schemaVersion: 1,
+    activeProfileId: data?.activeProfileId ?? null,
+    activeFingerprint: data?.activeFingerprint ?? null,
+    profiles: Array.isArray(data?.profiles) ? data.profiles : [],
+  };
+  writeFileSync(path, JSON.stringify(doc, null, 2), { encoding: 'utf8' });
+  return { ok: true };
+});
+
+ipcMain.handle('open-json-file-dialog', async () => {
+  const customFilter = { name: 'JSON Files', extensions: ['json'] };
+  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then((d) => {
+    if (d.canceled || !d.filePaths?.length) {
+      return { error: true, message: 'No file selected' };
+    }
+    return d.filePaths[0];
+  });
+});
+
+ipcMain.handle('write-text-file', async (event, filePath, contents) => {
+  writeFileSync(filePath, contents, { encoding: 'utf8' });
+  return { ok: true };
+});
+
+ipcMain.handle('read-text-file', async (event, filePath) => {
+  try {
+    const contents = readFileSync(filePath, { encoding: 'utf8' });
+    return { ok: true, contents };
+  } catch (err) {
+    return { error: true, message: err?.message || 'Cannot read file' };
+  }
 });
 
 // open-file-dialog: let the user pick files from the operating system

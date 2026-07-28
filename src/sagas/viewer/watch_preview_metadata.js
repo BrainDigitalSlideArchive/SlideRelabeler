@@ -4,29 +4,8 @@ import * as preview_actions from '../../actions/preview';
 
 import { structToObject, buildFileRowErrorFromBackend } from '../../helpers/grpc_helpers';
 import { logMetadataPreview } from '../../helpers/metadata_preview_debug';
-import * as files_actions from '../../actions/files';
+import {makePreviewErrorTable, formatTagData, tagValuesDiffer} from '../../helpers/metadata_preview_ui';
 import * as debug_actions from '../../actions/debug';
-
-function are_values_diff(prior, after) {
-    let max_length = 0;
-
-    if (!prior || !after) {
-        return true;
-
-    } else {
-        max_length = Math.max(prior.length, after.length);
-    }
-
-    for (let i = 0; i < max_length; i++) {
-        if (prior[i] && after[i]) {
-            if (prior[i] != after[i])  {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 
 function convert_json_ifds(ifds) {
     if (!Array.isArray(ifds)) {
@@ -65,7 +44,7 @@ function setup_table(tiff_tags, ifds_for_row) {
                 table[i][tag_key] = tag_dict;
                 table[i][tag_key]['name'] = tiff_tags[tag_key] && tiff_tags[tag_key].name;
             }
-            table[i][tag_key]['prior'] = tag['data'];
+            table[i][tag_key]['prior'] = formatTagData(tag['data']);
         }
     }
 
@@ -81,7 +60,7 @@ function setup_table(tiff_tags, ifds_for_row) {
                 table[i][tag_key] = tag_dict;
                 
             }
-            table[i][tag_key]['after'] = tag['data'];
+            table[i][tag_key]['after'] = formatTagData(tag['data']);
         }
     }
 
@@ -95,7 +74,9 @@ function setup_table(tiff_tags, ifds_for_row) {
             if (!row['name']) {
                 row['name'] = tiff_tags[tag_key] && tiff_tags[tag_key].name;
             }
-            row['diff'] = are_values_diff(row['prior'], row['after']);
+            if (row['prior'] == null) row['prior'] = '';
+            if (row['after'] == null) row['after'] = '';
+            row['diff'] = tagValuesDiffer(row['prior'], row['after']);
             
             final_table.push(row);
         }
@@ -160,6 +141,16 @@ function* watch_preview_metadata() {
                     newType: typeof new_ifds,
                     responseKeys: response && typeof response === 'object' ? Object.keys(response) : [],
                 });
+                yield put({
+                    type: preview_actions.SET_METADATA_PREVIEW,
+                    payload: {
+                        path: sourcePath,
+                        row_idx,
+                        table: makePreviewErrorTable(
+                            'Metadata preview is not available for this file.',
+                        ),
+                    },
+                });
                 continue;
             }
 
@@ -185,19 +176,17 @@ function* watch_preview_metadata() {
                 path: sourcePath,
                 message: details,
             });
-            if (!file_row.__reserved?.error) {
-                yield put({
-                    type: files_actions.UPDATE_FILE_ROW_WITH_ERROR,
-                    payload: { file_row_idx: row_idx, error: summary, errorDetails: details },
-                });
-                yield put({
-                    type: debug_actions.ADD_BACKEND_ERROR_MESSAGE,
-                    payload: details,
-                });
-            }
+            yield put({
+                type: debug_actions.ADD_BACKEND_ERROR_MESSAGE,
+                payload: details,
+            });
             yield put({
                 type: preview_actions.SET_METADATA_PREVIEW,
-                payload: { path: sourcePath, row_idx, table: [] },
+                payload: {
+                    path: sourcePath,
+                    row_idx,
+                    table: makePreviewErrorTable(summary),
+                },
             });
         }
     }

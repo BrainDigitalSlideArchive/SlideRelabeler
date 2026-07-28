@@ -1,0 +1,63 @@
+// ConfigField — size contract xs|sm|md|fill (no InputText--compact)
+@use '../tokens' as *;
+
+.config-v2 {
+  .cfg-field {
+    min-width: 0;
+    max-width: 100%;
+
+    .InputText {
+      margin-bottom: 0;
+    }
+
+    // Kit sizes win over InputText defaults via .config-v2 specificity.
+    .__input-text,
+    .InputText__control-row .__input-text {
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+
+    &--xs {
+      .__input-text,
+      .InputText__control-row .__input-text {
+        flex: none;
+        width: 5rem;
+        max-width: 5rem;
+      }
+    }
+
+    &--sm {
+      .__input-text,
+      .InputText__control-row .__input-text {
+        flex: none;
+        width: 8rem;
+        max-width: 8rem;
+      }
+    }
+
+    &--md {
+      .__input-text,
+      .InputText__control-row .__input-text {
+        flex: none;
+        width: 16rem;
+        max-width: 100%;
+      }
+    }
+
+    &--fill {
+      width: 100%;
+
+      .InputText,
+      .InputText__control-row {
+        width: 100%;
+      }
+
+      .__input-text,
+      .InputText__control-row .__input-text {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  }
+}

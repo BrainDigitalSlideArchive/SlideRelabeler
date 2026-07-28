@@ -1,24 +1,26 @@
-import React from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
 import * as upload_routing_actions from '../../actions/uploadRouting';
-import * as modal_actions from '../../actions/modal';
-import GridHoverTooltip from '../AgGrid/GridHoverTooltip';
 import {
-  getDeliverySetupButtonLabel,
-  getDeliverySetupModalType,
-  getDeliveryUploadStatusCopy,
-  getSaveLocallyPanelCopy,
-} from '../../selectors/outputReadiness.js';
+  isDsaUploadIntegrationEnabled,
+  isGlobusUploadIntegrationEnabled,
+} from '../../helpers/upload_integrations.js';
+import GridHoverTooltip from '../AgGrid/GridHoverTooltip';
+import { openConfigSettings } from '../config-v2/ConfigV2Nav';
+import { getSaveLocallyPanelCopy } from '../../selectors/outputReadiness.js';
+import DsaDeliveryControls from './DsaDeliveryControls.jsx';
+import GlobusDeliveryControls from './GlobusDeliveryControls.jsx';
 
 import './DeliveryPanel.scss';
+import './upload-delivery.scss';
 
-const UPLOAD_DESTINATION_OPTIONS = [
-  { label: 'DSA', value: 'dsa' },
-  { label: 'Globus', value: 'globus' },
+const UPLOAD_OFF_TEXT = 'De-identified files will not be uploaded automatically';
+
+const ALL_UPLOAD_DESTINATIONS = [
+  { value: 'dsa', label: 'DSA' },
+  { value: 'globus', label: 'Globus' },
 ];
-
-const UPLOAD_OFF_TEXT = 'Off — enable to configure';
 
 function CompactRadioPills({
   name,
@@ -83,33 +85,52 @@ function SaveLocallyHint({ hint, hintTone }) {
 
 export default function DeliveryPanel({
   uploadRouting,
-  uploadReadiness,
-  outputReadiness,
   destSummary,
   outputDir,
   disabled = false,
   onChooseFolder,
 }) {
   const dispatch = useDispatch();
+  const dsaEnabled = useSelector(isDsaUploadIntegrationEnabled);
+  const globusEnabled = useSelector(isGlobusUploadIntegrationEnabled);
+  const enabledDestinations = useMemo(
+    () => ALL_UPLOAD_DESTINATIONS.filter((d) => (
+      (d.value === 'dsa' && dsaEnabled) || (d.value === 'globus' && globusEnabled)
+    )),
+    [dsaEnabled, globusEnabled],
+  );
   const localEnabled = !!uploadRouting?.local_output_enabled;
   const uploadEnabled = !!uploadRouting?.auto_upload;
   const uploadDestination = uploadRouting?.destination === 'globus' ? 'globus' : 'dsa';
-  const uploadConfigured = outputReadiness?.uploadConfigured ?? true;
 
   const localCopy = getSaveLocallyPanelCopy(destSummary, outputDir, { localEnabled });
-  const uploadStatus = getDeliveryUploadStatusCopy(uploadReadiness);
-  const setupModalType = getDeliverySetupModalType(uploadDestination);
-  const setupButtonLabel = getDeliverySetupButtonLabel(uploadDestination, uploadReadiness?.ready);
+  const hasUploadMethods = enabledDestinations.length > 0;
+  const firstEnabled = enabledDestinations[0]?.value;
+  const effectiveDestination = enabledDestinations.some((d) => d.value === uploadDestination)
+    ? uploadDestination
+    : (firstEnabled ?? uploadDestination);
+  const uploadColumnActive = hasUploadMethods ? uploadEnabled : true;
+  const uploadToggleDisabled = disabled || !hasUploadMethods;
 
-  const blockers = uploadReadiness?.blockers ?? [];
-  const multipleBlockers = blockers.length > 1;
-
-  function openSetupModal() {
+  useEffect(() => {
+    if (hasUploadMethods || uploadEnabled) return;
     dispatch({
-      type: modal_actions.TOGGLE_MODAL,
-      payload: { type: setupModalType },
+      type: upload_routing_actions.SET_AUTO_UPLOAD,
+      payload: true,
     });
-  }
+  }, [dispatch, hasUploadMethods, uploadEnabled]);
+
+  useEffect(() => {
+    if (!uploadEnabled || !firstEnabled) return;
+    if (uploadDestination === firstEnabled
+      || enabledDestinations.some((d) => d.value === uploadDestination)) {
+      return;
+    }
+    dispatch({
+      type: upload_routing_actions.SET_UPLOAD_DESTINATION,
+      payload: firstEnabled,
+    });
+  }, [dispatch, uploadEnabled, uploadDestination, firstEnabled, enabledDestinations]);
 
   return (
     <section className="delivery-panel" role="region" aria-label="Output delivery">
@@ -168,18 +189,32 @@ export default function DeliveryPanel({
           </div>
         </div>
 
-        <div className={`delivery-panel__column${uploadEnabled ? '' : ' _off'}`}>
+        <div className={`delivery-panel__column${uploadColumnActive ? '' : ' _off'}`}>
           <div className="delivery-panel__column-header">
             <h3 className="delivery-panel__column-title">Upload</h3>
             <ColumnToggle
-              checked={uploadEnabled}
-              disabled={disabled}
+              checked={uploadColumnActive}
+              disabled={uploadToggleDisabled}
               label="Enable upload"
               onChange={() => dispatch({ type: upload_routing_actions.TOGGLE_AUTO_UPLOAD })}
             />
           </div>
-          <div className={`delivery-panel__column-content${uploadEnabled ? '' : ' _disabled'}`}>
-            {!uploadEnabled ? (
+          <div className={`delivery-panel__column-content${uploadColumnActive ? '' : ' _disabled'}`}>
+            {!hasUploadMethods ? (
+              <div className="delivery-panel__upload-empty">
+                <p className="delivery-panel__helper">
+                  No upload methods are configured. Turn on DSA and/or Globus in Configuration.
+                </p>
+                <button
+                  type="button"
+                  className={`upload-delivery__text-btn${disabled ? ' _disabled' : ''}`}
+                  disabled={disabled}
+                  onClick={() => openConfigSettings(dispatch, 'config-upload')}
+                >
+                  Open upload settings
+                </button>
+              </div>
+            ) : !uploadEnabled ? (
               <p className="delivery-panel__column-off">{UPLOAD_OFF_TEXT}</p>
             ) : (
               <>
@@ -187,8 +222,8 @@ export default function DeliveryPanel({
                   name="delivery-upload-destination"
                   labelId="delivery-upload-via-label"
                   label="Via"
-                  options={UPLOAD_DESTINATION_OPTIONS}
-                  value={uploadDestination}
+                  options={enabledDestinations}
+                  value={effectiveDestination}
                   disabled={disabled}
                   onChange={(next) => dispatch({
                     type: upload_routing_actions.SET_UPLOAD_DESTINATION,
@@ -196,55 +231,11 @@ export default function DeliveryPanel({
                   })}
                 />
 
-                <div className={`delivery-panel__status-line${uploadConfigured ? ' _ready' : ' _blocked'}`}>
-                  {uploadConfigured ? (
-                    <>
-                      <span className="delivery-panel__status-text _ready">{uploadStatus}</span>
-                      <span className="delivery-panel__status-sep" aria-hidden="true">·</span>
-                      <button
-                        type="button"
-                        className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                        disabled={disabled}
-                        onClick={openSetupModal}
-                      >
-                        {setupButtonLabel}
-                      </button>
-                    </>
-                  ) : multipleBlockers ? (
-                    <ul className="delivery-panel__blockers">
-                      {blockers.map((blocker) => (
-                        <li key={blocker}>
-                          <span className="delivery-panel__status-text _blocked">{blocker}</span>
-                        </li>
-                      ))}
-                      <li className="delivery-panel__blockers-action">
-                        <button
-                          type="button"
-                          className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                          disabled={disabled}
-                          onClick={openSetupModal}
-                        >
-                          {setupButtonLabel}
-                        </button>
-                      </li>
-                    </ul>
-                  ) : (
-                    <>
-                      <span className="delivery-panel__status-text _blocked">
-                        {blockers[0] || uploadStatus}
-                      </span>
-                      <span className="delivery-panel__status-sep" aria-hidden="true">·</span>
-                      <button
-                        type="button"
-                        className={`delivery-panel__setup-button${disabled ? ' _disabled' : ''}`}
-                        disabled={disabled}
-                        onClick={openSetupModal}
-                      >
-                        {setupButtonLabel}
-                      </button>
-                    </>
-                  )}
-                </div>
+                {effectiveDestination === 'dsa' ? (
+                  <DsaDeliveryControls disabled={disabled} />
+                ) : (
+                  <GlobusDeliveryControls disabled={disabled} />
+                )}
               </>
             )}
           </div>

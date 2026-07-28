@@ -1,0 +1,37 @@
+// ConfigPathChip
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
+
+.config-v2 {
+  .cfg-path-chip {
+    @include cfg-mono-truncate;
+    display: inline-block;
+    max-width: 100%;
+    padding: $cfg-space-sm $cfg-space-md;
+    border: 1px solid $cfg-border;
+    border-radius: 0.3rem;
+    background: $cfg-bg;
+    color: $cfg-ink;
+    font-size: $cfg-font-chip;
+    line-height: 1.35;
+    box-sizing: border-box;
+
+    &--empty {
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: $cfg-ink-faint;
+      font-style: italic;
+      font-family: inherit;
+      font-size: $cfg-font-helper;
+    }
+  }
+
+  .cfg-status-field__empty {
+    margin: 0;
+    font-size: $cfg-font-helper;
+    color: $cfg-ink-faint;
+    line-height: 1.35;
+  }
+}

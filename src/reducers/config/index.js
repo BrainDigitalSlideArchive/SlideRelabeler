@@ -14,6 +14,7 @@ import {
   CSV_RESERVED_FIELD_SPECS,
   syncCsvLegacyColumnValue,
 } from '../../helpers/csv_column_config.js';
+import { DISCLAIMER_TEXT_VERSION } from '../../helpers/disclaimer.js';
 
 function syncFilenameLegacyFields(draft) {
   const normalized = normalizeFilenameConfig(draft.filename);
@@ -192,6 +193,38 @@ const config_reducer  = createReducer(default_state, (builder) => {
         draft.copy.enable_copy_mode = !state.copy.enable_copy_mode;
       })
     })
+    .addCase(config_actions.SET_DISCLAIMER_PROMPT_MODE, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        const mode = action.payload === 'allowRemember' ? 'allowRemember' : 'everyLaunch';
+        draft.disclaimer.promptMode = mode;
+        if (mode === 'everyLaunch') {
+          draft.disclaimer.acceptedVersion = null;
+        }
+      });
+    })
+    .addCase(config_actions.CLEAR_DISCLAIMER_ACCEPTED, (state) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        draft.disclaimer.acceptedVersion = null;
+      });
+    })
+    .addCase(config_actions.ACCEPT_DISCLAIMER, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.disclaimer) {
+          draft.disclaimer = { promptMode: 'everyLaunch', acceptedVersion: null };
+        }
+        const remember = !!action.payload?.remember
+          && draft.disclaimer.promptMode === 'allowRemember';
+        if (remember) {
+          draft.disclaimer.acceptedVersion = DISCLAIMER_TEXT_VERSION;
+        }
+      });
+    })
     .addCase(config_actions.SET_NAMING_CONFIG, (state, action) => {
       return produce(state, draft => {
         const p = action.payload || {};
@@ -221,21 +254,42 @@ const config_reducer  = createReducer(default_state, (builder) => {
     .addCase(config_actions.SET_DSA_UPLOAD_CONFIG, (state, action) => {
       return produce(state, draft => {
         const p = action.payload || {};
-        if (p.item_name_assembly) {
-          Object.assign(draft.dsa_upload.item_name_assembly, p.item_name_assembly);
-          const { item_name_assembly, ...rest } = p;
-          Object.assign(draft.dsa_upload, rest);
-        } else {
-          Object.assign(draft.dsa_upload, p);
+        const {
+          item_name_assembly,
+          dsaAlias,
+          itemMetadata,
+          ...rest
+        } = p;
+        Object.assign(draft.dsa_upload, rest);
+        if (item_name_assembly) {
+          Object.assign(draft.dsa_upload.item_name_assembly, item_name_assembly);
         }
-        if (p.dsaAlias !== undefined) {
-          if (!draft.dsa_upload.dsaAlias) draft.dsa_upload.dsaAlias = { mode: 'output_name', pattern: '' };
-          Object.assign(draft.dsa_upload.dsaAlias, p.dsaAlias);
+        if (dsaAlias !== undefined) {
+          if (!draft.dsa_upload.dsaAlias) draft.dsa_upload.dsaAlias = { mode: 'label_text', pattern: '' };
+          Object.assign(draft.dsa_upload.dsaAlias, dsaAlias);
+        }
+        if (itemMetadata !== undefined) {
+          if (!draft.dsa_upload.itemMetadata) draft.dsa_upload.itemMetadata = { mode: 'none', column: '' };
+          Object.assign(draft.dsa_upload.itemMetadata, itemMetadata);
         }
         if (p.rename_item_after_upload !== undefined) {
           draft.routing.dsaItemName.enabled = Boolean(p.rename_item_after_upload);
         }
       })
+    })
+    .addCase(config_actions.SET_GLOBUS_UPLOAD_CONFIG, (state, action) => {
+      return produce(state, draft => {
+        if (!draft.globus_upload) {
+          draft.globus_upload = {
+            default_target_endpoint_id: '',
+            default_target_endpoint_label: '',
+            source_endpoint: '',
+            disable_ssl_verification: false,
+            max_upload_batch_size: 1,
+          };
+        }
+        Object.assign(draft.globus_upload, action.payload || {});
+      });
     })
     .addCase(config_actions.SET_ASSEMBLY_CONFIG, (state, action) => {
       return produce(state, draft => {

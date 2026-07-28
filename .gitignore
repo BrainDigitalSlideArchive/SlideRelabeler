@@ -111,5 +111,10 @@ build
 src/python/tests/dist
 src/python/tests/build
 
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Reference directory for external repositories (for code review only)
 reference/

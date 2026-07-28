@@ -117,13 +117,11 @@ export function resolveDefaultDsaAlias({ outputName, labelText, uuid, qrPayload 
   const map = aliasMap ?? (fileRow ? buildAliasMapForConfig(config, fileRow) : null);
   const context = { outputName, labelText, uuid, qrPayload };
 
-  if (spec.mode === 'none') return '';
-  if (spec.mode === 'output_name') return outputName != null ? String(outputName) : '';
   if (spec.mode === 'label_text') return labelText != null ? String(labelText) : '';
   if (spec.mode === 'pattern' && fileRow) {
     return evaluateFieldPattern(fileRow, spec.pattern, context, map);
   }
-  return outputName != null ? String(outputName) : '';
+  return '';
 }
 
 function isDefaultSource(source) {
@@ -177,8 +175,7 @@ export function applyRowNamingDefaults(fileRow, config) {
 
   computeContext.qrPayload = reserved.qrPayload ?? '';
 
-  const dsaActive = config?.dsa_upload?.rename_item_after_upload
-    || config?.dsa_upload?.set_item_metadata;
+  const dsaActive = Boolean(config?.dsa_upload?.rename_item_after_upload);
   if (dsaActive && isDefaultSource(reserved.dsaAliasSource)) {
     const dsaAlias = resolveDefaultDsaAlias(computeContext, config, fileRow, aliasMap);
     if (dsaAlias) reserved.dsaAlias = dsaAlias;

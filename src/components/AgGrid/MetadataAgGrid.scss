@@ -1,9 +1,33 @@
-@import '../../styles/colors.scss';
+@use '../../styles/colors' as *;
 
 .__ag-grid {
     height: 100%;
     width: 100%;
     position: relative;
+
+    &.metadata-ag-grid {
+        .metadata-ag-grid__clip-cell {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .metadata-ag-grid__clip-cell .ag-cell-wrapper,
+        .metadata-ag-grid__clip-cell .ag-cell-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        // Breathing room past the last row so end-of-scroll is obvious.
+        .ag-body-viewport,
+        .ag-center-cols-viewport {
+            padding-bottom: 1.5rem;
+            background-color: $dark-blue;
+        }
+    }
+
     .__data {
         display: none;
         width: 100%;
@@ -97,4 +121,3 @@
         }
     }
 }
-

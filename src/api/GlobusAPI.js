@@ -4,7 +4,13 @@ import fs from 'fs';
 import path from 'path';
 
 import { GLOBUS_ENDPOINT_UUID_RE } from '../helpers/globus_helpers';
-import { interpretGlobusLsFailure } from '../helpers/globus_error_interpretation';
+import { buildGlobusBatchStdin } from '../helpers/globus_upload_batch.js';
+import {
+    GLOBUS_LS_FAILURE_KIND,
+    formatGlobusLoginError,
+    interpretGlobusCliFailure,
+    interpretGlobusLsFailure,
+} from '../helpers/globus_error_interpretation';
 
 const execAsync = promisify(exec);
 
@@ -46,6 +52,47 @@ function globusApiVLog(...args) {
     }
 }
 
+function firstExistingPath(candidates) {
+    for (const candidate of candidates) {
+        if (candidate && fs.existsSync(candidate)) return candidate;
+    }
+    return null;
+}
+
+/**
+ * Resolve bundled / local PyInstaller globus_cli paths.
+ * Forge extraResource uses dist/globus_cli.app (darwin) or dist/globus_cli (win/linux).
+ */
+function resolveBundledGlobusCli(roots) {
+    const candidates = [];
+    for (const root of roots) {
+        if (!root) continue;
+        if (process.platform === 'win32') {
+            candidates.push(
+                path.join(root, 'globus_cli', 'globus_cli.exe'),
+                path.join(root, 'globus-cli', 'globus-cli.exe'),
+                path.join(root, 'globus_cli.exe'),
+            );
+        } else if (process.platform === 'darwin') {
+            // COLLECT name=globus_cli.app (folder-style, binary at top level — same as engine.app)
+            candidates.push(
+                path.join(root, 'globus_cli.app', 'globus_cli'),
+                path.join(root, 'globus_cli.app', 'Contents', 'MacOS', 'globus_cli'),
+                path.join(root, 'globus-cli.app', 'globus-cli'),
+                path.join(root, 'globus_cli', 'globus_cli'),
+            );
+        } else {
+            // Linux and other Unix: COLLECT name=globus_cli
+            candidates.push(
+                path.join(root, 'globus_cli', 'globus_cli'),
+                path.join(root, 'globus-cli', 'globus-cli'),
+                path.join(root, 'globus_cli'),
+            );
+        }
+    }
+    return firstExistingPath(candidates);
+}
+
 class GlobusAPI {
     constructor() {
         globusApiVLog('[GlobusAPI] Initializing...');
@@ -59,122 +106,71 @@ class GlobusAPI {
         // SSL verification setting (default: false = SSL verification enabled)
         this._disableSslVerification = false;
         
-        // Detect globus-cli executable path (similar to PythonBridge)
-        // Determine expected executable name based on platform
-        let globusCli = null;
-        let globusCliExecutable = null;
-        if (process.platform === 'win32') {
-            globusCli = 'globus-cli.exe';
-            globusCliExecutable = 'globus-cli.exe';
-        } else {
-            globusCli = 'globus-cli.app';
-            globusCliExecutable = path.join('globus-cli.app', 'Contents', 'MacOS', 'globus-cli');
-        }
-        globusApiVLog('[GlobusAPI] Looking for:', globusCli);
-        
-        // Check for bundled globus-cli in resourcesPath (all platforms)
-        const resourcesGlobusPath1 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli');
-        const resourcesGlobusPath2 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli.app');
-        const resourcesGlobusPath3 = path.join(process.resourcesPath, 'globus-cli', 'globus-cli.exe');
-        globusApiVLog('[GlobusAPI] Checking resourcesPath paths:');
-        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath1, 'exists:', fs.existsSync(resourcesGlobusPath1));
-        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath2, 'exists:', fs.existsSync(resourcesGlobusPath2));
-        globusApiVLog('[GlobusAPI]   -', resourcesGlobusPath3, 'exists:', fs.existsSync(resourcesGlobusPath3));
-        
-        // List contents of process.resourcesPath if it exists
-        if (process.resourcesPath && fs.existsSync(process.resourcesPath)) {
-            try {
-                const resourcesContents = fs.readdirSync(process.resourcesPath);
-                globusApiVLog('[GlobusAPI] Contents of process.resourcesPath:', resourcesContents);
-                if (resourcesContents.includes('globus-cli')) {
-                    const globusCliPath = path.join(process.resourcesPath, 'globus-cli');
-                    const globusCliContents = fs.readdirSync(globusCliPath);
-                    globusApiVLog('[GlobusAPI] Contents of globus-cli directory:', globusCliContents);
-                }
-            } catch (error) {
-                globusApiVLog('[GlobusAPI] Error reading resourcesPath:', error.message);
-            }
-        }
-        
-        const usePyinstaller = process.argv.includes('pyinstaller') || 
-            fs.existsSync(resourcesGlobusPath1) ||
-            fs.existsSync(resourcesGlobusPath2) ||
-            fs.existsSync(resourcesGlobusPath3);
-        globusApiVLog('[GlobusAPI] usePyinstaller:', usePyinstaller);
-        
         // Initialize conda environment tracking
         this._usingCondaEnv = false;
         this._condaPrefix = null;
         this._pathToGlobus = null;
         this._status = null;
-        
-        // Priority 1: Production mode - use bundled executable (always check this first)
-        const bundledPath = path.join(process.resourcesPath, 'globus-cli', globusCli);
-        globusApiVLog('[GlobusAPI] Checking bundled path:', bundledPath, 'exists:', fs.existsSync(bundledPath));
-        if (fs.existsSync(bundledPath)) {
-            if (process.platform === 'darwin') {
-                // On macOS, .app bundles need to execute the binary inside
-                const macExecutable = path.join(process.resourcesPath, 'globus-cli', globusCliExecutable);
-                globusApiVLog('[GlobusAPI] Checking macOS executable:', macExecutable, 'exists:', fs.existsSync(macExecutable));
-                if (fs.existsSync(macExecutable)) {
-                    this._pathToGlobus = macExecutable;
-                } else {
-                    this._pathToGlobus = path.join(process.resourcesPath, 'globus-cli', globusCli);
-                }
-            } else {
-                this._pathToGlobus = path.join(process.resourcesPath, 'globus-cli', globusCli);
+
+        const resourcesRoot = process.resourcesPath || '';
+        const localDistRoot = path.join(process.cwd(), 'dist');
+        const isDev = process.env.NODE_ENV === 'development';
+        const forceBinary = process.env.SLIDERELABELER_USE_GLOBUS_BINARY === '1';
+        // Match engine launch: live conda/PATH in normal npm run dev; frozen only when
+        // packaged/production or SLIDERELABELER_USE_GLOBUS_BINARY=1.
+        const preferFrozen = !isDev || forceBinary;
+
+        if (resourcesRoot && fs.existsSync(resourcesRoot)) {
+            try {
+                globusApiVLog('[GlobusAPI] Contents of process.resourcesPath:', fs.readdirSync(resourcesRoot));
+            } catch (error) {
+                globusApiVLog('[GlobusAPI] Error reading resourcesPath:', error.message);
             }
-            this._status = 'Globus: using bundled executable from resourcesPath';
-            globusApiVLog('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
         }
-        // Priority 2: Local build for testing
-        else {
-            const localPath = path.join('./dist/globus-cli', globusCli);
-            globusApiVLog('[GlobusAPI] Checking local build path:', localPath, 'exists:', fs.existsSync(localPath));
-            if (fs.existsSync(localPath)) {
-            if (process.platform === 'darwin') {
-                // On macOS, .app bundles need to execute the binary inside
-                const macExecutable = path.join('./dist/globus-cli', globusCliExecutable);
-                if (fs.existsSync(macExecutable)) {
-                    this._pathToGlobus = macExecutable;
-                } else {
-                    this._pathToGlobus = path.join('./dist/globus-cli', globusCli);
-                }
+
+        globusApiVLog('[GlobusAPI] preferFrozen:', preferFrozen, 'forceBinary:', forceBinary);
+
+        if (preferFrozen) {
+            const bundled = resolveBundledGlobusCli([resourcesRoot]);
+            if (bundled) {
+                this._pathToGlobus = bundled;
+                this._status = 'Globus: using bundled executable from resourcesPath';
+                globusApiVLog('[GlobusAPI] Found bundled executable at:', this._pathToGlobus);
             } else {
-                this._pathToGlobus = path.join('./dist/globus-cli', globusCli);
-            }
-            this._status = 'Globus: using local build';
-                globusApiVLog('[GlobusAPI] Found local build at:', this._pathToGlobus);
-            }
-            // Priority 3: Development mode - try conda environment first, then system globus
-            else if (!usePyinstaller && process.env.NODE_ENV === 'development') {
-                // Try conda environment's globus-cli first (from environment.yml)
-                const condaPrefix = process.env.CONDA_PREFIX;
-                if (condaPrefix) {
-                    // On Windows, globus is typically in Scripts/, on Unix in bin/
-                    const condaGlobusPath = process.platform === 'win32' 
-                        ? path.join(condaPrefix, 'Scripts', 'globus.exe')
-                        : path.join(condaPrefix, 'bin', 'globus');
-                    
-                    globusApiVLog('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
-                    if (fs.existsSync(condaGlobusPath)) {
-                        this._pathToGlobus = condaGlobusPath;
-                        this._status = 'Globus: using conda environment globus-cli';
-                        this._usingCondaEnv = true;
-                        this._condaPrefix = condaPrefix;
-                        globusApiVLog('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
-                    }
-                }
-                
-                // Fallback to system-installed globus (if available)
-                if (!this._pathToGlobus) {
-                    this._pathToGlobus = 'globus';
-                    this._status = 'Globus: using system globus (development mode)';
-                    globusApiVLog('[GlobusAPI] Using system globus');
+                const local = resolveBundledGlobusCli([localDistRoot]);
+                if (local) {
+                    this._pathToGlobus = local;
+                    this._status = 'Globus: using local build';
+                    globusApiVLog('[GlobusAPI] Found local build at:', this._pathToGlobus);
                 }
             }
         }
-        
+
+        // Dev default (and safety net if frozen missing): conda env `globus`, then PATH
+        if (!this._pathToGlobus) {
+            const condaPrefix = process.env.CONDA_PREFIX;
+            if (condaPrefix) {
+                const condaGlobusPath = process.platform === 'win32'
+                    ? path.join(condaPrefix, 'Scripts', 'globus.exe')
+                    : path.join(condaPrefix, 'bin', 'globus');
+                globusApiVLog('[GlobusAPI] Checking conda path:', condaGlobusPath, 'exists:', fs.existsSync(condaGlobusPath));
+                if (fs.existsSync(condaGlobusPath)) {
+                    this._pathToGlobus = condaGlobusPath;
+                    this._status = 'Globus: using conda environment globus-cli';
+                    this._usingCondaEnv = true;
+                    this._condaPrefix = condaPrefix;
+                    globusApiVLog('[GlobusAPI] Found conda globus-cli at:', this._pathToGlobus);
+                }
+            }
+            if (!this._pathToGlobus) {
+                this._pathToGlobus = 'globus';
+                this._status = isDev
+                    ? 'Globus: using system globus (development mode)'
+                    : 'Globus: using system globus';
+                globusApiVLog('[GlobusAPI] Using system globus');
+            }
+        }
+
         // If no path was found, set error status
         if (!this._pathToGlobus) {
             this._status = 'Globus: No path detected, not available';
@@ -277,6 +273,7 @@ class GlobusAPI {
             env: finalEnv,
             windowsHide: true,
             shell: false,
+            stdio: additionalEnv?.stdin != null ? ['pipe', 'pipe', 'pipe'] : undefined,
         };
 
         const timeoutMs = 30000;
@@ -288,6 +285,15 @@ class GlobusAPI {
             let settled = false;
 
             const child = spawn(this._pathToGlobus, commandArgs, spawnOptions);
+
+            if (additionalEnv?.stdin != null && child.stdin) {
+                try {
+                    child.stdin.write(String(additionalEnv.stdin));
+                    child.stdin.end();
+                } catch (e) {
+                    // ignore write errors; close handler will report failure
+                }
+            }
 
             const timer = setTimeout(() => {
                 if (settled) return;
@@ -390,7 +396,7 @@ class GlobusAPI {
 
     async getLocalEndpointId() {
         if (!this._pathToGlobus) {
-            return [false, { message: 'Globus CLI not available.' }];
+            return [false, { code: 'cli_unavailable', message: 'Globus CLI not available.' }];
         }
         const result = await this.executeCommand(['endpoint', 'local-id', '--quiet'], false);
         if (!result || !result[0]) {
@@ -398,22 +404,38 @@ class GlobusAPI {
             const stderr = (err.stderr || '').trim();
             const message = (err.message || '').trim();
             const combined = `${stderr}\n${message}`.toLowerCase();
-            let userMessage =
-                'Globus Connect Personal does not appear configured for this Windows user on this machine, or the local endpoint could not be read.';
             if (
                 err.exitCode === 4 ||
-                /consent|login required|authentication|auth.*required|not logged in|consentrequired/.test(
+                /consent|login required|authentication|auth.*required|not logged in|consentrequired|missinglogin/.test(
                     combined
                 )
             ) {
-                userMessage =
-                    'Log in to Globus in this app (Authentication) or run globus login, and ensure Globus Connect Personal is installed for this user.';
-            } else if (stderr) {
+                return [
+                    false,
+                    {
+                        code: 'login_required',
+                        message: 'Sign in to Globus before Auto-detect can read this computer’s endpoint ID.',
+                        stderr: err.stderr,
+                        exitCode: err.exitCode,
+                    },
+                ];
+            }
+            let userMessage =
+                'Globus Connect Personal does not appear configured on this machine, or the local endpoint could not be read. Install and run Globus Connect Personal, then try Auto-detect again.';
+            if (stderr) {
                 const lines = stderr.split(/\r?\n/).filter((line) => !/\[PYI-|^\s*LOADER:/i.test(line));
                 const cleaned = lines.join(' ').trim();
                 if (cleaned) userMessage = cleaned;
             }
-            return [false, { message: userMessage, stderr: err.stderr, exitCode: err.exitCode }];
+            return [
+                false,
+                {
+                    code: 'gcp_unavailable',
+                    message: userMessage,
+                    stderr: err.stderr,
+                    exitCode: err.exitCode,
+                },
+            ];
         }
         const text = (result[1]?.message || '').trim();
         const firstLine = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l);
@@ -421,6 +443,7 @@ class GlobusAPI {
             return [
                 false,
                 {
+                    code: 'invalid_response',
                     message:
                         'Globus CLI did not return a valid endpoint UUID. Ensure Globus Connect Personal is installed and running for this user.',
                 },
@@ -799,8 +822,9 @@ class GlobusAPI {
                 if (this._loginProcess === child) {
                     this._loginProcess = null;
                 }
+                const raw = error?.message || 'Failed to start login command';
                 resolve([false, {
-                    message: error.message || 'Failed to start login command',
+                    message: formatGlobusLoginError(raw),
                     error: error
                 }]);
             });
@@ -990,12 +1014,21 @@ class GlobusAPI {
                 };
             }
 
-            // Otherwise return failure classification\n+            const msg = result?.[1]?.message || 'Login failed';
+            // Otherwise return failure classification
+            const rawMsg = result?.[1]?.message || 'Login failed';
+            const interpreted = interpretGlobusCliFailure(rawMsg);
+            const msg =
+                interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE
+                    ? `${interpreted.userSummary} ${interpreted.userDetail}`.trim()
+                    : rawMsg;
             const isNetwork = /GlobusConnectionError|ConnectionError on request/i.test(combined);
+            const isCliMissing = interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE;
             return {
                 ok: false,
                 isAuthenticated: false,
-                classification: isNetwork ? 'networkError' : 'unknownError',
+                classification: isCliMissing
+                    ? 'cliUnavailable'
+                    : (isNetwork ? 'networkError' : 'unknownError'),
                 message: msg,
                 raw: {
                     stdout: result?.[1]?.stdout || '',
@@ -1007,7 +1040,8 @@ class GlobusAPI {
                 }
             };
         } catch (error) {
-            return { ok: false, isAuthenticated: false, classification: 'unknownError', message: error.message || 'Login failed unexpectedly' };
+            const message = formatGlobusLoginError(error?.message || error || 'Login failed unexpectedly');
+            return { ok: false, isAuthenticated: false, classification: 'unknownError', message };
         } finally {
             globusApiVLog('[GlobusAPI] ===== login() complete =====');
         }
@@ -1120,6 +1154,27 @@ class GlobusAPI {
         // Format: globus transfer <source> <dest>
         const args = ['transfer', source_path, destination_collection_path];
         return this.executeCommand(args);
+    }
+
+    /**
+     * Submit one Globus transfer task with many path pairs via CLI --batch.
+     * @param {string} sourceEndpointId
+     * @param {string} destEndpointId
+     * @param {{ sourcePath: string, destPath: string }[]} pairs
+     * @returns {Promise<[boolean, object]>}
+     */
+    async submit_transfer_batch(sourceEndpointId, destEndpointId, pairs) {
+        const srcEp = String(sourceEndpointId || '').trim();
+        const destEp = String(destEndpointId || '').trim();
+        if (!srcEp || !destEp) {
+            return [false, { message: 'Source and destination endpoint IDs are required for batch transfer.' }];
+        }
+        if (!Array.isArray(pairs) || pairs.length === 0) {
+            return [false, { message: 'Batch transfer requires at least one path pair.' }];
+        }
+        const stdin = buildGlobusBatchStdin(pairs);
+        const args = ['transfer', srcEp, destEp, '--batch', '-'];
+        return this.executeCommand(args, true, { stdin });
     }
 
     async get_transfer_status(task_id) {

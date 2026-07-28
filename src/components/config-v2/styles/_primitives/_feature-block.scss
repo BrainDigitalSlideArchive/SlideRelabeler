@@ -1,0 +1,137 @@
+// ConfigFeatureBlock — label composer feature cards
+@use '../tokens' as *;
+@use '../typography' as *;
+@use '../mixins' as *;
+
+.config-v2 {
+  .cfg-feature-block {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    column-gap: $cfg-space-md;
+    row-gap: $cfg-space-sm;
+    margin-bottom: $cfg-space-md;
+    padding: $cfg-space-md $cfg-space-lg;
+    border: 1px solid $cfg-border;
+    border-radius: 0.35rem;
+    background: $cfg-surface;
+    box-sizing: border-box;
+
+    &--active {
+      border-color: rgba($cfg-accent, 0.45);
+    }
+
+    &--inactive {
+      .cfg-feature-block__body {
+        opacity: 0.55;
+      }
+    }
+
+    &--incomplete {
+      border-color: rgba($cfg-warn, 0.55);
+    }
+  }
+
+  // Children participate in the card grid: checkbox | title+detail
+  .cfg-feature-block__header {
+    display: contents;
+  }
+
+  .cfg-feature-block__checkbox-cell {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    justify-content: center;
+    padding-top: 0.15rem;
+
+    .Checkbox {
+      width: auto;
+      margin: 0;
+
+      .__checkbox {
+        width: 1.15em;
+        height: 1.15em;
+        margin-left: 0;
+      }
+    }
+  }
+
+  .cfg-feature-block__header-main {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-xs;
+  }
+
+  .cfg-feature-block__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: $cfg-space-xs $cfg-space-sm;
+  }
+
+  .cfg-feature-block__title {
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    color: $cfg-ink;
+    line-height: 1.3;
+  }
+
+  .cfg-feature-block__hint {
+    font-size: $cfg-font-helper;
+    font-weight: 400;
+    color: $cfg-ink-muted;
+    line-height: 1.35;
+  }
+
+  .cfg-feature-block__issue {
+    font-size: $cfg-font-warn;
+    color: $cfg-warn;
+    line-height: 1.35;
+  }
+
+  .cfg-feature-block__body {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    margin-top: 0;
+    padding-top: $cfg-space-sm;
+    border-top: 1px solid $cfg-border;
+  }
+
+  .cfg-label-features {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-md;
+  }
+
+  .cfg-label-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+    gap: $cfg-space-lg;
+    align-items: start;
+
+    @media (max-width: 720px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .cfg-label-icon-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+  }
+
+  .cfg-label-icon-row__name {
+    @include cfg-mono-truncate;
+    max-width: 100%;
+    font-size: $cfg-font-chip;
+  }
+
+  .cfg-label-icon-row__issue {
+    font-size: $cfg-font-warn;
+    color: $cfg-warn;
+  }
+}

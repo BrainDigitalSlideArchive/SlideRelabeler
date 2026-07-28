@@ -1,6 +1,6 @@
 // helpers/wsi_extensions.js — supported whole-slide image extensions (file picker + folder walk).
 
-export const WSI_SUPPORTED_EXTENSIONS = ['.svs', '.ndpi', '.tif', '.tiff', '.czi'];
+export const WSI_SUPPORTED_EXTENSIONS = ['.svs', '.ndpi', '.tif', '.tiff'];
 
 /** Electron dialog filter extensions (no leading dot). */
 export const WSI_DIALOG_EXTENSIONS = WSI_SUPPORTED_EXTENSIONS.map((ext) => ext.slice(1));

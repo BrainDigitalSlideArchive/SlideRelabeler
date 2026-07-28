@@ -5,7 +5,11 @@ export const DEFAULT_FIELD_SPEC = { mode: 'output_name', pattern: '' };
 export const OUTPUT_NAME_MODES = ['original', 'uuid', 'pattern'];
 export const LABEL_TEXT_MODES = ['output_name', 'none', 'pattern'];
 export const QR_CONTENT_MODES = ['output_name', 'label_text', 'uuid', 'pattern'];
-export const DSA_ALIAS_MODES = ['output_name', 'label_text', 'none', 'pattern'];
+/** Active rename modes after Same-as-file migration (legacy output_name/none coerce to rename off). */
+export const DSA_ALIAS_MODES = ['label_text', 'pattern'];
+export const DSA_ALIAS_LEGACY_SAME_AS_FILE_MODES = ['output_name', 'none'];
+
+export const ITEM_METADATA_MODES = ['none', 'all_deid', 'all_original', 'column'];
 
 function normalizeSpec(spec, fallbackMode) {
   if (typeof spec === 'string') {
@@ -18,6 +22,21 @@ function normalizeSpec(spec, fallbackMode) {
     };
   }
   return { mode: fallbackMode, pattern: '' };
+}
+
+function normalizeItemMetadata(dsaConfig = {}) {
+  const existing = dsaConfig.itemMetadata;
+  if (existing && typeof existing === 'object' && existing.mode) {
+    const mode = ITEM_METADATA_MODES.includes(existing.mode) ? existing.mode : 'none';
+    return {
+      mode,
+      column: existing.column != null ? String(existing.column) : '',
+    };
+  }
+  if (dsaConfig.set_item_metadata === true) {
+    return { mode: 'all_deid', column: '' };
+  }
+  return { mode: 'none', column: '' };
 }
 
 /**
@@ -49,25 +68,44 @@ export function normalizeLabelConfig(labelConfig = {}) {
 
 export function normalizeDsaUploadConfig(dsaConfig = {}) {
   const legacy = dsaConfig.item_name_assembly;
-  let mode = dsaConfig.dsaAlias?.mode;
-  let pattern = dsaConfig.dsaAlias?.pattern ?? '';
+  let inferredMode = dsaConfig.dsaAlias?.mode;
+  let inferredPattern = dsaConfig.dsaAlias?.pattern ?? '';
 
-  if (!mode) {
+  if (!inferredMode) {
     if (legacy?.mode === 'template' && legacy.template) {
-      mode = 'pattern';
-      pattern = legacy.template;
+      inferredMode = 'pattern';
+      inferredPattern = legacy.template;
     } else if (legacy?.mode === 'same_as_label') {
-      mode = 'label_text';
+      inferredMode = 'label_text';
     } else {
-      mode = 'output_name';
+      inferredMode = 'label_text';
     }
   }
 
-  const dsaAlias = dsaConfig.dsaAlias
-    ? normalizeSpec(dsaConfig.dsaAlias, 'output_name')
-    : { mode: mode ?? 'output_name', pattern: pattern ?? '' };
+  let dsaAlias = dsaConfig.dsaAlias
+    ? normalizeSpec(dsaConfig.dsaAlias, 'label_text')
+    : { mode: inferredMode, pattern: inferredPattern };
 
-  return { ...dsaConfig, dsaAlias };
+  let rename_item_after_upload = Boolean(dsaConfig.rename_item_after_upload);
+
+  // Legacy output_name / none mean Same as file (do not rename).
+  if (DSA_ALIAS_LEGACY_SAME_AS_FILE_MODES.includes(dsaAlias.mode)) {
+    rename_item_after_upload = false;
+    dsaAlias = { mode: 'label_text', pattern: dsaAlias.pattern ?? '' };
+  } else if (!DSA_ALIAS_MODES.includes(dsaAlias.mode)) {
+    dsaAlias = { mode: 'label_text', pattern: dsaAlias.pattern ?? '' };
+  }
+
+  const itemMetadata = normalizeItemMetadata(dsaConfig);
+  const { set_item_metadata: _legacyMeta, ...rest } = dsaConfig;
+
+  return {
+    ...rest,
+    default_api_url: dsaConfig.default_api_url ?? '',
+    rename_item_after_upload,
+    dsaAlias,
+    itemMetadata,
+  };
 }
 
 export function normalizeFilenamePatternConfig(filenameConfig = {}) {

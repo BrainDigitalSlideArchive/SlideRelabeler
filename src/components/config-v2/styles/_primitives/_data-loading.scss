@@ -1,0 +1,167 @@
+// CSV reserved-field cards + mappings stack (kit domain card)
+@use '../tokens' as *;
+@use '../typography' as *;
+
+.config-v2 {
+  .cfg-csv-lead {
+    margin: 0;
+    font-size: $cfg-font-helper;
+    line-height: 1.45;
+    color: $cfg-ink-muted;
+
+    .cfg-text-btn {
+      display: inline;
+      font-size: inherit;
+      font-weight: 600;
+      vertical-align: baseline;
+    }
+  }
+
+  .cfg-csv-mappings {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-md;
+    width: 100%;
+  }
+
+  .cfg-csv-expand-btn {
+    appearance: none;
+    align-self: flex-start;
+    margin: 0;
+    padding: $cfg-space-sm $cfg-space-md;
+    border: 1px dashed $cfg-border;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: $cfg-accent;
+    font: inherit;
+    font-size: $cfg-font-helper;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  .cfg-csv-field-card {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+    padding: $cfg-space-md $cfg-space-lg;
+    border: 1px solid $cfg-border;
+    border-radius: 0.4rem;
+    background: $cfg-surface;
+    box-sizing: border-box;
+  }
+
+  .cfg-csv-field-card__title {
+    margin: 0;
+    font-size: $cfg-font-setting;
+    line-height: 1.4;
+  }
+
+  .cfg-csv-field-card__role {
+    font-weight: 600;
+    color: $cfg-ink;
+  }
+
+  .cfg-csv-field-card__required {
+    font-weight: 500;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-csv-field-card__helper {
+    font-weight: 400;
+    font-style: italic;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-csv-field-card__aliases {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+  }
+
+  .cfg-csv-field-card__alias-row,
+  .cfg-csv-field-card__add-row {
+    display: grid;
+    grid-template-columns: 10.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+  }
+
+  .cfg-csv-field-card__alias-label {
+    font-size: $cfg-font-detail;
+    font-weight: 500;
+    color: $cfg-ink-muted;
+    white-space: nowrap;
+  }
+
+  .cfg-csv-field-card__default-value {
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: $cfg-space-sm $cfg-space-md;
+    font-size: $cfg-font-chip;
+    border: 1px solid $cfg-border;
+    border-radius: 0.25rem;
+    background: $cfg-bg;
+    color: $cfg-ink;
+  }
+
+  .cfg-csv-field-card__alias-actions {
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  .cfg-csv-field-card__icon-btn {
+    width: 1.65rem;
+    height: 1.65rem;
+    padding: 0;
+    border: 1px solid $cfg-border;
+    border-radius: 0.25rem;
+    background: $cfg-bg;
+    color: $cfg-ink;
+    font-size: $cfg-font-detail;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    &--remove {
+      color: $cfg-warn;
+    }
+  }
+
+  .cfg-csv-field-card__add-btn {
+    appearance: none;
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: $cfg-accent;
+    font: inherit;
+    font-size: $cfg-font-helper;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+  }
+
+  .cfg-file-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+  }
+}

@@ -5,6 +5,10 @@ import { URL } from 'url';
 import fs from 'fs';
 import { app, safeStorage } from 'electron';
 import { join, basename, extname } from 'path';
+import {
+    INVALID_GIRDER_API_URL_MESSAGE,
+    isGirderVersionResponse,
+} from '../helpers/dsa_url.js';
 
 class DSAAPI {
     perform_request(sub_url, method, data = null, data_type = 'json', content_type = 'application/json') {
@@ -149,6 +153,14 @@ class DSAAPI {
         return this.get(`/folder/${folder_id}`);
     }
 
+    get_resource_path(id, type = 'folder') {
+        return this.get(`/resource/${id}/path`, { type });
+    }
+
+    get_current_user() {
+        return this.get('/user/me');
+    }
+
     get_collection_details_by_id(collection_id) {
         return this.get(`/collection/${collection_id}/details`);
     }
@@ -230,6 +242,87 @@ class DSAAPI {
         this.api_auth = null;
         this.api_url = null;
         return [true, { message: "Logged out" }];
+    }
+
+    /**
+     * Unauthenticated ping of Girder GET /system/version.
+     * Does not use or mutate session auth.
+     * @returns {Promise<[boolean, object]>}
+     */
+    checkServerReachable() {
+        return new Promise((resolve) => {
+            const trimmed = String(this.api_url || '').trim().replace(/\/+$/, '');
+            if (!trimmed) {
+                resolve([false, { message: 'Enter a DSA API URL.' }]);
+                return;
+            }
+
+            const fail = (extra = {}) => resolve([false, {
+                message: INVALID_GIRDER_API_URL_MESSAGE,
+                ...extra,
+            }]);
+
+            let url = null;
+            try {
+                url = new URL(`${trimmed}/system/version`);
+            } catch {
+                fail();
+                return;
+            }
+
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                fail();
+                return;
+            }
+
+            const options = {
+                hostname: url.hostname,
+                port: url.port || (url.protocol === 'https:' ? 443 : 80),
+                path: url.pathname + url.search,
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'SlideRelabeler/1.0',
+                    'Accept': 'application/json',
+                },
+            };
+
+            const httpModule = url.protocol === 'https:' ? https : http;
+            const req = httpModule.request(options, (res) => {
+                let responseData = '';
+                res.on('data', (chunk) => {
+                    responseData += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode !== 200) {
+                        fail({ status: res.statusCode });
+                        return;
+                    }
+                    let parsed = null;
+                    try {
+                        parsed = JSON.parse(responseData);
+                    } catch {
+                        fail({ status: res.statusCode });
+                        return;
+                    }
+                    if (!isGirderVersionResponse(parsed)) {
+                        fail({ status: res.statusCode });
+                        return;
+                    }
+                    resolve([true, parsed]);
+                });
+            });
+
+            req.on('error', (error) => {
+                fail({ status: 0, error: error.message });
+            });
+
+            req.setTimeout(10000, () => {
+                req.destroy();
+                fail({ status: 0 });
+            });
+
+            req.end();
+        });
     }
 
     login(username, password) {

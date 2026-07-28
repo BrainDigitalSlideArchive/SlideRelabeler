@@ -1,0 +1,197 @@
+@use "sass:color";
+@use '../../styles/colors' as *;
+
+// Beat Modal.scss `.config-panel__body { padding: 0 1.25em … }` so the first heading isn't flush.
+.Modal .__modal.modal-help .__content .config-panel__body.modal-help__body {
+  padding: 1.35rem 1.25em 1.25em;
+}
+
+.modal-help {
+  &__version {
+    margin: 0 0 0.85rem;
+    font-size: 0.92rem;
+    color: $config-text-secondary;
+  }
+
+  &__version-num {
+    font-weight: 600;
+    color: $config-text-primary;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__inline-link {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    color: $darker-blue;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+    cursor: pointer;
+
+    &:hover {
+      color: color.adjust($darker-blue, $lightness: -8%);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($darker-blue, 0.35);
+      outline-offset: 2px;
+    }
+  }
+
+  // Soft chip for in-app UI labels — quieter than bold.
+  &__ui {
+    display: inline;
+    padding: 0.05em 0.35em;
+    margin: 0 0.05em;
+    border-radius: 0.25rem;
+    border: 1px solid $config-border;
+    background: $config-panel-surface;
+    color: $config-text-primary;
+    font-size: 0.92em;
+    font-weight: 500;
+    white-space: nowrap;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  &__guide-header {
+    margin: 0 0 0.85rem;
+
+    h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: $config-text-primary;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.5;
+      font-size: 0.9rem;
+      color: $config-text-secondary;
+    }
+  }
+
+  &__toc {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid $config-border;
+    border-radius: 0.35rem;
+    background: $config-panel-surface;
+  }
+
+  &__toc-label {
+    margin: 0 0 0.4rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: $config-text-tertiary !important;
+  }
+
+  &__toc-list {
+    margin: 0;
+    padding-left: 1.15rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: $config-text-secondary;
+
+    li {
+      margin-bottom: 0.3rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__link-list {
+    margin: 0 0 0.25rem;
+    padding-left: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: $config-text-secondary;
+
+    li {
+      margin-bottom: 0.45rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__bullets {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: $config-text-secondary;
+
+    li {
+      margin-bottom: 0.55rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__body {
+    .__content-section {
+      margin-bottom: 1.75rem;
+      scroll-margin-top: 0.75rem;
+
+      h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: $config-text-primary;
+      }
+
+      p {
+        margin: 0 0 0.75rem;
+        line-height: 1.5;
+        font-size: 0.9rem;
+        color: $config-text-secondary;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      .modal-help__bullets {
+        margin-top: 0;
+      }
+
+      code {
+        font-size: 0.85em;
+        padding: 0.1em 0.35em;
+        border-radius: 0.25rem;
+        background: $config-panel-surface;
+        color: $config-text-primary;
+      }
+
+      a {
+        color: $darker-blue;
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+
+        &:hover {
+          color: color.adjust($darker-blue, $lightness: -8%);
+        }
+      }
+
+      // Reserved for rare true emphasis (e.g. liability), not UI labels.
+      b {
+        color: $config-text-primary;
+        font-weight: 700;
+      }
+    }
+  }
+}

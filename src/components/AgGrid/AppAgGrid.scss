@@ -1,4 +1,5 @@
-@import '../../styles/colors.scss';
+@use '../../styles/colors' as *;
+@use '../../styles/grid_hover_tooltip' as *;
 
 .__ag-grid {
     height: 100%;
@@ -452,5 +453,3 @@
 .__transformed-value-cell {
     background: rgba(59, 130, 246, 0.08);
 }
-
-@import '../../styles/grid_hover_tooltip';

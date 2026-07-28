@@ -1,13 +1,14 @@
-@import './colors';
+@use "sass:color";
+@use './colors' as *;
+
+// Electron shell colors live in main/main.scss (teal chrome + $beige).
+// Do not set content ink here — light panels must set their own dark text via
+// surfaces.scss / .config-panel so legacy beige-on-teal cannot leak in.
 
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: $beige;
-  background-color: $black;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,11 +18,11 @@
 
 a {
   font-weight: 500;
-  color: $dark-blue;
+  color: $darker-blue;
   text-decoration: inherit;
 }
 a:hover {
-  color: $darker-blue;
+  color: color.adjust($darker-blue, $lightness: -8%);
 }
 
 body {
@@ -54,17 +55,4 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: $black;
-    background-color: $beige;
-  }
-  a:hover {
-    color: $darker-blue;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }

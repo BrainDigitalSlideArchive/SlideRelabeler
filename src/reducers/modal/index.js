@@ -6,6 +6,18 @@ import {produce} from "immer";
 import * as app_actions from '../../actions/app.js';
 import * as modal_actions from '../../actions/modal.js';
 
+function stackTop(stack) {
+  return stack.length > 0 ? stack[stack.length - 1] : undefined;
+}
+
+function setHelpFocusFromPayload(draft, payload) {
+  if (payload?.type !== 'help') return;
+  draft.helpFocusSection =
+    typeof payload.focusSection === 'string' && payload.focusSection
+      ? payload.focusSection
+      : null;
+}
+
 const modal_reducer  = createReducer(default_state, (builder) => {
   builder
     .addCase(modal_actions.UPDATE_MODAL, (state, action) => {
@@ -14,26 +26,48 @@ const modal_reducer  = createReducer(default_state, (builder) => {
     .addCase(modal_actions.TOGGLE_MODAL, (state, action) => {
       return produce(state, (draft) => {
         const nextType = action.payload.type;
-        if (state.active && state.type === nextType) {
-          draft.active = false;
+        if (stackTop(draft.stack) === nextType) {
+          // Disclaimer is a blocking gate — do not toggle it closed.
+          if (nextType === 'disclaimer') return;
+          draft.stack.pop();
+          if (nextType === 'help') {
+            draft.helpFocusSection = null;
+          }
         } else {
-          draft.type = nextType;
-          draft.active = true;
+          draft.stack.push(nextType);
+          setHelpFocusFromPayload(draft, action.payload);
         }
+      });
+    })
+    .addCase(modal_actions.PUSH_MODAL_IF_ABSENT, (state, action) => {
+      return produce(state, (draft) => {
+        const nextType = action.payload?.type;
+        if (!nextType) return;
+        if (!draft.stack.includes(nextType)) {
+          draft.stack.push(nextType);
+        }
+        setHelpFocusFromPayload(draft, action.payload);
+      });
+    })
+    .addCase(modal_actions.CLEAR_HELP_FOCUS_SECTION, (state) => {
+      return produce(state, (draft) => {
+        draft.helpFocusSection = null;
       });
     })
     .addCase(modal_actions.DISPLAY_ERROR_MESSAGE, (state, action) => {
       return produce(state, draft => {
-        draft.type = 'error';
         draft.error_messages = [...state.error_messages, action.payload];
-        draft.active = true;
+        if (stackTop(draft.stack) !== 'error') {
+          draft.stack.push('error');
+        }
       });
     })
     .addCase(modal_actions.DISPLAY_WARNING_MESSAGE, (state, action) => {
       return produce(state, draft => {
-        draft.type = 'warning';
         draft.warning_messages = [...state.warning_messages, action.payload];
-        draft.active = true;
+        if (stackTop(draft.stack) !== 'warning') {
+          draft.stack.push('warning');
+        }
       });
     })
     .addCase(modal_actions.CLEAR_MESSAGES, (state, action) => {
@@ -81,7 +115,17 @@ const modal_reducer  = createReducer(default_state, (builder) => {
     })
     .addCase(modal_actions.CLOSE_MODAL, (state, action) => {
       return produce(state, draft => {
-        draft.active = false;
+        if (stackTop(draft.stack) === 'disclaimer' && !action.payload?.force) {
+          return;
+        }
+        const popped = draft.stack.pop();
+        if (popped === 'error' || popped === 'warning') {
+          draft.error_messages = [];
+          draft.warning_messages = [];
+        }
+        if (popped === 'help') {
+          draft.helpFocusSection = null;
+        }
       });
     })
     .addCase(modal_actions.CHANGE_NETWORK, (state, action) => {

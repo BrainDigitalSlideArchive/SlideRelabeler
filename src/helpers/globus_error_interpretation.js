@@ -14,6 +14,15 @@ export const GLOBUS_LS_FAILURE_KIND = {
   UNKNOWN: 'unknown',
 };
 
+/** Failure kinds for `globus endpoint local-id` / Auto-detect local endpoint. */
+export const GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND = {
+  CLI_UNAVAILABLE: 'cli_unavailable',
+  LOGIN_REQUIRED: 'login_required',
+  GCP_UNAVAILABLE: 'gcp_unavailable',
+  INVALID_RESPONSE: 'invalid_response',
+  UNKNOWN: 'unknown',
+};
+
 /**
  * Strip PyInstaller / loader noise for technical disclosure.
  * @param {string} text
@@ -128,11 +137,16 @@ export function interpretGlobusLsFailure(rawMessage) {
     };
   }
 
-  if (/globus cli not available/i.test(lower) || !raw.trim()) {
+  if (
+    /globus cli not available/i.test(lower)
+    || /spawn\s+globus\s+enoent/i.test(lower)
+    || /enoent/i.test(lower) && /globus/i.test(lower)
+    || !raw.trim()
+  ) {
     return {
       kind: GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE,
       userSummary: 'Globus CLI is not available.',
-      userDetail: 'Install or enable globus-cli in your environment, then try again.',
+      userDetail: 'Install Globus CLI (globus-cli) or use a packaged build, then try again.',
       technical,
     };
   }
@@ -159,4 +173,178 @@ export function interpretGlobusLsFailure(rawMessage) {
     userDetail: firstLine.length < 120 ? firstLine : '',
     technical,
   };
+}
+
+/**
+ * Map `globus endpoint local-id` / Auto-detect failures to user-facing copy.
+ * Accepts a string, Error, or IPC payload `{ code, message }`.
+ * Does not truncate long IPC messages (unlike interpretGlobusCliFailure).
+ * @param {string|Error|{ code?: string, message?: string }|null|undefined} raw
+ * @returns {{ kind: string, userSummary: string, userDetail: string, technical: string }}
+ */
+export function interpretGlobusLocalEndpointFailure(raw) {
+  let code = '';
+  let message = '';
+  if (raw && typeof raw === 'object' && !(raw instanceof Error)) {
+    code = String(raw.code || '').trim().toLowerCase();
+    message = raw.message != null ? String(raw.message) : '';
+  } else if (raw && typeof raw === 'object' && raw.message != null) {
+    message = String(raw.message);
+  } else {
+    message = (raw || '').toString();
+  }
+
+  const technical = stripGlobusCliNoise(message) || message.trim();
+  const lower = `${code}\n${message}\n${technical}`.toLowerCase();
+
+  if (
+    code === GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.CLI_UNAVAILABLE
+    || /globus cli not available/i.test(lower)
+    || /spawn\s+globus\s+enoent/i.test(lower)
+    || (/enoent/i.test(lower) && /globus/i.test(lower))
+  ) {
+    return {
+      kind: GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.CLI_UNAVAILABLE,
+      userSummary: 'Globus CLI is not available.',
+      userDetail: 'Install Globus CLI (globus-cli) or use a packaged build, then try again.',
+      technical,
+    };
+  }
+
+  if (
+    code === GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.LOGIN_REQUIRED
+    || /sign in to globus/i.test(lower)
+    || /login required|missinglogin|not logged in|consentrequired|auth.*required/.test(lower)
+  ) {
+    return {
+      kind: GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.LOGIN_REQUIRED,
+      userSummary:
+        technical
+        || 'Sign in to Globus before Auto-detect can read this computer’s endpoint ID.',
+      userDetail: '',
+      technical,
+    };
+  }
+
+  if (code === GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.INVALID_RESPONSE) {
+    return {
+      kind: GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.INVALID_RESPONSE,
+      userSummary:
+        technical
+        || 'Globus CLI did not return a valid endpoint UUID. Ensure Globus Connect Personal is installed and running for this user.',
+      userDetail: '',
+      technical,
+    };
+  }
+
+  if (
+    code === GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.GCP_UNAVAILABLE
+    || /globus connect personal/i.test(lower)
+    || /local endpoint/i.test(lower)
+  ) {
+    return {
+      kind: GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.GCP_UNAVAILABLE,
+      userSummary:
+        technical
+        || 'Globus Connect Personal does not appear configured on this machine, or the local endpoint could not be read. Install and run Globus Connect Personal, then try Auto-detect again.',
+      userDetail: '',
+      technical,
+    };
+  }
+
+  return {
+    kind: GLOBUS_LOCAL_ENDPOINT_FAILURE_KIND.UNKNOWN,
+    userSummary: technical || 'Could not read the local Globus Connect Personal endpoint ID.',
+    userDetail: '',
+    technical,
+  };
+}
+
+/**
+ * Map Globus CLI / search spawn errors to user-facing copy (ENOENT, etc.).
+ * Avoids directory-listing summaries — those belong to interpretGlobusLsFailure only.
+ * @param {string|Error|null|undefined} rawMessage
+ * @returns {{ kind: string, userSummary: string, userDetail: string, technical: string }}
+ */
+export function interpretGlobusCliFailure(rawMessage) {
+  const raw =
+    rawMessage && typeof rawMessage === 'object' && rawMessage.message != null
+      ? String(rawMessage.message)
+      : (rawMessage || '').toString();
+  const technical = stripGlobusCliNoise(raw) || raw.trim();
+  const lower = raw.toLowerCase();
+
+  if (
+    /globus cli not available/i.test(lower)
+    || /spawn\s+globus\s+enoent/i.test(lower)
+    || (/enoent/i.test(lower) && /globus/i.test(lower))
+    || /command not found/i.test(lower)
+    || /failed to start login command/i.test(lower)
+  ) {
+    return {
+      kind: GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE,
+      userSummary: 'Globus CLI is not available.',
+      userDetail: 'Install Globus CLI (globus-cli) or use a packaged build, then try again.',
+      technical,
+    };
+  }
+
+  // Reuse ls classifier only for CLI-unavailable (incl. empty spawn output).
+  const fromLs = interpretGlobusLsFailure(raw);
+  if (fromLs.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE) {
+    return fromLs;
+  }
+
+  if (fromLs.kind === GLOBUS_LS_FAILURE_KIND.NETWORK) {
+    return {
+      kind: GLOBUS_LS_FAILURE_KIND.NETWORK,
+      userSummary: 'A network error occurred while contacting Globus.',
+      userDetail: 'Check your connection and try again.',
+      technical,
+    };
+  }
+
+  const firstLine =
+    technical
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find(Boolean) || '';
+  const listFolderNoise = /list folders|list this folder|list directory|matching endpoints/i;
+  const detail =
+    firstLine
+    && firstLine.length < 120
+    && !listFolderNoise.test(firstLine)
+    && !/^globus could not/i.test(firstLine)
+      ? firstLine
+      : '';
+
+  return {
+    kind: GLOBUS_LS_FAILURE_KIND.UNKNOWN,
+    userSummary: 'Globus request failed.',
+    userDetail: detail,
+    technical,
+  };
+}
+
+/**
+ * Single user-facing string for Globus login failures (never list-folder copy).
+ * @param {string|Error|null|undefined} rawMessage
+ * @returns {string}
+ */
+export function formatGlobusLoginError(rawMessage) {
+  const interpreted = interpretGlobusCliFailure(rawMessage);
+  if (interpreted.kind === GLOBUS_LS_FAILURE_KIND.CLI_UNAVAILABLE) {
+    return `${interpreted.userSummary} ${interpreted.userDetail}`.trim();
+  }
+  if (interpreted.kind === GLOBUS_LS_FAILURE_KIND.NETWORK) {
+    return 'Globus sign-in failed due to a network error. Check your connection and try again.';
+  }
+  const tech = interpreted.technical || '';
+  if (/ssl|certificate|tls/i.test(tech)) {
+    return 'Globus sign-in failed due to an SSL/certificate problem. Check Disable SSL Verification in Globus settings.';
+  }
+  if (interpreted.userDetail) {
+    return `Globus sign-in failed. ${interpreted.userDetail}`;
+  }
+  return 'Globus sign-in failed. Try again, or check that Globus CLI is installed and working.';
 }

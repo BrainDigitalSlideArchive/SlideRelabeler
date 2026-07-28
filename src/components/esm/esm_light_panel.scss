@@ -1,4 +1,4 @@
-@import './esm_light_panel_shared';
+@use './esm_light_panel_shared' as *;
 
 .esm-light-panel__card {
   background: $esm-panel-bg;
@@ -272,7 +272,7 @@
 
 // Slim labeled + compact control-only InputText inside light cards
 .esm-light-panel__card {
-  .InputText.InputText--onLight {
+  .InputText {
     width: 100%;
     min-width: 0;
     margin-bottom: 0;

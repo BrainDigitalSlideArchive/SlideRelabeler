@@ -1,5 +1,5 @@
 // Light sub-panel for eSM criteria (contrasts with dark modal chrome)
-@import './esm_light_panel_shared';
+@use './esm_light_panel_shared' as *;
 
 .esm-search-criteria {
   display: flex;
@@ -145,7 +145,7 @@ $esm-cols: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
 
 // Slim full-width inputs inside the light panel (override global compact widths)
 .esm-search-criteria__panel .esm-search-criteria__cell {
-  .InputText.InputText--onLight.InputText--controlOnly.InputText--compact {
+  .InputText.InputText--controlOnly.InputText--compact {
     width: 100%;
     min-width: 0;
     margin-bottom: 0;

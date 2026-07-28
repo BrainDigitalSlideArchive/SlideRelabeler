@@ -1,5 +1,6 @@
-@import '../../../styles/colors.scss';
-@import '../../../styles/variables.scss';
+@use "sass:color";
+@use '../../../styles/colors' as *;
+@use '../../../styles/variables' as *;
 
 .InputText {
   display: flex;
@@ -21,6 +22,7 @@
     .__label-text {
       display: inline-flex;
       line-height: 1.1;
+      color: #0f172a;
     }
   }
 
@@ -30,13 +32,14 @@
     align-items: center;
   }
 
+  // Light help icon is the default (config / pickers).
   .__help-icon {
     width: 1.25em;
     height: 1.25em;
     border-radius: 999px;
-    border: 1px solid $beige;
-    background: transparent;
-    color: $beige;
+    border: 1px solid $darker-blue;
+    background: rgba($darker-blue, 0.12);
+    color: $darker-blue;
     font-size: 0.85em;
     line-height: 1;
     padding: 0;
@@ -44,6 +47,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-weight: 700;
+
+    &:hover:not(:disabled) {
+      border-color: color.adjust($darker-blue, $lightness: -6%);
+      color: color.adjust($darker-blue, $lightness: -6%);
+      background: rgba($darker-blue, 0.2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($darker-blue, 0.45);
+      outline-offset: 2px;
+    }
 
     &:disabled {
       opacity: 0.3;
@@ -51,6 +66,7 @@
     }
   }
 
+  // Floating help popover stays dark for contrast on both surfaces.
   .__help-popover {
     position: fixed;
     background-color: $black;
@@ -75,53 +91,25 @@
     }
   }
 
-  &.InputText--onLight {
-    .__label-text {
-      color: #0f172a;
-    }
-
-    .__help-icon {
-      border-color: $darker-blue;
-      color: $darker-blue;
-      background: rgba($darker-blue, 0.12);
-      font-weight: 700;
-
-      &:hover:not(:disabled) {
-        border-color: darken($darker-blue, 6%);
-        color: darken($darker-blue, 6%);
-        background: rgba($darker-blue, 0.2);
-      }
-
-      &:focus-visible {
-        outline: 2px solid rgba($darker-blue, 0.45);
-        outline-offset: 2px;
-      }
-    }
-
-    .__input-text {
-      color: #0f172a;
-      background-color: #ffffff;
-      border: 1px solid #94a3b8;
-      border-radius: 4px;
-
-      &::placeholder {
-        color: #64748b;
-      }
-    }
-  }
-
+  // Light field chrome is the default.
   .__input-text {
-    color: $beige;
+    color: #0f172a;
     display: flex;
     align-items: center;
     height: 1.5em;
-    background-color: $black;
-    border: none;
+    background-color: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 4px;
     margin-left: 1em;
     padding: 0.5em;
     font-size: 1em;
     flex: 1;
     min-width: 0;
+
+    &::placeholder {
+      color: #64748b;
+    }
+
     &._disabled {
       opacity: 0.2;
       cursor: not-allowed;
@@ -147,8 +135,6 @@
       min-height: 2.25em;
       height: 2.25em;
       box-sizing: border-box;
-      border: 1px solid rgba(244, 237, 211, 0.35);
-      border-radius: 4px;
     }
   }
 
@@ -184,9 +170,49 @@
         min-height: 2.25em;
         height: 2.25em;
         box-sizing: border-box;
-        border: 1px solid rgba(244, 237, 211, 0.35);
-        border-radius: 4px;
       }
+    }
+  }
+
+  // Opt-in dark-modal chrome (legacy alias surfaces).
+  &.InputText--onDark {
+    .__label-text {
+      color: inherit;
+    }
+
+    .__help-icon {
+      border: 1px solid $beige;
+      background: transparent;
+      color: $beige;
+      font-weight: normal;
+
+      &:hover:not(:disabled) {
+        border-color: $beige;
+        color: $beige;
+        background: transparent;
+      }
+
+      &:focus-visible {
+        outline: none;
+      }
+    }
+
+    .__input-text {
+      color: $beige;
+      background-color: $black;
+      border: none;
+      border-radius: 0;
+
+      &::placeholder {
+        color: $beige;
+        opacity: 0.6;
+      }
+    }
+
+    &.InputText--compact .__input-text,
+    &.InputText--controlOnly.InputText--compact .InputText__control-row .__input-text {
+      border: 1px solid rgba(244, 237, 211, 0.35);
+      border-radius: 4px;
     }
   }
 }

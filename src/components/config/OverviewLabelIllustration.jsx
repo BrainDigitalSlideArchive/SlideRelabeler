@@ -24,7 +24,7 @@ export default function OverviewLabelIllustration() {
         </div>
       </div>
       <figcaption className="overview-label-illustration__caption">
-        Example layout: readable text, optional logo, and QR code
+        Example layout: readable text, logo, and QR code
       </figcaption>
     </figure>
   );

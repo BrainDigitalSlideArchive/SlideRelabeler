@@ -1,0 +1,22 @@
+// Shared mixins for config-v2 primitives.
+@use './tokens' as *;
+
+@mixin cfg-focus-ring {
+  &:focus-visible {
+    outline: 2px solid rgba($cfg-accent, 0.35);
+    outline-offset: 1px;
+  }
+}
+
+@mixin cfg-mono-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@mixin cfg-detail-rail {
+  border-left: 2px solid $cfg-border;
+  padding-left: 0.65rem;
+  box-sizing: border-box;
+}

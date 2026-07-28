@@ -5,7 +5,7 @@ const default_state = {
   staging_dir_mode: 'system',
   staging_dir_custom: '',
   max_local_pending: 2,
-  max_globus_parallel_uploads: 4,
+  max_globus_parallel_uploads: 2,
   destination: 'dsa',
   default_local_output_dir: '',
 };

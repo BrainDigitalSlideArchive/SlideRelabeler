@@ -1,11 +1,13 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import default_state from './default_state';
-import * as dsa_actions from '../../actions/dsa';
+import default_state from './default_state.js';
+import * as dsa_actions from '../../actions/dsa.js';
+import * as app_actions from '../../actions/app.js';
 import { produce } from "immer";
 
 const dsa_reducer = createReducer(default_state, (builder) => {
   builder
+    .addCase(app_actions.RESET_STORE, () => ({ ...default_state }))
     .addCase(dsa_actions.LOGIN_SUCCESS, (state, action) => {
       return produce(state, draft => {
         draft.api_auth = action.payload;
@@ -45,7 +47,18 @@ const dsa_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(dsa_actions.SET_DSA_FOLDER_ID, (state, action) => {
       return produce(state, draft => {
-        draft.folder_id = action.payload;
+        const nextId = action.payload == null ? '' : String(action.payload);
+        draft.folder_id = nextId;
+        if (!nextId.trim()) {
+          draft.folder_path = '';
+          draft.dsa_folder_exists = null;
+          draft.dsa_folder_error_message = null;
+        }
+      })
+    })
+    .addCase(dsa_actions.SET_DSA_FOLDER_PATH, (state, action) => {
+      return produce(state, draft => {
+        draft.folder_path = action.payload == null ? '' : String(action.payload);
       })
     })
     .addCase(dsa_actions.TOGGLE_UPLOAD_TO_DSA, (state, action) => {

@@ -1,5 +1,6 @@
-@import '../../../styles/colors';
-@import '../../../styles/variables';
+@use '../../../styles/colors' as *;
+@use '../../../styles/variables' as *;
+@use './button_on_light' as *;
 
 .Button {
   display: flex;
@@ -22,6 +23,10 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s, visibility 0.2s;
+    width: max-content;
+    max-width: 16rem;
+    white-space: normal;
+    line-height: 1.35;
     &._visible {
       opacity: 1;
       visibility: visible;
@@ -33,14 +38,58 @@
       opacity: 0.5;
     }
   }
+
+  // Light outlined skin is the default (config / pickers).
+  // Intentional filled CTAs use .Button--filled; dark chrome uses .Button--onDark.
   .__button {
-    height: 3em;
+    @include button-on-light-skin;
   }
+
   .__button-result {
     width: 20m;
-    color: $beige;
+    color: $config-text-secondary;
     &._disabled {
       opacity: 0.5;
+    }
+  }
+
+  // Legacy alias — same as default light skin.
+  &.Button--onLight {
+    .__button {
+      @include button-on-light-skin;
+    }
+
+    .__button-result {
+      color: $config-text-secondary;
+    }
+  }
+
+  // Opt-in: leave chrome to host/global button rules (dark modals).
+  &.Button--onDark {
+    .__button {
+      height: 3em;
+      width: auto;
+      min-width: unset;
+      margin-right: unset;
+      padding: unset;
+      font-size: inherit;
+      border-radius: unset;
+      border: none;
+      background: inherit;
+      color: inherit;
+      transition: none;
+
+      &:hover:not(:disabled):not(._disabled) {
+        background: inherit;
+      }
+
+      &:focus-visible {
+        outline: none;
+      }
+    }
+
+    .__button-result {
+      color: $beige;
     }
   }
 }

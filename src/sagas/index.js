@@ -1,6 +1,7 @@
 import { delay, call, put, takeEvery, takeLatest, fork } from 'redux-saga/effects';
 
 import load_saved_store from './bridge/load_saved_store';
+import { ensureDisclaimerPrompt } from '../helpers/ensure_disclaimer_prompt.js';
 
 import * as files_actions from '../actions/files';
 
@@ -15,11 +16,12 @@ import globus from './globus';
 import auditLogSaga from './auditLog';
 
 import watch_save_store from './bridge/save_store';
-import watch_delete_store from './bridge/delete_store';
+import watch_delete_store, { watch_restore_defaults } from './bridge/delete_store';
 import watchSyncLegacyUpload from './uploadRouting/sync_legacy_upload';
 import choose_staging_dir from './uploadRouting/choose_staging_dir';
 import choose_default_local_output_dir from './uploadRouting/choose_default_local_output_dir';
 import sync_default_local_output_dir from './uploadRouting/sync_default_local_output_dir';
+import configProfilesSaga, { load_config_profiles } from './configProfiles';
 
 function* sagas() {
     yield fork(watchSyncLegacyUpload);
@@ -42,12 +44,16 @@ function* sagas() {
     }
 
     yield load_saved_store()
+    yield* ensureDisclaimerPrompt()
+    yield load_config_profiles()
 
     yield put({type: files_actions.NOT_PROCESSING});
 
     yield fork(auditLogSaga);
     yield fork(watch_save_store);
     yield fork(watch_delete_store);
+    yield fork(watch_restore_defaults);
+    yield fork(configProfilesSaga);
 };
 
 export default sagas;

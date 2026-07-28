@@ -44,6 +44,38 @@ function closeUploadWall(draft, now = Date.now()) {
   }
 }
 
+/** Enqueued for upload but transfer has not started yet. */
+function markRowUploadQueued(draft, ri) {
+  const row = draft.file_rows[ri];
+  if (!row?.__reserved) return;
+  row.__reserved.upload_queued = true;
+  delete row.__reserved.upload_progress;
+  row.__reserved.upload_progress_indeterminate = false;
+}
+
+function clearRowUploadQueued(draft, ri) {
+  const row = draft.file_rows[ri];
+  if (!row?.__reserved) return;
+  delete row.__reserved.upload_queued;
+}
+
+function startRowUpload(draft, ri, { indeterminate = false } = {}) {
+  const row = draft.file_rows[ri];
+  if (!row?.__reserved) return;
+  delete row.__reserved.upload_queued;
+  delete row.__reserved.upload_duration_sec;
+  row.__reserved.upload_started_at_ms = Date.now();
+  row.__reserved.upload_progress = 0;
+  row.__reserved.upload_progress_indeterminate = indeterminate;
+}
+
+function clearRowUploadDuration(draft, ri) {
+  const row = draft.file_rows[ri];
+  if (!row?.__reserved) return;
+  delete row.__reserved.upload_duration_sec;
+  delete row.__reserved.upload_started_at_ms;
+}
+
 function add_file_row(state, draft, input_file_row) {
   let file_row_already_added = false;
   // Check if file added already to avoid duplicates
@@ -127,6 +159,10 @@ const files_reducer = createReducer(default_state, (builder) => {
         if (draft.file_rows[action.payload]) {
           draft.file_rows[action.payload].__reserved.progress = 0;
           draft.file_rows[action.payload].__reserved.processed = 0;
+          delete draft.file_rows[action.payload].__reserved.upload_queued;
+          delete draft.file_rows[action.payload].__reserved.upload_progress;
+          draft.file_rows[action.payload].__reserved.upload_progress_indeterminate = false;
+          clearRowUploadDuration(draft, action.payload);
         }
       })
     })
@@ -293,7 +329,9 @@ const files_reducer = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         const row_idx = action.payload.row_idx;
         if (!draft.file_rows[row_idx]) return;
-        draft.file_rows[row_idx].__reserved.globus_upload_duration_sec = action.payload.duration_sec;
+        clearRowUploadQueued(draft, row_idx);
+        draft.file_rows[row_idx].__reserved.upload_duration_sec = action.payload.duration_sec;
+        delete draft.file_rows[row_idx].__reserved.upload_started_at_ms;
         draft.file_rows[row_idx].__reserved.upload_progress_indeterminate = false;
         draft.file_rows[row_idx].__reserved.upload_progress = 100;
         const bps = action.payload.effective_bytes_per_second;
@@ -312,6 +350,7 @@ const files_reducer = createReducer(default_state, (builder) => {
             ? action.payload.progress
             : 0;
 
+        clearRowUploadQueued(draft, row_idx);
         draft.file_rows[row_idx].__reserved.upload_progress_indeterminate = indeterminate;
         draft.file_rows[row_idx].__reserved.upload_progress = numProgress;
 
@@ -323,7 +362,11 @@ const files_reducer = createReducer(default_state, (builder) => {
         reamining_upload_bytes += rowBytes * currentRowFactor;
 
         for (let i = 0; i < draft.file_rows.length; i++) {
-          if (i !== row_idx && (draft.file_rows[i].__reserved.upload_progress === undefined || draft.file_rows[i].__reserved.upload_progress === 0)) {
+          if (i !== row_idx && (
+            draft.file_rows[i].__reserved.upload_queued
+            || draft.file_rows[i].__reserved.upload_progress === undefined
+            || draft.file_rows[i].__reserved.upload_progress === 0
+          )) {
             reamining_upload_bytes += draft.file_rows[i].__reserved.bytes;
           }
         }
@@ -357,8 +400,21 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(files_actions.UPLOAD_FILE_FINALIZE, (state, action) => {
       return produce(state, draft => {
         const ri = action.payload.row_idx;
+        if (!draft.file_rows[ri]?.__reserved) return;
+        clearRowUploadQueued(draft, ri);
         draft.file_rows[ri].__reserved.upload_progress = 100;
         draft.file_rows[ri].__reserved.upload_progress_indeterminate = false;
+        // Prefer duration already set by GLOBUS_UPLOAD_FILE_METRICS when present.
+        if (draft.file_rows[ri].__reserved.upload_duration_sec == null) {
+          const started = draft.file_rows[ri].__reserved.upload_started_at_ms;
+          if (typeof started === 'number' && Number.isFinite(started)) {
+            draft.file_rows[ri].__reserved.upload_duration_sec = Math.max(
+              1,
+              Math.round((Date.now() - started) / 1000),
+            );
+          }
+        }
+        delete draft.file_rows[ri].__reserved.upload_started_at_ms;
         ensureSessionMetrics(draft);
         const b = draft.file_rows[ri].__reserved.bytes;
         if (typeof b === 'number' && b > 0) {
@@ -366,28 +422,46 @@ const files_reducer = createReducer(default_state, (builder) => {
         }
       })
     })
+    .addCase(files_actions.UPLOAD_FILE_STARTED, (state, action) => {
+      return produce(state, draft => {
+        const p = action.payload || {};
+        const ri = p.row_idx;
+        if (ri == null || !draft.file_rows[ri]) return;
+        startRowUpload(draft, ri, { indeterminate: !!p.indeterminate });
+      });
+    })
     .addCase(dsa_actions.UPLOAD_FILE, (state, action) => {
       return produce(state, draft => {
-        draft.file_rows[action.payload.row_idx].__reserved.upload_progress = 0;
-        draft.file_rows[action.payload.row_idx].__reserved.upload_progress_indeterminate = false;
+        markRowUploadQueued(draft, action.payload.row_idx);
+        clearRowUploadDuration(draft, action.payload.row_idx);
       })
     })
     .addCase(globus_actions.UPLOAD_FILE, (state, action) => {
       return produce(state, draft => {
         const ri = action.payload.row_idx;
-        draft.file_rows[ri].__reserved.upload_progress = 0;
-        draft.file_rows[ri].__reserved.upload_progress_indeterminate = true;
-        delete draft.file_rows[ri].__reserved.globus_upload_duration_sec;
+        markRowUploadQueued(draft, ri);
+        clearRowUploadDuration(draft, ri);
       })
+    })
+    .addCase(globus_actions.UPLOAD_BATCH, (state, action) => {
+      return produce(state, draft => {
+        const items = action.payload?.items || [];
+        for (const item of items) {
+          if (item == null || item.row_idx == null) continue;
+          markRowUploadQueued(draft, item.row_idx);
+          clearRowUploadDuration(draft, item.row_idx);
+        }
+      });
     })
     .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state, action) => {
       return produce(state, draft => {
         const p = action.payload || {};
         const ri = p.row_idx;
         if (ri == null || !draft.file_rows[ri]) return;
+        clearRowUploadQueued(draft, ri);
+        clearRowUploadDuration(draft, ri);
         draft.file_rows[ri].__reserved.upload_progress = 0;
         draft.file_rows[ri].__reserved.upload_progress_indeterminate = false;
-        delete draft.file_rows[ri].__reserved.globus_upload_duration_sec;
         if (p.message != null && String(p.message).trim()) {
           draft.file_rows[ri].__reserved.error = String(p.message);
         }
@@ -400,9 +474,10 @@ const files_reducer = createReducer(default_state, (builder) => {
         if (ri == null || !draft.file_rows[ri]) return;
         const msg = p.error != null ? String(p.error) : p.message != null ? String(p.message) : 'Upload failed';
         draft.file_rows[ri].__reserved.error = msg;
+        clearRowUploadQueued(draft, ri);
+        clearRowUploadDuration(draft, ri);
         draft.file_rows[ri].__reserved.upload_progress = 0;
         draft.file_rows[ri].__reserved.upload_progress_indeterminate = false;
-        delete draft.file_rows[ri].__reserved.globus_upload_duration_sec;
       })
     })
     .addCase(files_actions.SELECT_IMPORT_CSV_XSLX, (state, action) => {
@@ -498,9 +573,7 @@ const files_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(preview_actions.SET_METADATA_PREVIEW, (state, action) => {
       return produce(state, draft => {
-        if (!draft.ifds[action.payload.path]) {
-          draft.ifds[action.payload.path] = action.payload.table;
-        }
+        draft.ifds[action.payload.path] = action.payload.table;
       })
     })
     .addCase(files_actions.SET_UPLOADING, (state, action) => {

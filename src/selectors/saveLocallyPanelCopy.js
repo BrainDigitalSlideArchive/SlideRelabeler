@@ -1,11 +1,11 @@
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_DESC =
-  'Optional folder used when Save locally is enabled and no session folder is set on the main page.';
+  'Used when Save locally is on and a row does not already have a folder.';
 
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_EMPTY =
   'No default folder configured.';
 
 export const CONFIG_DEFAULT_LOCAL_OUTPUT_HELP = (
-  'When set, this folder seeds the Save locally default at startup and after clearing the file table. '
+  'When set, this folder seeds the Save locally default at startup and after clearing the file list. '
   + 'CSV-defined or manually set Copy To paths always take precedence. '
   + 'You can still pick a different folder on the main page for the current session.'
 );

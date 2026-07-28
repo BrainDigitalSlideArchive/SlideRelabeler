@@ -2,21 +2,18 @@ import React, {useEffect} from 'react';
 import bdsaLogo from "../../assets/BDSA_folder_clear.png";
 import {useSelector, useDispatch} from "react-redux";
 
-import {Provider} from "react-redux";
-import store from '../../store/index';
-
 import * as modal_actions from '../../actions/modal';
-import { selectUploadReadiness } from '../../selectors/uploadRouting';
 import { selectOutputReadiness, summarizeDestinationDirectories } from '../../selectors/outputReadiness';
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
+import { useAppVersion } from "../../helpers/useAppVersion";
 
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import GridHoverTooltip from "../../components/AgGrid/GridHoverTooltip";
 import AddFilesControl from "../../components/AddFilesControl";
 import ApiLoadControl from "../../components/ApiLoadControl";
-import FileHeaderInfo from "../../components/FileHeaderInfo/FileHeaderInfo";
+import ProcessingStatus from "../../components/ProcessingStatus/ProcessingStatus";
 import DeliveryPanel from "../../components/DeliveryPanel/DeliveryPanel";
 
 import './App.scss';
@@ -81,27 +78,20 @@ function render_process_files_button(uploadRouting, outputReadiness, disable_cha
   )
 }
 const App = (props) => {
-  // const { } = useSelector(state => state.app.get('app'));
   let output_dir = useSelector(state => state.files.output_dir);
-  let input_dir = useSelector(state => state.files.input_dir);
-  let totalBytes = useSelector(state => state.files.totalBytes);
+  const appVersion = useAppVersion();
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
-  let metadata_updating = useSelector(state => state.files.metadata_updating);
   let disable_changes = useSelector(state => state.files.disable_changes);
   let debug_config = useSelector(state => state.config.debug);
-  let csv = useSelector(state => state.files.csv);
   let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
-  let uploadReadiness = useSelector(selectUploadReadiness);
   let outputReadiness = useSelector(selectOutputReadiness);
 
   const dispatch = useDispatch();
   const destSummary = summarizeDestinationDirectories(file_rows);
-  const showOutputDirPanel = csv.needs_output_dir || !csv.headers;
   const controlsDisabled = disable_changes || processing;
-  const showFileHeaderInfo = count > 0 || processing || metadata_updating;
   
   useEffect(() => {
     dispatch({type: file_actions.START_FILES_SAGA});
@@ -123,7 +113,14 @@ const App = (props) => {
     <>
       <div key={0} className='App'>
         <div className='__top'>
-          <img src={bdsaLogo} className='logo' alt='Brain Digital Slide Archive Logo'/>
+          <div className="__brand">
+            <img src={bdsaLogo} className='logo' alt='Brain Digital Slide Archive Logo'/>
+            {appVersion ? (
+              <span className="__brand-version" title={`SlideRelabeler ${appVersion}`}>
+                v{appVersion}
+              </span>
+            ) : null}
+          </div>
           <div className={"__controls"}>
             <div className={"__list-controls"}>
               <h2>Select files to inspect and process</h2>
@@ -157,52 +154,49 @@ const App = (props) => {
                   </button>
                 )
               }
-              <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}>
-                <i
-                  className=
-                    "fi fi-rr-interrogation"
-                ></i>
+              <button
+                type="button"
+                className="__button __button--segmented __button--utility"
+                aria-label="Help"
+                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'help'}})}
+              >
+                <span className="__button__label">Help</span>
+                <span className="__button__icon" aria-hidden="true">
+                  <i className="fi fi-rr-interrogation" />
+                </span>
               </button>
-              <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'config'}})}>
-                <i
-                  className=
-                    "fi fi-rr-settings"
-                ></i>
+              <button
+                type="button"
+                className="__button __button--segmented __button--utility"
+                aria-label="Settings"
+                onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'config'}})}
+              >
+                <span className="__button__label">Settings</span>
+                <span className="__button__icon" aria-hidden="true">
+                  <i className="fi fi-rr-settings" />
+                </span>
               </button>
             </div>
-            {showFileHeaderInfo && (
-              <div className={"__list-controls"}>
-                <div className={"__list-controls-group _bottom-border"}>
-                  <FileHeaderInfo/>
-                </div>
-              </div>
-            )}
-            {showOutputDirPanel && (
-              <div className="__list-controls __list-controls_output-dir">
-                <DeliveryPanel
-                      uploadRouting={uploadRouting}
-                      uploadReadiness={uploadReadiness}
-                      outputReadiness={outputReadiness}
-                      destSummary={destSummary}
-                      outputDir={output_dir}
-                      disabled={controlsDisabled}
-                      onChooseFolder={() => dispatch({
-                        type: file_actions.CHOOSE_OUTPUT_DIR,
-                      })}
-                    />
-              </div>
-            )}
+            <div className="__list-controls __list-controls_output-dir">
+              <DeliveryPanel
+                    uploadRouting={uploadRouting}
+                    destSummary={destSummary}
+                    outputDir={output_dir}
+                    disabled={controlsDisabled}
+                    onChooseFolder={() => dispatch({
+                      type: file_actions.CHOOSE_OUTPUT_DIR,
+                    })}
+                  />
+            </div>
+            <div className="__list-controls __list-controls_progress">
+              <ProcessingStatus/>
+            </div>
           </div>
         </div>
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
           {render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch)}
-        </div>
-        <div className={"__disclaimer"}>
-          Developers are not liable for the misuse of this application or a failure to verify the completeness of deidentification before sharing deidentified files.
         </div>
         <div id='table'>
           <AppAgGrid

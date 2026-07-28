@@ -208,8 +208,9 @@ function GlobusUploadPathEditPopover(props) {
           />
           {error && <div className="GlobusUploadPathEditPopover__error">{error}</div>}
           <div className="GlobusUploadPathEditPopover__actions">
-            <Button text="Cancel" disabled={validating} onClick={closePopover} />
+            <Button variant="onLight" text="Cancel" disabled={validating} onClick={closePopover} />
             <Button
+              variant="onLight"
               text={validating ? 'Validating…' : 'Validate'}
               disabled={validating}
               onClick={handleValidate}

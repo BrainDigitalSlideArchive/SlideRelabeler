@@ -2,10 +2,12 @@ import { createReducer } from "@reduxjs/toolkit";
 
 import default_state from './default_state';
 import * as globus_actions from '../../actions/globus';
+import * as app_actions from '../../actions/app';
 import { produce } from "immer";
 
 const globus_reducer = createReducer(default_state, (builder) => {
   builder
+    .addCase(app_actions.RESET_STORE, () => ({ ...default_state }))
     .addCase(globus_actions.RESTORE_GLOBUS_PERSISTED, (state, action) => {
       const persisted = action.payload || {};
       const allowlist = [
@@ -172,8 +174,13 @@ const globus_reducer = createReducer(default_state, (builder) => {
     })
     .addCase(globus_actions.REMOVE_UPLOAD_FILE_FROM_QUEUE, (state, action) => {
       return produce(state, draft => {
+        const p = action.payload;
+        if (p && typeof p === 'object' && p.batchId != null) {
+          draft.upload_queue = draft.upload_queue.filter((q) => q?.batchId !== p.batchId);
+          return;
+        }
         for (let idx in draft.upload_queue) {
-          if (draft.upload_queue[idx].row_idx === action.payload) {
+          if (draft.upload_queue[idx].row_idx === p) {
             draft.upload_queue.splice(idx, 1);
             break;
           }
@@ -190,12 +197,14 @@ const globus_reducer = createReducer(default_state, (builder) => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })
     })
-    .addCase(globus_actions.UPLOAD_FILE_COMPLETE, (state) => {
+    .addCase(globus_actions.UPLOAD_FILE_COMPLETE, (state, action) => {
+      if (action.meta?.skipInFlight) return state;
       return produce(state, draft => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })
     })
-    .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state) => {
+    .addCase(globus_actions.UPLOAD_FILE_FAILURE, (state, action) => {
+      if (action.meta?.skipInFlight) return state;
       return produce(state, draft => {
         draft.upload_in_flight = Math.max(0, draft.upload_in_flight - 1);
       })
@@ -289,6 +298,17 @@ const globus_reducer = createReducer(default_state, (builder) => {
       return produce(state, draft => {
         draft.disable_ssl_verification = !draft.disable_ssl_verification;
       })
+    })
+    .addCase(globus_actions.SET_DISABLE_SSL_VERIFICATION, (state, action) => {
+      return produce(state, draft => {
+        draft.disable_ssl_verification = Boolean(action.payload);
+      });
+    })
+    .addCase(globus_actions.SET_GLOBUS_ENDPOINT_PICKER_MODE, (state, action) => {
+      return produce(state, draft => {
+        const mode = action.payload === 'durable' ? 'durable' : 'session';
+        draft.endpoint_picker_mode = mode;
+      });
     })
 })
 

@@ -2,15 +2,39 @@ const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 const os = require('os');
 const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
 
 let extraResource = [];
 
-if(os.platform() === 'darwin') {
+// PyInstaller COLLECT names: engine.app / globus_cli.app on darwin; engine / globus_cli elsewhere.
+if (os.platform() === 'darwin') {
   extraResource = ['./dist/engine.app', './dist/globus_cli.app'];
-}
-else {
+} else {
   extraResource = ['./dist/engine', './dist/globus_cli'];
+}
+
+/**
+ * Prefer PyInstaller from CONDA_PREFIX (set by npm run package/make via with-conda).
+ * Avoids broken Homebrew/system shims on PATH (e.g. bad interpreter: python3.7).
+ */
+function resolvePyInstaller() {
+  const condaPrefix = process.env.CONDA_PREFIX;
+  if (condaPrefix) {
+    const candidate =
+      os.platform() === 'win32'
+        ? path.join(condaPrefix, 'Scripts', 'pyinstaller.exe')
+        : path.join(condaPrefix, 'bin', 'pyinstaller');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+    throw new Error(
+      `CONDA_PREFIX is set (${condaPrefix}) but pyinstaller was not found at ${candidate}.\n` +
+        'Install pyinstaller in the sliderelabeler conda env, or run via `npm run package` / `npm run make` ' +
+        '(conda-wrapped) after `conda activate sliderelabeler`.',
+    );
+  }
+  return 'pyinstaller';
 }
 
 module.exports = {
@@ -48,17 +72,21 @@ module.exports = {
 
       // Prepare environment variables for pyinstaller subprocess
       // engine.spec needs CONDA_PREFIX to copy DLLs
-      // If conda is properly activated, CONDA_PREFIX will already be in process.env
+      // Prefer npm run package / npm run make (conda-wrapped) so CONDA_PREFIX + PATH are set
       const execEnv = { ...process.env };
+      const pyinstaller = resolvePyInstaller();
+      console.log(`** Using pyinstaller: ${pyinstaller} **`);
 
       console.log('** Running pyinstaller on ./pyinstaller/engine.spec **');
-      execSync('pyinstaller -y --clean ./pyinstaller/engine.spec', {
-        env: execEnv
+      execSync(`"${pyinstaller}" -y --clean ./pyinstaller/engine.spec`, {
+        env: execEnv,
+        stdio: 'inherit',
       });
 
       console.log('** Running pyinstaller on ./pyinstaller/globus-cli.spec **');
-      execSync('pyinstaller -y --clean ./pyinstaller/globus-cli.spec', {
-        env: execEnv
+      execSync(`"${pyinstaller}" -y --clean ./pyinstaller/globus-cli.spec`, {
+        env: execEnv,
+        stdio: 'inherit',
       });
     }
   },
@@ -73,14 +101,16 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb',
+      platforms: ['linux'],
       config: {
         options: {
-          icon: '/src/assets/BDSA-icon.png'
-        }
-      }
+          icon: path.resolve(__dirname, 'src/assets/BDSA-icon.png'),
+        },
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
+      platforms: ['linux'],
       config: {},
     },
   ],

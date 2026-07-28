@@ -1,0 +1,34 @@
+// ConfigBooleanRow — compact checkbox + kit row-label typography
+@use '../tokens' as *;
+@use '../typography' as *;
+
+.config-v2 {
+  .cfg-boolean-row {
+    .Checkbox {
+      width: auto;
+      max-width: 100%;
+      margin: 0;
+      align-items: center;
+      gap: $cfg-space-sm;
+
+      label,
+      .Checkbox__labelCluster label {
+        width: auto;
+        font-size: $cfg-font-row-label;
+        font-weight: 500;
+        color: $cfg-ink-muted;
+        line-height: 1.25;
+      }
+
+      .Checkbox__labelCluster {
+        gap: $cfg-space-xs;
+      }
+
+      .__checkbox {
+        width: 1.15em;
+        height: 1.15em;
+        margin-left: 0;
+      }
+    }
+  }
+}

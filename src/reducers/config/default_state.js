@@ -61,9 +61,11 @@ export const default_state = {
     },
   },
   dsa_upload: {
+    integrationEnabled: false,
+    default_api_url: '',
     rename_item_after_upload: false,
-    set_item_metadata: false,
-    dsaAlias: { mode: 'output_name', pattern: '' },
+    dsaAlias: { mode: 'label_text', pattern: '' },
+    itemMetadata: { mode: 'none', column: '' },
     item_name_assembly: {
       mode: 'same_as_label',
       template: '',
@@ -71,12 +73,24 @@ export const default_state = {
       separator: '_',
     },
   },
+  globus_upload: {
+    integrationEnabled: false,
+    default_target_endpoint_id: '',
+    default_target_endpoint_label: '',
+    source_endpoint: '',
+    disable_ssl_verification: false,
+    max_upload_batch_size: 1,
+  },
   debug: {
     enable_debug: false
   },
   copy: {
     enable_copy_mode: false
-  }
+  },
+  disclaimer: {
+    promptMode: 'everyLaunch',
+    acceptedVersion: null,
+  },
 };
 
 export default default_state;

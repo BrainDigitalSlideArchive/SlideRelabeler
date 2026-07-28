@@ -21,7 +21,7 @@ export const CSV_RESERVED_FIELD_SPECS = [
     role: 'File path',
     defaultHeader: CSV_TEMPLATE_DEFAULT_HEADERS.filePath,
     required: true,
-    helper: 'Which CSV column contains the slide file path. Each row must include a path to load into the file table.',
+    helper: 'Which CSV column contains the slide file path. Each row must include a path to load into the file list.',
   },
   {
     key: 'outputName',

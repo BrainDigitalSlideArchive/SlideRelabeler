@@ -1,4 +1,26 @@
 import { isGlobusEndpointUuid } from '../helpers/globus_helpers.js';
+import {
+  isDsaUploadIntegrationEnabled,
+  isGlobusUploadIntegrationEnabled,
+} from '../helpers/upload_integrations.js';
+
+export const GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE =
+  'Globus allows more simultaneous transfers than files allowed waiting to upload. '
+  + 'Lower Max transfers at once or raise Max files waiting to upload.';
+
+export const UPLOAD_METHODS_DISABLED_MESSAGE =
+  'Enable DSA and/or Globus under Configuration → Output delivery → Upload.';
+
+/**
+ * @param {{ max_globus_parallel_uploads?: unknown, max_local_pending?: unknown }} [ur]
+ * @returns {boolean}
+ */
+export function globusParallelExceedsUploadQueue(ur) {
+  const parallel = parseInt(ur?.max_globus_parallel_uploads, 10);
+  const pending = parseInt(ur?.max_local_pending, 10);
+  if (!Number.isFinite(parallel) || !Number.isFinite(pending)) return false;
+  return parallel > pending;
+}
 
 /**
  * Connection readiness for the active auto-upload destination.
@@ -18,15 +40,48 @@ export function selectUploadReadiness(state) {
     };
   }
 
+  const dsaEnabled = isDsaUploadIntegrationEnabled(state);
+  const globusEnabled = isGlobusUploadIntegrationEnabled(state);
+  if (!dsaEnabled && !globusEnabled) {
+    return {
+      ready: false,
+      destination: ur.destination === 'globus' ? 'globus' : 'dsa',
+      blockers: [UPLOAD_METHODS_DISABLED_MESSAGE],
+      label: 'Auto-upload is on, but no upload methods are enabled.',
+    };
+  }
+
   const dest = ur.destination === 'globus' ? 'globus' : 'dsa';
+  if (dest === 'dsa' && !dsaEnabled) {
+    return {
+      ready: false,
+      destination: 'dsa',
+      blockers: [
+        'DSA upload is disabled. Enable it under Configuration → Output delivery → Upload, or choose another method.',
+      ],
+      label: 'Auto-upload is on for DSA, but DSA is disabled.',
+    };
+  }
+  if (dest === 'globus' && !globusEnabled) {
+    return {
+      ready: false,
+      destination: 'globus',
+      blockers: [
+        'Globus upload is disabled. Enable it under Configuration → Output delivery → Upload, or choose another method.',
+      ],
+      label: 'Auto-upload is on for Globus, but Globus is disabled.',
+    };
+  }
 
   if (dest === 'dsa') {
     const blockers = [];
-    if (!dsa?.api_auth?.authToken) {
-      blockers.push('Log in to DSA.');
+    if (!String(dsa?.api_url || '').trim()) {
+      blockers.push('Configure a DSA server.');
+    } else if (!dsa?.api_auth?.authToken) {
+      blockers.push('Sign in to DSA.');
     }
     if (!String(dsa?.folder_id || '').trim()) {
-      blockers.push('Set a DSA folder ID.');
+      blockers.push('Choose a DSA folder.');
     }
     if (dsa?.dsa_folder_exists === false) {
       blockers.push(dsa.dsa_folder_error_message || 'DSA folder was not found or is not accessible.');
@@ -51,7 +106,9 @@ export function selectUploadReadiness(state) {
   }
   const src = String(globus?.source_endpoint || '').trim();
   if (!src || !isGlobusEndpointUuid(src)) {
-    blockers.push('Set a valid local Globus Connect Personal endpoint ID.');
+    blockers.push(
+      'Set a valid local Globus Connect Personal endpoint ID in Configuration → Output delivery → Globus.',
+    );
   }
   const targetId = String(globus?.target_endpoint_id || '').trim();
   if (!targetId) {
@@ -63,6 +120,9 @@ export function selectUploadReadiness(state) {
   }
   if (globus?.globus_collection_exists === false) {
     blockers.push(globus.globus_collection_error_message || 'Globus target path could not be verified.');
+  }
+  if (globusParallelExceedsUploadQueue(ur)) {
+    blockers.push(GLOBUS_EXCEEDS_UPLOAD_QUEUE_MESSAGE);
   }
   const ready = blockers.length === 0;
   return {

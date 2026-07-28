@@ -18,7 +18,9 @@ $border-surface-strong: $darker-blue;
 $accent-label: $darker-blue;
 $surface-warning-text: #8B3A3A;
 
-// Configuration dialog light panel (dark text on neutral surface)
+// Configuration dialog light panel (dark text on neutral surface).
+// Teal chrome ($dark-blue / $darker-blue + $beige) is for shells/headers only —
+// content must live on a surface that sets these ink tokens (see surfaces.scss).
 $config-panel-bg: #FFFFFF;
 $config-panel-surface: #F8F9FA;
 $config-text-primary: #212529;

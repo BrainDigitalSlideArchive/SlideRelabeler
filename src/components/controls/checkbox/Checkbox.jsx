@@ -14,8 +14,9 @@ function Checkbox(props) {
     ariaLabelledBy,
     checkboxId,
     tooltip,
-    helpVariant,
+    helpVariant = 'onLight',
     compact = false,
+    variant,
   } = props;
 
   function toggle() {
@@ -31,11 +32,14 @@ function Checkbox(props) {
   }
 
   const hasHelp = !hideLabel && tooltip;
+  const helpIconVariant =
+    helpVariant === 'onDark' ? 'onDark' : helpVariant === 'warning' ? 'warning' : 'default';
   const rootClass = [
     'Checkbox',
     disabled ? '_disabled' : '',
     hasHelp ? 'Checkbox--hasHelp' : '',
     compact ? 'Checkbox--compact' : '',
+    variant === 'onDark' ? 'Checkbox--onDark' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -49,7 +53,7 @@ function Checkbox(props) {
           <HelpIconPopover
             helpLabel={typeof label === 'string' && label ? `Help for ${label}` : 'Help'}
             disabled={disabled}
-            variant={helpVariant === 'onLight' ? 'onLight' : 'default'}
+            variant={helpIconVariant}
           >
             {tooltip}
           </HelpIconPopover>

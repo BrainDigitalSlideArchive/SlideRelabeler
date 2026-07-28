@@ -1,5 +1,5 @@
-@import '../../styles/colors.scss';
-@import './SlideLabelLayout.scss';
+@use '../../styles/colors' as *;
+@use './SlideLabelLayout' as *;
 
 .overview-label-illustration {
   margin: 0;

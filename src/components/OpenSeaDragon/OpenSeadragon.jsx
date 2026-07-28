@@ -1,6 +1,10 @@
 import OpenSeadragon from 'openseadragon';
-import React, { useState, useEffect, useRef } from 'react';
-import { AnnotationToolkit } from 'osd-paperjs-annotation';
+import React, { useEffect, useRef } from 'react';
+
+import {
+  readSlideTileMetadata,
+  makeWsiTileSource,
+} from '../../helpers/osd_tile_source';
 
 import './OpenSeadragon.scss';
 
@@ -12,7 +16,9 @@ export default function OSD(props){
         }
         
         let tileSources = makeTileSources(props);
-
+        if (!tileSources.length) {
+            return;
+        }
 
         viewerRef.current = new OpenSeadragon({
             id: 'osd',
@@ -52,46 +58,15 @@ function onImageOpened(event){
 }
 
 function makeTileSources(props){
-    const {metadata, associatedImages} = props;
-    let metadata_fields = metadata.fields;
-
-    // todo: move to helpers with singleTileSource replacement
-
-    let tileSources = [];
-    if(metadata_fields.tileWidth == metadata_fields.sizeX && metadata_fields.tileHeight == metadata_fields.sizeY){
-        tileSources.push( makeSimpleImageTileSource(props.file) );
-    } else {
-        tileSources.push( makeTiledImageTileSource(props.file, metadata_fields) );
+    const {metadata, associatedImages, file} = props;
+    const meta = readSlideTileMetadata(metadata);
+    if (!meta || !file) {
+        return [];
     }
 
-    tileSources = tileSources.concat(makeAssociatedImageSources(props.file, associatedImages));
+    let tileSources = [makeWsiTileSource(file, meta)];
+    tileSources = tileSources.concat(makeAssociatedImageSources(file, associatedImages || []));
     return tileSources;
-}
-
-function makeSimpleImageTileSource(file){
-    return {
-        name: file,
-        type: 'image',
-        url: `tile://` + window.encodeURIComponent(`${file}|0|0|0`)
-    }
-}
-
-function makeTiledImageTileSource(file, props){
-    let height = props.sizeY.numberValue;
-    let width = props.sizeX.numberValue;
-    let tileWidth = props.tileWidth.numberValue;
-    let levels = props.levels.numberValue;
-    return {
-        name: file,
-        height: height,
-        width:  width,
-        tileSize: tileWidth,
-        minLevel: 0,
-        maxLevel: levels - 1,
-        getTileUrl: function( level, x, y ){
-            return `tile://` + window.encodeURIComponent(`${file}|${level}|${x}|${y}`);
-        }
-    }
 }
 
 function makeAssociatedImageSources(file, a){

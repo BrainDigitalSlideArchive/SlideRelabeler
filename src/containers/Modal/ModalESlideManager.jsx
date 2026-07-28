@@ -9,7 +9,7 @@ import ESMSearchCriteriaGrid from '../../components/esm/ESMSearchCriteriaGrid';
 import ESMStagingPanel from '../../components/esm/ESMStagingPanel';
 import ESMLoginCard from '../../components/esm/ESMLoginCard';
 import ESMSessionBar from '../../components/esm/ESMSessionBar';
-import { scrollConfigSectionIntoView } from '../../components/config/ConfigStickyNav';
+import { scrollConfigSectionIntoView } from '../../components/config-v2/ConfigV2Nav';
 import { getActiveProfile, getEsmConnectionConfig } from '../../helpers/esm_profile_helpers';
 import { selectedProfileSharesSwitchOriginHost } from '../../helpers/esm_session_helpers';
 
@@ -18,7 +18,7 @@ import '../../components/esm/esm_portal.scss';
 function ModalESlideManager() {
   const esmState = useSelector((state) => state.esm);
   const profile = getActiveProfile(esmState);
-  const profiles = useSelector((state) => state.esm?.profiles) || [];
+  const profiles = useSelector((state) => state.esm.profiles);
   const activeProfileId = useSelector((state) => state.esm?.activeProfileId);
   const profileSwitchOpen = useSelector((state) => state.esm?.profileSwitchOpen === true);
   const { requestBase } = getEsmConnectionConfig(esmState);

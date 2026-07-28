@@ -45,7 +45,7 @@ export function getSaveLocallyInlineCopy(destSummary, outputDir, { localEnabled 
 }
 
 export function selectOutputReadiness(state) {
-  const { output_dir, file_rows, csv, file_cols } = state.files ?? {};
+  const { file_rows, file_cols } = state.files ?? {};
   const ur = state.uploadRouting ?? {};
   const localEnabled = !!ur.local_output_enabled;
   const uploadEnabled = !!ur.auto_upload;
@@ -64,10 +64,6 @@ export function selectOutputReadiness(state) {
     file_cols,
   });
 
-  const needsSlideDestination = localEnabled && (
-    csv.needs_output_dir || !csv.headers
-  );
-
   return {
     localEnabled,
     uploadEnabled,
@@ -83,7 +79,7 @@ export function selectOutputReadiness(state) {
       && localConfigured
       && uploadConfigured
       && !patternValidation.blocking,
-    outputDirRequired: needsSlideDestination && !perRowComplete,
+    outputDirRequired: localEnabled && !perRowComplete,
   };
 }
 
@@ -116,11 +112,12 @@ export function getDeliveryUploadStatusCopy(uploadReadiness) {
   return 'Upload connection not ready';
 }
 
-export function getDeliverySetupModalType(destination) {
-  return destination === 'globus' ? 'globusUpload' : 'dsaUpload';
+/** Modal for destination setup CTAs. DSA/Globus use inline Delivery controls + Config. */
+export function getDeliverySetupModalType(_destination) {
+  return null;
 }
 
 export function getDeliverySetupButtonLabel(destination, ready = false) {
   const name = destination === 'globus' ? 'Globus' : 'DSA';
-  return ready ? `Review ${name} upload settings…` : `Set up ${name} upload…`;
+  return ready ? `Manage ${name}…` : `Set up ${name}…`;
 }

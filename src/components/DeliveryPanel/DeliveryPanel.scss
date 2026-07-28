@@ -1,32 +1,29 @@
-@import '../../styles/colors';
+@use "sass:color";
+@use '../../styles/surfaces' as *;
 
 .delivery-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 54rem;
-  border-radius: 0.5rem;
-  background: $config-callout-bg;
-  border: 1px solid $border-surface;
-  color: $on-surface;
+  @include surface-panel($config-callout-bg, $on-surface);
   overflow: hidden;
 
   &__header {
+    @include chrome-header;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
     min-width: 0;
-    background-color: $darker-blue;
-    color: $beige;
-    padding: 0.55rem 0.75rem;
-    box-shadow: 0 1px 2px rgba($black, 0.12);
   }
 
   &__title {
     flex: 1;
     min-width: 0;
     margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
     line-height: 1.3;
     color: $beige;
   }
@@ -58,7 +55,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem 0.35rem;
+    padding: 0.35rem 0.65rem 0.3rem;
     border-bottom: 1px solid rgba($border-surface, 0.65);
   }
 
@@ -94,9 +91,9 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
     min-height: 0;
-    padding: 0.5rem 0.75rem 0.65rem;
+    padding: 0.4rem 0.65rem 0.5rem;
 
     &._disabled {
       justify-content: flex-start;
@@ -204,7 +201,7 @@
     line-height: 1.35;
 
     &._ready {
-      color: darken($green, 20%);
+      color: color.adjust($green, $lightness: -20%);
       font-weight: 600;
     }
 
@@ -256,7 +253,7 @@
     white-space: nowrap;
 
     &:hover:not(._disabled):not(:disabled) {
-      color: darken($darker-blue, 8%);
+      color: color.adjust($darker-blue, $lightness: -8%);
     }
 
     &._disabled,
@@ -271,6 +268,13 @@
     font-size: 0.8125rem;
     line-height: 1.4;
     color: $on-surface-muted;
+  }
+
+  &__upload-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 
   &__path-row {
@@ -325,7 +329,7 @@
   &__progress-fill {
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, $green 0%, darken($green, 8%) 100%);
+    background: linear-gradient(90deg, $green 0%, color.adjust($green, $lightness: -8%) 100%);
     transition: width 0.25s ease;
   }
 
@@ -382,7 +386,7 @@
     transition: background-color 0.2s, opacity 0.2s;
 
     &:hover:not(._disabled):not(:disabled) {
-      background: darken($darker-blue, 6%);
+      background: color.adjust($darker-blue, $lightness: -6%);
     }
 
     &._disabled,

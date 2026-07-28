@@ -1,0 +1,92 @@
+// ConfigStatusField — neutral URL/path + status + action
+@use '../tokens' as *;
+@use '../typography' as *;
+
+.config-v2 {
+  .cfg-status-field {
+    display: flex;
+    flex-direction: column;
+    gap: $cfg-space-sm;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cfg-status-field__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: $cfg-space-sm $cfg-space-md;
+  }
+
+  .cfg-status-field__label {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-xs;
+    font-size: $cfg-font-row-label;
+    font-weight: 500;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-status-field__status {
+    font-size: $cfg-font-detail;
+    font-weight: 500;
+
+    &--ok {
+      color: $cfg-ok;
+    }
+
+    &--warn {
+      color: $cfg-warn;
+    }
+
+    &--muted,
+    &--neutral {
+      color: $cfg-ink-faint;
+    }
+  }
+
+  .cfg-status-field__body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+    min-width: 0;
+  }
+
+  .cfg-status-field__control {
+    flex: 1 1 12rem;
+    min-width: 0;
+
+    // Stretch fill controls so action buttons sit against the value (not far right).
+    > .cfg-path-chip:not(.cfg-path-chip--empty),
+    > .cfg-field {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    > .cfg-field .InputText,
+    > .cfg-field .InputText__control-row,
+    > .cfg-field .__input-text {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+  }
+
+  .cfg-status-field--compact {
+    .cfg-status-field__control {
+      flex: 0 1 auto;
+    }
+  }
+
+  .cfg-status-field__action {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $cfg-space-sm $cfg-space-md;
+  }
+}

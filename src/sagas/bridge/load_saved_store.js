@@ -16,6 +16,8 @@ import { migrateConfigV2 } from '../../helpers/config_v2_migration.js';
 import { migrateAuditLogFromStore } from '../../helpers/audit_log_migration.js';
 import * as auditLog_actions from '../../actions/auditLog';
 import * as api_integrations_actions from '../../actions/apiIntegrations';
+import { syncDsaUrlsAfterLoad } from '../dsa/sync_default_url.js';
+import { syncGlobusUploadAfterLoad } from '../globus/sync_upload_config.js';
 
 let lastPersistedSnapshotJson = null;
 
@@ -99,6 +101,9 @@ function* load_saved_store() {
     store.uploadRouting
   );
   yield put({ type: upload_routing_actions.RESTORE_UPLOAD_ROUTING, payload: uploadRouting });
+
+  yield* syncDsaUrlsAfterLoad();
+  yield* syncGlobusUploadAfterLoad();
 
   const auditLogState = migrateAuditLogFromStore(store.auditLog, store.config);
   yield put({ type: auditLog_actions.RESTORE_AUDIT_LOG, payload: auditLogState });

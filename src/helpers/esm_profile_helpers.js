@@ -268,7 +268,7 @@ export const ESM_PATTERN_PLACEHOLDERS = [
     token: 'deid',
     label: 'De-identification',
     insertValue: '{deid}',
-    hint: 'Inserts {deid} — the De-identification value from the matching search row.',
+    hint: 'Inserts {deid} — the de-identification code from the matching search row (a value you assign so slides can be tracked without using patient identifiers).',
   },
   {
     token: 'uuid',

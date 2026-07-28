@@ -1,4 +1,4 @@
-@import '../../styles/colors.scss';
+@use '../../styles/colors' as *;
 
 .network-status-banner {
   background-color: $beige;
@@ -116,24 +116,6 @@
 
     > .InputText {
       align-self: flex-start;
-    }
-  }
-
-  &__checkbox-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    width: 100%;
-
-    .Checkbox {
-      width: auto;
-      margin-right: 0;
-      margin-bottom: 0;
-    }
-
-    .Checkbox .__checkbox {
-      margin-left: 0;
     }
   }
 
@@ -386,12 +368,6 @@
         margin-bottom: 0;
         white-space: nowrap;
       }
-
-      > .globus-target-path__checkbox-wrap {
-        flex-direction: row;
-        align-items: center;
-        width: auto;
-      }
     }
   }
 
@@ -452,23 +428,6 @@
     color: inherit;
     font-size: 1em;
     line-height: 1.25;
-  }
-
-  &__checkbox-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-
-    .Checkbox {
-      width: auto;
-      margin-right: 0;
-      margin-bottom: 0;
-    }
-
-    .Checkbox .__checkbox {
-      margin-left: 0;
-    }
   }
 
   &__full {

@@ -1,0 +1,100 @@
+@use "sass:color";
+@use '../../styles/colors' as *;
+
+/* Slightly narrower than login compact shell */
+.Modal .__modal.modal-disclaimer {
+  width: min(28rem, 92vw);
+  max-height: min(90vh, 32rem);
+}
+
+.modal-disclaimer {
+  &__content {
+    .config-panel__body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+  }
+
+  &__text {
+    margin: 0;
+    line-height: 1.45;
+    font-size: 0.9rem;
+    color: $config-text-primary;
+  }
+
+  &__more {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    color: $darker-blue;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+
+    &:hover {
+      color: color.adjust($darker-blue, $lightness: -8%);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($darker-blue, 0.35);
+      outline-offset: 2px;
+    }
+  }
+
+  &__remember {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: $config-text-secondary;
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      flex-shrink: 0;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
+
+    .Button {
+      margin-bottom: 0;
+    }
+
+    .Button .__button {
+      height: 2.25rem;
+      width: auto;
+      min-width: 5.5rem;
+      margin-right: 0;
+      padding: 0 0.9rem;
+      font-size: 0.875rem;
+      border-radius: 0.35rem;
+    }
+  }
+
+  // Primary CTA on light panel (same escape hatch as Globus login).
+  .Button--filled .__button {
+    background: $darker-blue;
+    border-color: $darker-blue;
+    color: #fff;
+    font-weight: 600;
+
+    &:hover:not(:disabled):not(._disabled) {
+      background: color.adjust($darker-blue, $lightness: -6%);
+      border-color: color.adjust($darker-blue, $lightness: -6%);
+    }
+  }
+}

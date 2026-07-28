@@ -1,0 +1,35 @@
+// Config v2 styles — public entry.
+@use './tokens' as *;
+@use './typography' as *;
+@use './mixins' as *;
+
+@use './_primitives/shell' as *;
+@use './_primitives/section' as *;
+@use './_primitives/choice-chips' as *;
+@use './_primitives/labeled-row' as *;
+@use './_primitives/detail-panel' as *;
+@use './_primitives/field' as *;
+@use './_primitives/path-chip' as *;
+@use './_primitives/status-field' as *;
+@use './_primitives/boolean-row' as *;
+@use './_primitives/feedback' as *;
+@use './_primitives/actions' as *;
+@use './_primitives/preview' as *;
+@use './_primitives/feature-block' as *;
+@use './_primitives/collapsible' as *;
+@use './_primitives/info-card' as *;
+@use './_primitives/data-loading' as *;
+@use './_primitives/esm-host' as *;
+@use './_primitives/slide-label-host' as *;
+
+.config-v2 {
+  // Root scope for all v2 config UI (avoids Modal.scss mega-nesting).
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  color: $cfg-ink;
+  box-sizing: border-box;
+}

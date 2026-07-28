@@ -37,10 +37,7 @@ const baseState = {
   files: {
     output_dir: null,
     file_rows: [],
-    csv: {
-      needs_output_dir: true,
-      headers: null,
-    },
+    csv: {},
   },
   uploadRouting: {
     local_output_enabled: false,
@@ -282,10 +279,6 @@ describe('selectOutputReadiness', () => {
       files: {
         ...baseState.files,
         file_rows: [rowWithDest('/out/a'), rowWithDest('/out/b')],
-        csv: {
-          needs_output_dir: false,
-          headers: ['path', 'copyTo'],
-        },
       },
       config: baseConfig,
     });
@@ -304,7 +297,6 @@ describe('selectOutputReadiness', () => {
           { __reserved: { renameSource: 'default', uuid: 'u1', destinationDirectory: '/out' } },
         ],
         file_cols: [],
-        csv: { ...baseState.files.csv, needs_output_dir: false },
       },
       config: {
         filename: { source: 'pattern', pattern: '{blockId}' },
@@ -361,21 +353,21 @@ describe('getDeliveryUploadStatusCopy', () => {
 });
 
 describe('getDeliverySetupModalType', () => {
-  it('maps globus to globusUpload modal', () => {
-    assert.equal(getDeliverySetupModalType('globus'), 'globusUpload');
+  it('returns null for globus (inline Delivery controls)', () => {
+    assert.equal(getDeliverySetupModalType('globus'), null);
   });
 
-  it('maps dsa to dsaUpload modal', () => {
-    assert.equal(getDeliverySetupModalType('dsa'), 'dsaUpload');
+  it('returns null for dsa (DSA settings live in Configuration)', () => {
+    assert.equal(getDeliverySetupModalType('dsa'), null);
   });
 });
 
 describe('getDeliverySetupButtonLabel', () => {
   it('returns setup label when not ready', () => {
-    assert.equal(getDeliverySetupButtonLabel('dsa', false), 'Set up DSA upload…');
+    assert.equal(getDeliverySetupButtonLabel('dsa', false), 'Set up DSA…');
   });
 
-  it('returns review label when ready', () => {
-    assert.equal(getDeliverySetupButtonLabel('globus', true), 'Review Globus upload settings…');
+  it('returns manage label when ready', () => {
+    assert.equal(getDeliverySetupButtonLabel('globus', true), 'Manage Globus…');
   });
 });

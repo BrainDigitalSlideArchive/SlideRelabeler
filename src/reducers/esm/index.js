@@ -3,6 +3,7 @@ import { produce } from 'immer';
 
 import default_state, { makeEsmSearchRow } from './default_state';
 import * as esm_actions from '../../actions/esm';
+import * as app_actions from '../../actions/app';
 import {
   makeEsmProfile,
   migrateEsmStateToProfiles,
@@ -59,6 +60,14 @@ function updateActiveProfile(draft, updater) {
 
 const esm_reducer = createReducer(default_state, (builder) => {
   builder
+    .addCase(app_actions.RESET_STORE, () => ({
+      ...default_state,
+      searchFeedback: makeEmptySearchFeedback(),
+      searchRows: [makeEsmSearchRow()],
+      results: [],
+      slidesByAccession: {},
+      selectedIds: [],
+    }))
     .addCase(esm_actions.SET_ESM_INTEGRATION_ENABLED, (state, action) => {
       return produce(state, (draft) => {
         draft.integrationEnabled = Boolean(action.payload);

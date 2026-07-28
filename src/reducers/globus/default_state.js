@@ -29,6 +29,8 @@ const default_state = {
     cli_available: null, // Whether 'globus' command is available on system
     disable_ssl_verification: false, // Whether to disable SSL verification (for testing only, default: false = SSL verification enabled)
     globus_directory_refresh_nonce: 0, // Incremented on LOGIN_SUCCESS / manual retry to refetch target tree
+    /** 'session' | 'durable' — how ModalGlobusEndpointPicker commits a chosen endpoint */
+    endpoint_picker_mode: 'session',
 };
 
 export default default_state;
