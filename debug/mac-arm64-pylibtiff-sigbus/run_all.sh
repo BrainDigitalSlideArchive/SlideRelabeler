@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run all mac-metadata-sigbus repro steps; continue after crashes.
+# Run all Apple Silicon pylibtiff/large_image repro steps; continue after crashes.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

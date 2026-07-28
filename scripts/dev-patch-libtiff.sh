@@ -9,6 +9,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SLIDERELABELER_PATCH_LIBTIFF=1
 
 echo "[dev-patch-libtiff] SLIDERELABELER_PATCH_LIBTIFF=1 (patchLibtiff + _getJpegTables + _getJpegFrameSize)" >&2
-echo "[dev-patch-libtiff] See debug/mac-metadata-sigbus/README.md for background" >&2
+echo "[dev-patch-libtiff] See debug/mac-arm64-pylibtiff-sigbus/README.md for background" >&2
 
 exec "$ROOT/scripts/dev.sh" "$@"

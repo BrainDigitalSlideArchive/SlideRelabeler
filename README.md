@@ -1,58 +1,67 @@
 # SlideRelabeler
-A desktop application for de-identifying whole slide images built with electron. [View the project homepage](https://braindigitalslidearchive.github.io/SlideRelabeler/) for more information and to download the application installer.
 
-## Design
-The app has a modern and powerful frontend (React/Redux/Redux-Saga). The back-end server invokes python code to interact with the WSI files. It is packaged into a stand-alone application for easy installation and use.
+A desktop application for de-identifying whole slide images, built with Electron. [View the project homepage](https://braindigitalslidearchive.github.io/SlideRelabeler/) for more information and to download installers.
 
-The project is modeled on https://github.com/pearcetm/svs-deidentifier and 
-incorporates modified code from https://github.com/DigitalSlideArchive/DSA-WSI-DeID.
+The project is modeled on https://github.com/pearcetm/svs-deidentifier and incorporates modified code from https://github.com/DigitalSlideArchive/DSA-WSI-DeID.
 
+## Architecture
+
+| Layer | Role |
+|-------|------|
+| **Electron main** (`src/main.js`, `src/handlers.js`) | Windows, dialogs, IPC, persistence; launches the Python engine |
+| **Renderer** (React / Redux / Redux-Saga) | Main UI: file list, Settings (`config-v2`), delivery, Help; Viewer window uses OpenSeadragon |
+| **Python engine** (`src/python/`, gRPC bridge) | WSI metadata/label work via DeidTools / large_image; packaged with PyInstaller for distributables |
+| **Integrations** | Local save; optional upload to Digital Slide Archive (Girder) and Globus |
+
+Development runs the engine as a live Python process from the `sliderelabeler` conda env. Packaged builds ship a PyInstaller `engine` binary as an Electron extra resource.
 
 ## Getting started
-1) Clone the repo: `git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git`.
-2) Switch to the new directory: `cd SlideRelabeler`.
-3) Create a working anaconda environment:
+
+1. Clone: `git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git` then `cd SlideRelabeler`
+2. Create the conda env:
    - macOS: `conda env create -f environment-macos.yml`
    - Windows: `conda env create -f environment-windows.yml`
-4) Activate the conda environment: `conda activate sliderelabeler`.
-5) Install npm dependencies: `npm install`;
-6) Launch the dev app: `npm run dev`;
+3. Activate: `conda activate sliderelabeler`
+4. Install JS deps: `npm install`
+5. Launch: `npm run dev`
 
-`npm run dev` resolves the `sliderelabeler` conda environment, sets `PYTHON` / `CONDA_PREFIX`, and puts that env’s `bin` first on `PATH` (bypassing pyenv or other shims). Use `npm start` only if your shell already points `python` at the correct interpreter.
+`npm run dev` resolves the `sliderelabeler` env, sets `PYTHON` / `CONDA_PREFIX`, and puts that env’s `bin` first on `PATH` (avoids pyenv / Homebrew shims). Use bare `npm start` only if your shell already points `python` at the correct interpreter.
 
-On **macOS Apple Silicon**, the Python engine auto-enables a `libtiff` / `tiff_reader` compatibility guard at startup (ARM64 variadic ctypes fix; see `debug/mac-metadata-sigbus/README.md`). Plain `npm run dev` is sufficient for processing Aperio slides. To force the guard on or off explicitly: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or use `./scripts/dev-patch-libtiff.sh` (force on). The old `dev-mac-metadata.sh` name is deprecated and forwards to `dev-patch-libtiff.sh`.
-
-If the Python backend fails to start, verify dependencies in the conda env:
+If the Python backend fails to start:
 
 ```bash
 conda run -n sliderelabeler python -c "import grpc; import large_image"
 ```
 
-> Note about `pip install large-image[common]`: on Macbook Pro MacOS Ventura 13.3 Apple M1 Max, `large-image` failed to install due to `rawpy` not being found on `pypi` - this is because of the M1 architecture. See https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513 and the rest of the thread for info. I ended up being able to clone the `rawpy` repo and install directly (after `brew install cmake`), and then `large-image` could be installed.
+### macOS Apple Silicon
 
-## Building the distributable application
-Running `npm run dev` (or `npm start`) will open up the app, but won't create a bundle for distribution - no `SlideRelabeler.app` or `SlideRelabeler.exe` file will be generated. Development mode uses your local Python installation to run the backend script in a shell; prefer `npm run dev` so the conda env is used reliably.
+On arm64, `large_image_source_tiff.tiff_reader` clears/extends pylibtiff’s `TIFFGetField.argtypes` in ways that break the Mac variadic ABI (SIGBUS/SIGSEGV when opening Aperio `.svs` via `TiffFileTileSource`). The engine auto-installs a compatibility guard (`src/python/libtiff_guard.py`) at startup. Plain `npm run dev` is enough for Aperio slides. To force the guard on or off: `SLIDERELABELER_PATCH_LIBTIFF=1` or `=0`, or `./scripts/dev-patch-libtiff.sh` (force on).
 
-Running `npm run startpib` (start **P**y**I**nstaller **B**uild) will package your python code into a stand-alone application using `pyinstaller`, and will launch the application
-with a flag to use this python app rather than the system python. This is useful for testing the `pyinstaller` process.
+> Note: on some Apple Silicon setups, `pip install large-image[common]` failed because `rawpy` was missing on PyPI for that architecture. Cloning/installing `rawpy` after `brew install cmake` unblocked `large-image` — see [rawpy#171](https://github.com/letmaik/rawpy/issues/171#issuecomment-1489973513).
 
-Running `npm run startpi` (start **P**y**I**installer) will use a pre-built `pyinstaller` executable, but won't build it to save startup time. You can use this if you haven't changed your python code since the last build.
+## Building a distributable
 
-To build a stand-alone electron application, run `npm run make` (or `npm run package` for package-only). These scripts wrap `electron-forge` with the `sliderelabeler` conda env so `pyinstaller` comes from that env, not a system/Homebrew shim. Do not run bare `electron-forge package` / `make` unless the env is activated and `which pyinstaller` points at the conda env. The app can be found in the `out/` directory.
+- **`npm run package`** / **`npm run make`** — conda-wrapped Electron Forge. Prefer these so `pyinstaller` comes from the env, not a system shim. Output is under `out/`.
+- Do not run bare `electron-forge package` / `make` unless the env is activated and `which pyinstaller` points at conda.
+- **`npm run startpib`** — rebuild the PyInstaller engine and start Electron using that binary (good for packaging smoke tests).
+- **`npm run startpi`** — start with an already-built PyInstaller engine (skips rebuild).
 
+More detail: [build_readme/macosx/README.md](build_readme/macosx/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
 
-Initial templating was done by:
-```
-npm init electron-app@latest . -- --template=vite
-```
-within the root directory, so `package.json` etc. were all installed in the root project directory (replace the `.` with `dir-name` would install in a new subdirectory).
+## Documentation
 
+| Doc | Contents |
+|-----|----------|
+| [docs/index.html](docs/index.html) | Project homepage (GitHub Pages) |
+| [docs/config-ui-reference.md](docs/config-ui-reference.md) | Settings UI behavior (sections, actions, side effects) |
+| [docs/config-ui-v2-style-spec.md](docs/config-ui-v2-style-spec.md) | Configuration visual kit / tokens |
+| [src/components/config-v2/README.md](src/components/config-v2/README.md) | Short pointer for the Settings kit |
 
-## Useful info:
-Useful [stackoverflow](https://stackoverflow.com/questions/67146654/how-to-compile-python-electron-js-into-desktop-app-exe) question and answer.
+## `debug/mac-arm64-pylibtiff-sigbus/`
 
-Blog posts by Simon Willison [here](https://til.simonwillison.net/electron/python-inside-electron) and perhaps the linked one [here](https://til.simonwillison.net/electron/sign-notarize-electron-macos) if signing and notarizing is needed for the bundled Mac app.
+Standalone Python repro kit for the Apple Silicon **pylibtiff / `large_image` ctypes crash**. Root cause: `large_image_source_tiff.tiff_reader.patchLibtiff()` clears [pylibtiff #189](https://github.com/pearu/pylibtiff/pull/189) `TIFFGetField.argtypes`, then related call sites re-extend them incorrectly for variadic args → **SIGBUS/SIGSEGV** on normal Aperio `.svs` via `TiffFileTileSource`. Scripts run outside Electron/gRPC for layer-by-layer isolation; share [`UPSTREAM_BRIEF.md`](debug/mac-arm64-pylibtiff-sigbus/UPSTREAM_BRIEF.md) with maintainers. App mitigation: `src/python/libtiff_guard.py`. Details: [debug/mac-arm64-pylibtiff-sigbus/README.md](debug/mac-arm64-pylibtiff-sigbus/README.md).
 
-The overall app design is conceptually similar to https://github.com/pearcetm/svs-deidentifier.
+## Useful links
 
-The architecture is based on [Electron](https://www.electronjs.org/docs/latest/) - see [electronforge.io](https://www.electronforge.io/) for details about how to quickly run the app during development, build into a distributable application, etc.
+- Electron + Python packaging: [Stack Overflow](https://stackoverflow.com/questions/67146654/how-to-compile-python-electron-js-into-desktop-app-exe), Simon Willison [TIL](https://til.simonwillison.net/electron/python-inside-electron) (and [signing/notarizing](https://til.simonwillison.net/electron/sign-notarize-electron-macos))
+- [Electron](https://www.electronjs.org/docs/latest/) / [Electron Forge](https://www.electronforge.io/)

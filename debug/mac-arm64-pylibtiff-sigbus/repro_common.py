@@ -1,4 +1,4 @@
-"""Shared helpers for mac-metadata-sigbus repro scripts."""
+"""Shared helpers for mac-arm64-pylibtiff-sigbus repro scripts."""
 from __future__ import annotations
 
 import os

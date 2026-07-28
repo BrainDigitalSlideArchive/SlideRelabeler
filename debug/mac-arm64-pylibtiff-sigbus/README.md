@@ -1,11 +1,13 @@
-# macOS metadata preview SIGBUS — repro kit
+# macOS Apple Silicon: pylibtiff / large_image SIGBUS — repro kit
 
-Minimal Python scripts that reproduce the macOS metadata preview crash **outside Electron/gRPC**. Each script isolates one layer of the stack so you can see where the process dies.
+Minimal Python scripts that reproduce a **native crash when opening Aperio `.svs` via `large_image_source_tiff` / pylibtiff** on Apple Silicon — **outside Electron/gRPC**. Each script isolates one layer of the stack.
+
+**Root cause (summary):** On arm64, pylibtiff [#189](https://github.com/pearu/pylibtiff/pull/189) sets `TIFFGetField.argtypes` to the two fixed parameters only. `large_image_source_tiff.tiff_reader.patchLibtiff()` ([large_image #1992](https://github.com/girder/large_image/pull/1992)) clears those argtypes; related call sites then extend them for variadic output pointers. That breaks the Mac ARM64 variadic ABI → **SIGBUS** (or **SIGSEGV** after partial fixes). `tifftools.read_tiff()` on the same file succeeds. Any path that constructs `TiffFileTileSource` (or hits the broken `TIFFGetField` ctypes usage) can crash.
 
 See also:
 
-- Internal assessment: [`docs/metadata-preview-macos-assessment.md`](../../docs/metadata-preview-macos-assessment.md)
 - Upstream-facing brief (standalone, send as-is): [`UPSTREAM_BRIEF.md`](UPSTREAM_BRIEF.md) — inline repro scripts, no repo files required. Local scripts `00b` / `10` automate the same checks.
+- Production guard used by the app: [`src/python/libtiff_guard.py`](../../src/python/libtiff_guard.py)
 
 ## Quick start
 
@@ -43,10 +45,10 @@ Logs are written to `results/YYYY-MM-DD_HHMMSS.log` (gitignored).
 | `04_order_tifftools_then_pylibtiff.py` | tifftools first, then pylibtiff |
 | `05_order_pylibtiff_then_tifftools.py` | pylibtiff first, then tifftools |
 | `06_large_image_open.py` | `large_image.open()` (OpenSlide path) |
-| `07_deidtools_minimal.py` | `DeidTools.preview_metadata()` minimal config |
+| `07_deidtools_minimal.py` | `DeidTools.preview_metadata()` (app path that opens tile source) |
 | `08_deidtools_redact_only.py` | `redact_format_aperio(..., preview_metadata=True)` |
 | `09_after_openslide.py` | OpenSlide tile source, then `TiledTiffDirectory` |
-| `10_patchlibtiff_guard.py` | Both upstream patches; `validate=True`, `TiffFileTileSource`, `preview_metadata` |
+| `10_patchlibtiff_guard.py` | Guard on; `validate=True`, `TiffFileTileSource`, DeidTools helper |
 
 Supporting module: [`patchlibtiff_guard.py`](patchlibtiff_guard.py) re-exports [`src/python/libtiff_guard.py`](../../src/python/libtiff_guard.py).
 
@@ -77,10 +79,11 @@ Steps 07–08 need `PYTHONPATH` via `repro_common.ensure_deidtools_path()` (repo
 | 02, 03 | SIGBUS |
 | 04, 05 | Usually same as 02 (tifftools order rarely changes outcome) |
 | 06 | OK — OpenSlide path works |
-| 07, 08, 09 | SIGBUS (same native fault as DeidTools preview path) |
-| 10 | OK — all three patches; `validate=True`, `TiffFileTileSource`, `preview_metadata` pass |
+| 07, 08 | SIGBUS (DeidTools paths that open `TiffFileTileSource` — same native fault) |
+| 09 | SIGBUS |
+| 10 | OK — guard applied; `validate=True`, `TiffFileTileSource`, and DeidTools preview helpers pass |
 
-If 01 passes but 02/03 fail, the fault is in **pylibtiff inside `large_image_source_tiff`**, not tifftools or app logic.
+If 01 passes but 02/03 fail, the fault is in **pylibtiff ctypes usage inside `large_image_source_tiff`**, not tifftools or Electron.
 
 ## tiff_reader patches (local testing / Mac app)
 
@@ -109,8 +112,6 @@ chmod +x scripts/dev-patch-libtiff.sh
 ```
 
 On **macOS arm64**, [`engine.py`](../../src/python/engine.py) auto-installs the guard when `SLIDERELABELER_PATCH_LIBTIFF` is unset. Check stderr for `libtiff guard auto-enabled`. **Windows / Intel Mac:** leave the flag unset; guard stays off.
-
-`dev-mac-metadata.sh` is deprecated; it forwards to `dev-patch-libtiff.sh`.
 
 ## Phase 2: narrowing steps
 
@@ -165,11 +166,11 @@ Or try `PYTHONFAULTHANDLER=1` (helps Python exceptions; less useful for SIGBUS).
 | `00b_argtypes_probe` | argtypes `[TIFF, c_uint]` before import, `None` after |
 | `02` without large_image import (custom script) | May **pass** on Mac |
 | Same after `import large_image_source_tiff.tiff_reader` | **SIGBUS** |
-| Locally comment out `patchLibtiff()` line 85 in site-packages | Preview may work without DeidTools changes |
+| Locally comment out `patchLibtiff()` line 85 in site-packages | May open SVS without the app guard |
 
 ### G. Product-side confirmation (after root cause)
 
-If 02/03 fail but 01 passes, a DeidTools fix candidate is to **skip `TiffFileTileSource` for `preview_metadata=True`** and derive Aperio directory indices from tifftools `ifds`. Validate on Windows before merging.
+If 02/03 fail but 01 passes, a DeidTools workaround candidate is to **skip `TiffFileTileSource` where only IFD indices are needed** (e.g. preview helpers) and derive Aperio directory indices from tifftools `ifds`. Prefer fixing `tiff_reader` upstream (or the app guard) so all tile-source paths stay safe. Validate on Windows before merging.
 
 ## Environment
 

@@ -842,7 +842,6 @@ For development workflows, see the main [README.md](README.md) for information a
 ## Additional Resources
 
 - **Main README:** [README.md](README.md)
-- **Application Structure:** [analysis/application-structure.md](analysis/application-structure.md)
 - **Electron Forge Docs:** https://www.electronforge.io/
 - **PyInstaller Docs:** https://pyinstaller.org/
 - **Conda Docs:** https://docs.conda.io/
