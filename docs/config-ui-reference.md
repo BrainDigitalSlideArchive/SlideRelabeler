@@ -212,15 +212,14 @@ Live settings continue to auto-save to `deid.tmp`. Profiles are named checkpoint
 
 | Control | Behavior |
 |---------|----------|
-| Active strip | `Active: “Name”` / `Modified from “Name”` / `No profile selected` (fingerprint vs live snapshot) |
+| List status | Active / Modified on the active row (fingerprint vs live snapshot) |
 | Save as… | Prompt name → unique (case-insensitive), max 80 → new profile + set active |
 | Save | Overwrite active profile payload when dirty (name unchanged) |
-| Switch… | Confirm → apply selected profile payload to live settings (not file list) |
+| Activate… | Confirm → apply selected profile payload to live settings (not file list) |
 | Rename… | Unique name rules; id unchanged |
+| Export… | Requires checked profiles; 1 → single file; 2+ → bundle |
 | Delete… | Confirm; clears active if deleted |
-| Export current… | Single portable JSON; prompts for name if not cleanly on an active profile |
-| Export selected… | 1 → single file; 2+ or none selected (all) → bundle |
-| Import… | Single or bundle; collision suffixes `(imported)`; Apply offered for single only |
+| Import… (Saved profiles description) | Single or bundle; collision suffixes `(imported)`; Apply offered for single only |
 
 **Portable kinds:** `slideRelabeler.configProfile` / `slideRelabeler.configProfileBundle` (`schemaVersion: 1`). Snapshots omit passwords, auth tokens, file list, and audit entry history.
 

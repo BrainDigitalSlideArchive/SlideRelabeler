@@ -9,11 +9,7 @@ import ConfigSettingHeader from '../primitives/ConfigSettingHeader';
 import ConfigCallout from '../primitives/ConfigCallout';
 import ConfigTextButton from '../primitives/ConfigTextButton';
 import ConfigField from '../primitives/ConfigField';
-import {
-  buildConfigProfilePayload,
-  fingerprintPayload,
-  isProfileDirty,
-} from '../../../helpers/config_profile_snapshot.js';
+import { isProfileDirty } from '../../../helpers/config_profile_snapshot.js';
 import { validateProfileName } from '../../../helpers/config_profile_naming.js';
 
 import './ConfigProfilesSection.scss';
@@ -54,7 +50,7 @@ export default function ConfigProfilesSection() {
   );
 
   const [selectedIds, setSelectedIds] = useState([]);
-  /** @type {[{ mode: 'saveAs'|'rename'|'exportCurrent', profileId?: string, title: string }|null, function]} */
+  /** @type {[{ mode: 'saveAs'|'rename', profileId?: string, title: string }|null, function]} */
   const [nameEditor, setNameEditor] = useState(null);
   const [nameValue, setNameValue] = useState('New profile');
   const [nameError, setNameError] = useState('');
@@ -65,11 +61,6 @@ export default function ConfigProfilesSection() {
   );
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
-  const activeLabel = !activeProfile
-    ? 'Not using a saved profile'
-    : dirty
-      ? `Modified from “${activeProfile.name}”`
-      : `Active: “${activeProfile.name}”`;
 
   const selectionForActions = selectedIds.filter((id) =>
     profiles.some((p) => p.id === id),
@@ -114,81 +105,104 @@ export default function ConfigProfilesSection() {
         type: config_profiles_actions.RENAME_CONFIG_PROFILE,
         payload: { id: nameEditor.profileId, name: check.name },
       });
-    } else if (nameEditor.mode === 'exportCurrent') {
-      dispatch({
-        type: config_profiles_actions.EXPORT_CURRENT_CONFIG_PROFILE,
-        payload: { name: check.name },
-      });
     }
     setNameEditor(null);
     setNameError('');
-  }
-
-  function onExportCurrent() {
-    const liveFp = fingerprintPayload(buildConfigProfilePayload(profileStore));
-    const cleanActive =
-      activeProfile && activeFingerprint && liveFp === activeFingerprint;
-    if (cleanActive) {
-      dispatch({ type: config_profiles_actions.EXPORT_CURRENT_CONFIG_PROFILE });
-      return;
-    }
-    openNameEditor(
-      { mode: 'exportCurrent', title: 'Name for the exported profile' },
-      'New profile',
-    );
   }
 
   return (
     <ConfigSection
       id="config-profiles"
       title="Configuration profiles"
-      description="Save and switch between named sets of settings, or share them as a file with another computer."
+      description="Checkpoints of your settings on this computer."
     >
       <ConfigCallout variant="tinted" role="note">
+        <div className="cfg-profiles__callout-title">What profiles are for</div>
         <p>
-          Your Configuration changes apply as you make them. A profile is a named copy you can
-          return to later. Exported files leave out passwords and sign-in details; folder paths
-          may need updating on another machine. Clear all saved data (Advanced) also deletes
-          saved profiles — export first if you want to keep them.
+          As you change settings, those changes take effect right away. A profile is a named
+          snapshot of your settings that you can switch back to later, or share as a file with
+          another computer.
         </p>
+        <ul className="cfg-profiles__callout-list">
+          <li>
+            Use <strong>Save as…</strong> when you want to keep a checkpoint of the current setup.
+          </li>
+          <li>
+            Exported profile files do not include passwords or sign-in details. Folder paths often
+            need to be set again on another machine.
+          </li>
+          <li>
+            <strong>Clear all saved data</strong> (under Advanced) deletes saved profiles as well.
+            Export any profiles you care about before using that action.
+          </li>
+        </ul>
       </ConfigCallout>
 
       <ConfigSectionPanel>
-        <p className="cfg-profiles__active" aria-live="polite">
-          {activeLabel}
-        </p>
-
         <ConfigSettingHeader
           title="Saved profiles"
-          description="Named sets of settings on this computer. Select one to switch, or several to export or delete."
+          description={(
+            <>
+              Check a profile, then use the buttons below. Check several to export or delete
+              together. To add profiles from a file,{' '}
+              <ConfigTextButton
+                disabled={disabled || Boolean(nameEditor)}
+                onClick={() => {
+                  dispatch({ type: config_profiles_actions.IMPORT_CONFIG_PROFILES });
+                }}
+              >
+                Import…
+              </ConfigTextButton>
+              .
+            </>
+          )}
         />
 
-        {profiles.length === 0 ? (
-          <p className="cfg-profiles__empty">No profiles yet. Choose Save as… to create one.</p>
-        ) : (
-          <ul className="cfg-profiles__list">
-            {profiles.map((p) => (
-              <li key={p.id} className="cfg-profiles__row">
-                <label className="cfg-profiles__row-label">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(p.id)}
-                    disabled={disabled}
-                    onChange={() => toggleSelected(p.id)}
-                  />
-                  <span className="cfg-profiles__name">
-                    {p.name}
-                    {p.id === activeProfileId ? (
-                      <span className="cfg-profiles__badge">
-                        {dirty ? 'modified' : 'active'}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="cfg-profiles__list-box">
+          {profiles.length === 0 ? (
+            <p className="cfg-profiles__empty">No profiles yet. Choose Save as… to create one.</p>
+          ) : (
+            <ul className="cfg-profiles__list">
+              {profiles.map((p) => {
+                const isActive = p.id === activeProfileId;
+                const isChecked = selectedIds.includes(p.id);
+                const rowClasses = [
+                  'cfg-profiles__row',
+                  isActive && !dirty ? 'cfg-profiles__row--active' : '',
+                  isActive && dirty ? 'cfg-profiles__row--modified' : '',
+                  isChecked ? 'cfg-profiles__row--checked' : '',
+                ].filter(Boolean).join(' ');
+
+                return (
+                  <li key={p.id} className={rowClasses}>
+                    <label className="cfg-profiles__row-label">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={disabled}
+                        onChange={() => toggleSelected(p.id)}
+                      />
+                      <span className="cfg-profiles__name">{p.name}</span>
+                      {isActive ? (
+                        <span
+                          className={[
+                            'cfg-profiles__status',
+                            dirty
+                              ? 'cfg-profiles__status--modified'
+                              : 'cfg-profiles__status--active',
+                          ].join(' ')}
+                          aria-live="polite"
+                        >
+                          {dirty ? 'Modified' : 'Active'}
+                        </span>
+                      ) : null}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
         {nameEditor ? (
           <div className="cfg-profiles__name-editor">
@@ -219,7 +233,7 @@ export default function ConfigProfilesSection() {
 
         <div className="cfg-panel-actions cfg-profiles__actions">
           <Button
-            text="Switch…"
+            text="Activate…"
             disabled={disabled || !singleSelected || Boolean(nameEditor)}
             onClick={() => {
               if (!singleSelected) return;
@@ -241,6 +255,13 @@ export default function ConfigProfilesSection() {
           />
           <Button
             text="Save"
+            tooltip={
+              !activeProfile
+                ? 'No active profile to save. Use Save as… to create one.'
+                : dirty
+                  ? `Save changes to the active “${activeProfile.name}” profile`
+                  : 'There are no changes to save'
+            }
             disabled={disabled || !activeProfileId || !dirty || Boolean(nameEditor)}
             onClick={() => {
               dispatch({ type: config_profiles_actions.SAVE_ACTIVE_CONFIG_PROFILE });
@@ -262,6 +283,16 @@ export default function ConfigProfilesSection() {
             }}
           />
           <Button
+            text="Export…"
+            disabled={disabled || selectionForActions.length === 0 || Boolean(nameEditor)}
+            onClick={() => {
+              dispatch({
+                type: config_profiles_actions.EXPORT_SELECTED_CONFIG_PROFILES,
+                payload: { ids: selectionForActions },
+              });
+            }}
+          />
+          <Button
             text="Delete…"
             disabled={disabled || selectionForActions.length === 0 || Boolean(nameEditor)}
             onClick={() => {
@@ -272,38 +303,6 @@ export default function ConfigProfilesSection() {
               setSelectedIds([]);
             }}
           />
-        </div>
-
-        <ConfigSettingHeader
-          title="Share"
-          description="Copy settings to a file, or bring settings in from a file."
-        />
-        <div className="cfg-profiles__share">
-          <ConfigTextButton
-            disabled={disabled || Boolean(nameEditor)}
-            onClick={onExportCurrent}
-          >
-            Export current…
-          </ConfigTextButton>
-          <ConfigTextButton
-            disabled={disabled || profiles.length === 0 || Boolean(nameEditor)}
-            onClick={() => {
-              dispatch({
-                type: config_profiles_actions.EXPORT_SELECTED_CONFIG_PROFILES,
-                payload: { ids: selectionForActions },
-              });
-            }}
-          >
-            Export selected…
-          </ConfigTextButton>
-          <ConfigTextButton
-            disabled={disabled || Boolean(nameEditor)}
-            onClick={() => {
-              dispatch({ type: config_profiles_actions.IMPORT_CONFIG_PROFILES });
-            }}
-          >
-            Import…
-          </ConfigTextButton>
         </div>
       </ConfigSectionPanel>
     </ConfigSection>

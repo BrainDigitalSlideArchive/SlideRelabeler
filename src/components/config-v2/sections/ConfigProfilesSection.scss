@@ -2,57 +2,97 @@
 @import '../styles/typography';
 
 .config-v2 {
-  .cfg-profiles__active {
+  .cfg-profiles__list-box {
     margin: 0 0 $cfg-space-md;
-    font-size: $cfg-font-setting;
-    font-weight: 600;
-    color: $cfg-ink;
+    border: 1px solid $cfg-border;
+    border-radius: 0.35rem;
+    background: $cfg-surface;
+    overflow: hidden;
   }
 
   .cfg-profiles__empty {
-    margin: 0 0 $cfg-space-md;
+    margin: 0;
+    padding: $cfg-space-lg $cfg-space-md;
     font-size: $cfg-font-helper;
     color: $cfg-ink-faint;
   }
 
   .cfg-profiles__list {
     list-style: none;
-    margin: 0 0 $cfg-space-md;
+    margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: $cfg-space-sm;
+  }
+
+  .cfg-profiles__row {
+    border-bottom: 1px solid $cfg-border;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: rgba($cfg-ink, 0.03);
+    }
+
+    &--checked:not(.cfg-profiles__row--active):not(.cfg-profiles__row--modified) {
+      background: rgba($cfg-accent, 0.05);
+    }
+
+    &--active {
+      background: rgba($cfg-ok, 0.08);
+      box-shadow: inset 3px 0 0 $cfg-ok;
+    }
+
+    &--modified {
+      background: rgba($cfg-warn, 0.08);
+      box-shadow: inset 3px 0 0 $cfg-warn;
+    }
   }
 
   .cfg-profiles__row-label {
     display: flex;
     align-items: center;
     gap: $cfg-space-sm;
+    padding: $cfg-space-md;
     font-size: $cfg-font-row-label;
     color: $cfg-ink-muted;
     cursor: pointer;
   }
 
   .cfg-profiles__name {
-    display: inline-flex;
-    align-items: center;
-    gap: $cfg-space-sm;
+    flex: 1;
+    min-width: 0;
+    color: $cfg-ink;
   }
 
-  .cfg-profiles__badge {
+  .cfg-profiles__status {
+    flex-shrink: 0;
     font-size: $cfg-font-detail;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: $cfg-accent;
+    font-style: italic;
+    font-weight: 500;
+
+    &--active {
+      color: $cfg-ok;
+    }
+
+    &--modified {
+      color: $cfg-warn;
+    }
   }
 
   .cfg-profiles__name-editor {
     margin: 0 0 $cfg-space-md;
+    padding: $cfg-space-md $cfg-space-lg;
     display: flex;
     flex-direction: column;
     gap: $cfg-space-sm;
     max-width: 24rem;
+    border: 1px solid $cfg-callout-border;
+    border-radius: 0.35rem;
+    background: $cfg-callout-bg;
+    box-sizing: border-box;
   }
 
   .cfg-profiles__name-editor-actions {
@@ -73,11 +113,12 @@
     gap: $cfg-space-sm;
   }
 
-  .cfg-profiles__share {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $cfg-space-md;
-    margin-top: $cfg-space-sm;
+  // Match CSV lead: semibold inline Import link inside Saved profiles help text.
+  #config-profiles .cfg-setting-header__description .cfg-text-btn {
+    display: inline;
+    font-size: inherit;
+    font-weight: 600;
+    vertical-align: baseline;
   }
 
   .cfg-callout p {
@@ -85,5 +126,34 @@
     font-size: $cfg-font-helper;
     line-height: 1.45;
     color: $cfg-ink-muted;
+  }
+
+  .cfg-profiles__callout-title {
+    margin: 0 0 $cfg-space-sm;
+    font-size: $cfg-font-setting;
+    font-weight: 600;
+    line-height: 1.45;
+    color: $cfg-ink;
+  }
+
+  .cfg-profiles__callout-list {
+    margin: $cfg-space-sm 0 0;
+    padding-left: 1.15rem;
+    font-size: $cfg-font-helper;
+    line-height: 1.45;
+    color: $cfg-ink-muted;
+
+    li {
+      margin-bottom: $cfg-space-sm;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    strong {
+      font-weight: 600;
+      color: $cfg-ink;
+    }
   }
 }

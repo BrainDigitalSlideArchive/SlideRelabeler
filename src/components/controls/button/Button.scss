@@ -23,6 +23,10 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s, visibility 0.2s;
+    width: max-content;
+    max-width: 16rem;
+    white-space: normal;
+    line-height: 1.35;
     &._visible {
       opacity: 1;
       visibility: visible;

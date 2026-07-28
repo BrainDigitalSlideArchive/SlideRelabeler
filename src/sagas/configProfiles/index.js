@@ -33,7 +33,6 @@ import {
 import { createProfileId } from '../../helpers/config_profile_ids.js';
 import set_store from '../bridge/set_store';
 import { buildPersistedStore } from '../../helpers/persisted_store';
-import { ensureDisclaimerPrompt } from '../../helpers/ensure_disclaimer_prompt.js';
 
 function* persistProfilesDoc(partial = {}) {
   const state = yield select((s) => s.configProfiles);
@@ -64,14 +63,29 @@ export function* load_config_profiles() {
 }
 
 /**
- * Apply a profile payload to live Redux (settings only — does not touch file list).
+ * Apply a profile payload to live Redux settings, then recompute default-sourced
+ * naming on any loaded file rows (same as store hydrate). Does not replace the file list.
  */
 export function* applyConfigProfilePayload(payload) {
   if (!payload || typeof payload !== 'object') return;
 
   if (payload.config) {
+    const liveAcceptedVersion = yield select((s) => s.config?.disclaimer?.acceptedVersion);
     const { config: migratedConfig, wasReset } = migrateConfigV2(payload.config, payload.esm);
-    yield put({ type: config_actions.UPDATE_CONFIG, payload: migratedConfig });
+    const configToApply = {
+      ...migratedConfig,
+      disclaimer: {
+        ...(migratedConfig.disclaimer && typeof migratedConfig.disclaimer === 'object'
+          ? migratedConfig.disclaimer
+          : {}),
+        // Agreement is session/machine state — keep live acceptance when applying a profile.
+        acceptedVersion:
+          typeof liveAcceptedVersion === 'number' && Number.isFinite(liveAcceptedVersion)
+            ? liveAcceptedVersion
+            : null,
+      },
+    };
+    yield put({ type: config_actions.UPDATE_CONFIG, payload: configToApply });
     if (wasReset) {
       yield put({
         type: modal_actions.DISPLAY_WARNING_MESSAGE,
@@ -124,6 +138,11 @@ export function* applyConfigProfilePayload(payload) {
 
   const store = yield select();
   yield set_store(buildPersistedStore(store));
+
+  const fileRows = store.files?.file_rows;
+  if (Array.isArray(fileRows) && fileRows.length > 0) {
+    yield put({ type: config_actions.RECOMPUTE_ALL_NAMING });
+  }
 }
 
 function* watch_save_as() {
@@ -210,8 +229,6 @@ function* watch_switch() {
     if (!ok) continue;
 
     yield* applyConfigProfilePayload(profile.payload);
-    yield put({ type: config_actions.CLEAR_DISCLAIMER_ACCEPTED });
-    yield* ensureDisclaimerPrompt();
     yield* persistProfilesDoc({
       activeProfileId: profile.id,
       activeFingerprint: profile.fingerprint || fingerprintPayload(profile.payload),
@@ -283,45 +300,16 @@ function* exportJson(doc, defaultPath) {
   return true;
 }
 
-function* watch_export_current() {
-  while (true) {
-    const action = yield take(config_profiles_actions.EXPORT_CURRENT_CONFIG_PROFILE);
-    const store = yield select();
-    const { profiles, activeProfileId, activeFingerprint } = store.configProfiles;
-    const active = profiles.find((p) => p.id === activeProfileId);
-    const liveFp = fingerprintPayload(buildConfigProfilePayload(store));
-    const cleanActive = active && activeFingerprint && liveFp === activeFingerprint;
-
-    let name;
-    if (cleanActive && !action.payload?.name) {
-      name = active.name;
-    } else {
-      const raw = action.payload?.name;
-      const nameCheck = validateProfileName(raw);
-      if (!nameCheck.ok) {
-        window.alert(nameCheck.error || 'Enter a name for the exported profile.');
-        continue;
-      }
-      name = nameCheck.name;
-    }
-
-    const payload = buildConfigProfilePayload(store);
-    const doc = buildSinglePortableFile({ name, payload });
-    yield* exportJson(doc, defaultExportFilename(name));
-  }
-}
-
 function* watch_export_selected() {
   while (true) {
     const action = yield take(config_profiles_actions.EXPORT_SELECTED_CONFIG_PROFILES);
     const selectedIds = Array.isArray(action.payload?.ids) ? action.payload.ids : [];
-    const profiles = yield select((s) => s.configProfiles.profiles);
-    let toExport;
     if (selectedIds.length === 0) {
-      toExport = profiles;
-    } else {
-      toExport = profiles.filter((p) => selectedIds.includes(p.id));
+      window.alert('Select one or more profiles to export.');
+      continue;
     }
+    const profiles = yield select((s) => s.configProfiles.profiles);
+    const toExport = profiles.filter((p) => selectedIds.includes(p.id));
     if (!toExport.length) {
       window.alert('No profiles to export.');
       continue;
@@ -386,8 +374,6 @@ function* watch_import() {
       );
       if (apply) {
         yield* applyConfigProfilePayload(created[0].payload);
-        yield put({ type: config_actions.CLEAR_DISCLAIMER_ACCEPTED });
-        yield* ensureDisclaimerPrompt();
         yield* persistProfilesDoc({
           activeProfileId: created[0].id,
           activeFingerprint: created[0].fingerprint,
@@ -405,7 +391,6 @@ export default function* configProfilesSaga() {
   yield fork(watch_switch);
   yield fork(watch_rename);
   yield fork(watch_delete_profile);
-  yield fork(watch_export_current);
   yield fork(watch_export_selected);
   yield fork(watch_import);
 }

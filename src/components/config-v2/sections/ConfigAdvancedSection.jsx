@@ -63,8 +63,8 @@ export default function ConfigAdvancedSection() {
           `This also permanently deletes your saved configuration profiles (${profileCount} profile${
             profileCount === 1 ? '' : 's'
           }).\n\n` +
-          `To keep them, click Cancel, open Configuration → Profiles, and use Export selected… ` +
-          `(or export all), then return here.\n\n` +
+          `To keep them, click Cancel, open Configuration → Profiles, check the profiles to keep, ` +
+          `and use Export…, then return here.\n\n` +
           `Continue without exporting?`
         : HARD_RESET_CONFIRM_EMPTY;
     if (!window.confirm(message)) return;
