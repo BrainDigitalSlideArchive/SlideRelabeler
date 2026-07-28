@@ -365,23 +365,23 @@
             </div>
             
             <div class="download-section">
-                <h3>Download for Your Platform</h3>
+                <h3>Download v0.9.0</h3>
                 <div class="download-buttons">
-                    <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/releases/download/v0.1.5/SlideRelabeler-0.1.5.Setup.exe" class="download-btn enabled">
+                    <div class="download-btn disabled">
                         <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M0,12.40183361 L0,12.40183361 L0,12.40183361 L5.11616044,7.28567317 L5.11616044,10.4095702 L10.1312335,10.4095702 L10.1312335,14.3941002 L5.11616044,14.3941002 L5.11616044,17.5179972 L0,12.40183361 Z M22.2370899,0 L22.2370899,0 L22.2370899,0 L13.2963718,0 L13.2963718,0 L8.36557434,4.93079746 L8.36557434,7.28567317 L13.2963718,7.28567317 L13.2963718,17.5179972 L8.36557434,17.5179972 L8.36557434,19.8728729 L13.2963718,24.8036704 L22.2370899,24.8036704 L22.2370899,0 Z"/>
                         </svg>
                         <div class="platform-name">Windows</div>
-                        <div class="platform-status">Available</div>
-                    </a>
-                    
-                    <div class="download-btn disabled">
-                        <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.024.559-.085-.008-.2-.008-.2v-3.946s-.179.023-.391.023c-1.177 0-2.052-.164-2.052-1.983 0-.729.312-1.272.818-1.272.233 0 .556.09.556.09.556-.637.99-1.81.99-2.727 0-.546-.312-.818-.312-.818-.546-.546-.818-1.177-.818-2.052 0-.818.363-1.452.818-1.814.546-.455 1.177-.637 1.814-.637 1.452 0 2.727.546 3.273 1.452.273.455.455.99.455 1.633v6.906s.133.085-.008.2c4.46-1.607 7.618-5.945 7.618-11.024C23.975 5.367 18.637.029 12.017.029zM12.017 22.174c-5.641 0-10.188-4.547-10.188-10.188S6.376 1.798 12.017 1.798s10.188 4.547 10.188 10.188-4.547 10.188-10.188 10.188z"/>
-                        </svg>
-                        <div class="platform-name">macOS</div>
                         <div class="platform-status">Coming Soon</div>
                     </div>
+                    
+                    <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/releases/download/v0.9.0/SlideRelabeler-darwin-arm64-0.9.0.zip" class="download-btn enabled">
+                        <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 15 2.94 10.53 4.7 7.51c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                        </svg>
+                        <div class="platform-name">macOS</div>
+                        <div class="platform-status">Apple Silicon · Available</div>
+                    </a>
                     
                     <div class="download-btn disabled">
                         <svg class="platform-icon" fill="currentColor" viewBox="0 0 24 24">
@@ -431,10 +431,11 @@
                 <ol class="steps">
                     <li>Clone the repository: <code>git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git</code></li>
                     <li>Navigate to directory: <code>cd SlideRelabeler</code></li>
-                    <li>Create conda environment: <code>conda env create -f environment-macos.yml</code> (macOS) or <code>conda env create -f environment-windows.yml</code> (Windows)</li>
+                    <li>Create conda environment: <code>conda env create -f environment-macos.yml</code> (macOS), <code>environment-windows.yml</code> (Windows), or <code>environment-linux.yml</code> (Linux)</li>
                     <li>Activate environment: <code>conda activate sliderelabeler</code></li>
                     <li>Install dependencies: <code>npm install</code></li>
-                    <li>Launch development app: <code>npm start</code></li>
+                    <li>Launch development app: <code>npm run dev</code></li>
+                    <li>Optional — build a distributable: <code>npm run package</code> or <code>npm run make</code></li>
                 </ol>
 
                 <div class="note">
@@ -451,8 +452,8 @@
                 </h2>
                 
                 <h3>Development Mode</h3>
-                <div class="code-block">npm start</div>
-                <p>Opens the app using your local Python installation</p>
+                <div class="code-block">npm run dev</div>
+                <p>Opens the app using Python from the <code>sliderelabeler</code> conda environment</p>
 
                 <h3>PyInstaller Build & Test</h3>
                 <div class="code-block">npm run startpib</div>
@@ -497,7 +498,7 @@
                     </svg>
                     View on GitHub
                 </a>
-                <a href="#" class="btn btn-secondary">
+                <a href="https://github.com/BrainDigitalSlideArchive/SlideRelabeler/releases/tag/v0.9.0" class="btn btn-secondary">
                     <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
