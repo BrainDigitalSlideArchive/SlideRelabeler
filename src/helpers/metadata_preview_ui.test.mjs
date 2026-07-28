@@ -4,6 +4,8 @@ import {
   resolveMetadataTable,
   getMetadataModalBranch,
   makePreviewErrorTable,
+  formatTagData,
+  tagValuesDiffer,
   PREVIEW_ERROR_KEY,
   METADATA_UNAVAILABLE_MESSAGE,
 } from './metadata_preview_ui.js';
@@ -58,4 +60,19 @@ test('getMetadataModalBranch: processed file', () => {
   const processed = { __reserved: { source: { path: '/tmp/a.tif' }, processed: 1 } };
   const result = getMetadataModalBranch(null, processed, false);
   assert.equal(result.branch, 'processed');
+});
+
+test('formatTagData joins arrays with commas', () => {
+  assert.equal(formatTagData([8, 1043, 13056]), '8,1043,13056');
+  assert.equal(formatTagData(742119104), '742119104');
+  assert.equal(formatTagData(null), '');
+  assert.equal(formatTagData(undefined), '');
+  assert.equal(formatTagData('abc'), 'abc');
+});
+
+test('tagValuesDiffer compares normalized forms', () => {
+  assert.equal(tagValuesDiffer([1, 2], '1,2'), false);
+  assert.equal(tagValuesDiffer([1, 2], [1, 2, 3]), true);
+  assert.equal(tagValuesDiffer([0], [1]), true);
+  assert.equal(tagValuesDiffer('', null), false);
 });

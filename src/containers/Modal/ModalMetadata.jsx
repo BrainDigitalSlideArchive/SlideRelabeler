@@ -55,7 +55,6 @@ function ModalMetadata(props) {
     content = (
       <MetadataAgGrid
         display_changed_only={display_changed_only}
-        autoSizeStrategy={{ type: 'fitCellContents' }}
         suppressMovableColumns
         ensureDomOrder
         suppressDragLeaveHidesColumns

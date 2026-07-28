@@ -6,6 +6,27 @@ export const PREVIEW_ERROR_KEY = '__previewError';
 
 export const METADATA_UNAVAILABLE_MESSAGE = 'Metadata preview is not available for this file.';
 
+/**
+ * Normalize TIFF tag `data` for grid, tooltips, detail card, and diff.
+ * Arrays become comma-joined (same as Array#toString / AG Grid default).
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function formatTagData(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.join(',');
+  return String(value);
+}
+
+/**
+ * @param {unknown} prior
+ * @param {unknown} after
+ * @returns {boolean}
+ */
+export function tagValuesDiffer(prior, after) {
+  return formatTagData(prior) !== formatTagData(after);
+}
+
 function pathsMatch(storedPath, filePath) {
   if (!storedPath || !filePath) return false;
   if (storedPath === filePath) return true;
