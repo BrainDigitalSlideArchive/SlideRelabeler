@@ -7,6 +7,7 @@ import { selectOutputReadiness, summarizeDestinationDirectories } from '../../se
 import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
+import { useAppVersion } from "../../helpers/useAppVersion";
 
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import GridHoverTooltip from "../../components/AgGrid/GridHoverTooltip";
@@ -78,6 +79,7 @@ function render_process_files_button(uploadRouting, outputReadiness, disable_cha
 }
 const App = (props) => {
   let output_dir = useSelector(state => state.files.output_dir);
+  const appVersion = useAppVersion();
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
   let disable_changes = useSelector(state => state.files.disable_changes);
@@ -111,7 +113,14 @@ const App = (props) => {
     <>
       <div key={0} className='App'>
         <div className='__top'>
-          <img src={bdsaLogo} className='logo' alt='Brain Digital Slide Archive Logo'/>
+          <div className="__brand">
+            <img src={bdsaLogo} className='logo' alt='Brain Digital Slide Archive Logo'/>
+            {appVersion ? (
+              <span className="__brand-version" title={`SlideRelabeler ${appVersion}`}>
+                v{appVersion}
+              </span>
+            ) : null}
+          </div>
           <div className={"__controls"}>
             <div className={"__list-controls"}>
               <h2>Select files to inspect and process</h2>

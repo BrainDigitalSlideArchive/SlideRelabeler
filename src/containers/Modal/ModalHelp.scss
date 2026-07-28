@@ -7,6 +7,18 @@
 }
 
 .modal-help {
+  &__version {
+    margin: 0 0 0.85rem;
+    font-size: 0.92rem;
+    color: $config-text-secondary;
+  }
+
+  &__version-num {
+    font-weight: 600;
+    color: $config-text-primary;
+    font-variant-numeric: tabular-nums;
+  }
+
   &__inline-link {
     display: inline;
     padding: 0;

@@ -104,6 +104,7 @@ const API = {
   checkFileReadable: (file_path) => ipcRenderer.invoke('check-file-readable', file_path),
   checkFileWriteable: (file_path) => ipcRenderer.invoke('check-file-writeable', file_path),
   getPlatform: (file_path) => ipcRenderer.invoke('get-platform'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getStore: () => ipcRenderer.invoke('get-store'),
   setStore: (store) => ipcRenderer.invoke('set-store', store),
   onStoreUpdated: (callback) => {

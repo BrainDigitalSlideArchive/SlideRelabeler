@@ -1132,6 +1132,10 @@ ipcMain.handle('get-platform', async () => {
   return process.platform;
 })
 
+ipcMain.handle('get-app-version', async () => {
+  return app.getVersion();
+})
+
 /**
  * An IPC handler that opens a dialog to choose a file to save
  * @param {string} file_type The type of file to save

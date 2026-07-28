@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as modal_actions from '../../actions/modal';
 import ModalHeader from './ModalHeader';
 import { openConfigSettings } from '../../components/config-v2/ConfigV2Nav';
+import { useAppVersion } from '../../helpers/useAppVersion';
 
 import './ModalHelp.scss';
 
@@ -92,6 +93,7 @@ function ModalHelp() {
   const dispatch = useDispatch();
   const helpFocusSection = useSelector((s) => s.modal.helpFocusSection);
   const applicationSectionRef = useRef(null);
+  const appVersion = useAppVersion();
 
   useEffect(() => {
     if (helpFocusSection !== 'application') return;
@@ -114,17 +116,22 @@ function ModalHelp() {
               ref={applicationSectionRef}
             >
               <h2>Application Disclaimer</h2>
+              {appVersion ? (
+                <p className="modal-help__version">
+                  SlideRelabeler <span className="modal-help__version-num">{appVersion}</span>
+                </p>
+              ) : null}
               <p>
                 SlideRelabeler is an open-source application intended to help remove identifying information from
                 whole slide images so they can be shared appropriately. It provides no guarantee that all patient
                 identifiers are automatically removed.{' '}
                 <b>
-                  The developers accept no liability for a failure to fully de-identify any given whole slide image file.
+                  The developers are not liable for a failure to fully de-identify any given whole slide image file.
                 </b>{' '}
                 You alone are responsible for ensuring adequate de-identification for your use case before sharing
                 resulting files. Because imaging practices differ across institutions, verify that outputs meet your
                 requirements. If something fails to de-identify as expected, please share reproducible details so the
-                program can be improved.
+                application can be improved.
               </p>
               <p>
                 You can change whether this disclaimer appears every time the app starts in{' '}
