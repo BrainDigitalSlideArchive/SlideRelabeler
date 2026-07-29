@@ -17,19 +17,26 @@ version = '0.0.2'
 
 deid_tools_path = './src/python/DeidTools'
 # large_image_path_abs = os.path.abspath(large_image_path)
+# Vendored DeidTools *-bin trees exist for Windows/macOS only. Linux relies on
+# openslide/vips from the sliderelabeler env (pip: openslide-bin, pyvips, etc.).
+abs_fonts_path = os.path.abspath(os.path.join(deid_tools_path, 'fonts'))
+abs_bin_path = abs_include_path = abs_share_path = None
+bin_path = include_path = share_path = None
+
 if sys.platform == 'win32':
     bin_path = os.path.join(deid_tools_path, 'win-bin')
     include_path = os.path.join(deid_tools_path, 'win-include')
     share_path = os.path.join(deid_tools_path, 'win-share')
+    abs_bin_path = os.path.abspath(bin_path)
+    abs_include_path = os.path.abspath(include_path)
+    abs_share_path = os.path.abspath(share_path)
 elif sys.platform == 'darwin':
     bin_path = os.path.join(deid_tools_path, 'mac-bin')
     include_path = os.path.join(deid_tools_path, 'mac-include')
     share_path = os.path.join(deid_tools_path, 'mac-share')
-
-abs_fonts_path = os.path.abspath(os.path.join(deid_tools_path, 'fonts'))
-abs_bin_path = os.path.abspath(bin_path)
-abs_include_path = os.path.abspath(include_path)
-abs_share_path = os.path.abspath(share_path)
+    abs_bin_path = os.path.abspath(bin_path)
+    abs_include_path = os.path.abspath(include_path)
+    abs_share_path = os.path.abspath(share_path)
 
 # If in windows environment copy the libopenslide-1.dll to the python environment Library/bin directory
 # This must be done in conda environment given reliance on binaries for several libraries within a windows environment

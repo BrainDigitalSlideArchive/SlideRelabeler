@@ -44,7 +44,7 @@ These scripts use the same conda wrapper so `pyinstaller` comes from the env. Ar
 - Unpackaged app: `out/SlideRelabeler-linux-*`
 - Deb/rpm: under `out/make/` (maker-deb / maker-rpm)
 
-PyInstaller produces `dist/engine` and `dist/globus_cli` (same layout as Windows). Forge copies them into the app `resources` folder.
+PyInstaller produces `dist/engine` and `dist/globus_cli` (same layout as Windows). Forge copies them into the app `resources` folder. Unlike Windows/macOS, Linux packaging does **not** use a vendored `DeidTools/linux-bin` tree — OpenSlide/vips come from the `sliderelabeler` env (`openslide-bin`, `openslide-python`, `pyvips[all]` in `environment-linux.yml`), so that env must be complete before `npm run make`.
 
 Tag-triggered GitHub Actions builds and attaches Linux (and Windows/macOS) packages to Releases — see [docs/github-release-ci.md](../../docs/github-release-ci.md).
 
