@@ -58,6 +58,11 @@ function buildPackagerConfig() {
     ],
   };
 
+  // deb/rpm makers look for package.json "name"; Packager defaults to productName (SlideRelabeler).
+  if (os.platform() === 'linux') {
+    packagerConfig.executableName = 'slide-relabeler';
+  }
+
   if (os.platform() === 'darwin' && process.env.CSC_LINK) {
     packagerConfig.osxSign = process.env.APPLE_IDENTITY
       ? { identity: process.env.APPLE_IDENTITY }

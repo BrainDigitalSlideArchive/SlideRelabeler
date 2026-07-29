@@ -1,5 +1,5 @@
 # Build installers on tag push (v*) and attach them to a GitHub Release.
-# Tag must match package.json version (e.g. v0.9.2 ↔ "version": "0.9.2").
+# Tag must match package.json version (e.g. v0.9.3 ↔ "version": "0.9.3").
 # See docs/github-release-ci.md for signing secrets and release steps.
 
 name: Release
