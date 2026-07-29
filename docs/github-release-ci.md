@@ -6,18 +6,18 @@ Workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 
 ## Cut a release
 
-1. Bump `"version"` in [`package.json`](../package.json) (e.g. to `0.9.1`).
+1. Bump `"version"` in [`package.json`](../package.json) (e.g. to `0.9.2`).
 2. Commit that change on the branch you want to release.
 3. Create and push a matching tag (leading `v` required):
 
    ```bash
-   git tag v0.9.1
-   git push origin v0.9.1
+   git tag v0.9.2
+   git push origin v0.9.2
    ```
 
 4. Wait for the **Release** workflow on the Actions tab. When all build jobs succeed, a GitHub Release for that tag is created/updated with the assets below.
 
-The workflow **fails** if the tag is not exactly `v` + `package.json` `version` (e.g. tag `v0.9.1` requires `"version": "0.9.1"`).
+The workflow **fails** if the tag is not exactly `v` + `package.json` `version` (e.g. tag `v0.9.2` requires `"version": "0.9.2"`).
 
 ## What gets attached
 
