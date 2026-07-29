@@ -27,7 +27,7 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
 5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`.
 6. **Package:** when you want a distributable, run `npm run package` (app only) or `npm run make` (installer / zip / deb / rpm). These use the same conda wrapper so `pyinstaller` comes from the env. Output is under `out/`.
 
-Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
+Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md). Automated multi-platform releases: [docs/github-release-ci.md](docs/github-release-ci.md).
 
 ## Integrations
 
@@ -61,6 +61,7 @@ DSA and eSlide Manager are straightforward: point at a server and sign in. Globu
 | Doc | Contents |
 |-----|----------|
 | [docs/index.html](docs/index.html) | Project homepage (GitHub Pages) |
+| [docs/github-release-ci.md](docs/github-release-ci.md) | Tag → GitHub Actions → Release artifacts (and optional signing secrets) |
 | [src/components/config-v2/README.md](src/components/config-v2/README.md) | Settings (Configuration) UI kit |
 
 ## Troubleshooting

@@ -37,12 +37,17 @@ function resolvePyInstaller() {
   return 'pyinstaller';
 }
 
-module.exports = {
-  packagerConfig: {
+/**
+ * Enable macOS signing / notarization only when CI secrets (or local env) are present.
+ * Windows Authenticode uses CSC_LINK + CSC_KEY_PASSWORD via the packager when set; no packagerConfig flag required.
+ * See docs/github-release-ci.md.
+ */
+function buildPackagerConfig() {
+  const packagerConfig = {
     asar: true,
     icon: './src/assets/BDSA-icon', // no file extension required
     extraResource: extraResource,
-    ignore:[
+    ignore: [
       "/\.pyenv.*/",
       "/pyinstaller/",
       "/build/engine",
@@ -50,8 +55,31 @@ module.exports = {
       "temp",
       ".vscode",
       ".idea"
-    ]
-  },
+    ],
+  };
+
+  if (os.platform() === 'darwin' && process.env.CSC_LINK) {
+    packagerConfig.osxSign = process.env.APPLE_IDENTITY
+      ? { identity: process.env.APPLE_IDENTITY }
+      : {};
+    if (
+      process.env.APPLE_ID &&
+      process.env.APPLE_APP_SPECIFIC_PASSWORD &&
+      process.env.APPLE_TEAM_ID
+    ) {
+      packagerConfig.osxNotarize = {
+        appleId: process.env.APPLE_ID,
+        appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
+        teamId: process.env.APPLE_TEAM_ID,
+      };
+    }
+  }
+
+  return packagerConfig;
+}
+
+module.exports = {
+  packagerConfig: buildPackagerConfig(),
   rebuildConfig: {},
   hooks:{
     prePackage:async (forgeConfig) => {

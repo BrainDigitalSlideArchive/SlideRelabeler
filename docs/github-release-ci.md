@@ -1,0 +1,59 @@
+# GitHub Release CI
+
+Tag-triggered GitHub Actions builds SlideRelabeler installers for Windows, macOS (Apple Silicon), and Linux, then attaches them to a GitHub Release.
+
+Workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
+
+## Cut a release
+
+1. Bump `"version"` in [`package.json`](../package.json) (e.g. to `0.9.1`).
+2. Commit that change on the branch you want to release.
+3. Create and push a matching tag (leading `v` required):
+
+   ```bash
+   git tag v0.9.1
+   git push origin v0.9.1
+   ```
+
+4. Wait for the **Release** workflow on the Actions tab. When all build jobs succeed, a GitHub Release for that tag is created/updated with the assets below.
+
+The workflow **fails** if the tag is not exactly `v` + `package.json` `version` (e.g. tag `v0.9.1` requires `"version": "0.9.1"`).
+
+## What gets attached
+
+| Platform | Runner | Release asset |
+|----------|--------|----------------|
+| Windows | `windows-latest` | `SlideRelabeler Setup <version>.exe` (Squirrel installer only) |
+| macOS Apple Silicon | `macos-latest` | `SlideRelabeler-darwin-arm64-<version>.zip` (contains `SlideRelabeler.app`) |
+| Linux x64 | `ubuntu-latest` | `.deb` and `.rpm` |
+
+Squirrel `.nupkg` / `RELEASES` files are **not** uploaded. Intel Mac builds are not produced.
+
+## Local vs CI packaging tools (Linux)
+
+On Ubuntu CI the workflow installs `fakeroot` and `rpm` so both makers succeed. Locally, before `npm run make`:
+
+```bash
+sudo apt-get install -y fakeroot rpm
+```
+
+See also [build_readme/linux/README.md](../build_readme/linux/README.md).
+
+## Code signing (optional)
+
+Builds are **unsigned** until you add repository secrets. Empty/missing secrets leave packaging unchanged (usable builds with Gatekeeper / SmartScreen friction).
+
+Set secrets under **Settings → Secrets and variables → Actions**:
+
+| Secret | Used on | Purpose |
+|--------|---------|---------|
+| `CSC_LINK` | macOS, Windows | Path or base64 contents of the signing certificate (`.p12` / `.pfx`) |
+| `CSC_KEY_PASSWORD` | macOS, Windows | Certificate password |
+| `APPLE_IDENTITY` | macOS | Optional explicit identity, e.g. `Developer ID Application: Your Name (TEAMID)` |
+| `APPLE_ID` | macOS | Apple ID email for notarization |
+| `APPLE_APP_SPECIFIC_PASSWORD` | macOS | [App-specific password](https://support.apple.com/en-us/HT204397) |
+| `APPLE_TEAM_ID` | macOS | 10-character Team ID |
+
+[`forge.config.js`](../forge.config.js) enables `osxSign` / `osxNotarize` when `CSC_LINK` (and notarization env vars) are set on macOS. Windows Authenticode uses `CSC_LINK` + `CSC_KEY_PASSWORD` when present.
+
+Further reading: [Electron Forge signing](https://www.electronforge.io/guides/code-signing), Simon Willison [sign/notarize Electron on macOS](https://til.simonwillison.net/electron/sign-notarize-electron-macos).

@@ -33,12 +33,20 @@ npm run package   # app directory under out/
 npm run make      # also builds .deb / .rpm via Electron Forge
 ```
 
+For `.deb` **and** `.rpm` on Ubuntu/Debian builders, install host tools first:
+
+```bash
+sudo apt-get install -y fakeroot rpm
+```
+
 These scripts use the same conda wrapper so `pyinstaller` comes from the env. Artifacts:
 
 - Unpackaged app: `out/SlideRelabeler-linux-*`
 - Deb/rpm: under `out/make/` (maker-deb / maker-rpm)
 
 PyInstaller produces `dist/engine` and `dist/globus_cli` (same layout as Windows). Forge copies them into the app `resources` folder.
+
+Tag-triggered GitHub Actions builds and attaches Linux (and Windows/macOS) packages to Releases — see [docs/github-release-ci.md](../../docs/github-release-ci.md).
 
 ## Verification checklist (on a Linux host)
 
@@ -50,5 +58,6 @@ PyInstaller produces `dist/engine` and `dist/globus_cli` (same layout as Windows
 ## See also
 
 - Root [README.md](../../README.md)
+- [GitHub Release CI](../../docs/github-release-ci.md)
 - [build_readme/macosx/README.md](../macosx/README.md)
 - [BUILD_WINDOWS.md](../../BUILD_WINDOWS.md)
