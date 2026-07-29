@@ -6,24 +6,24 @@ Workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 
 ## Cut a release
 
-1. Bump `"version"` in [`package.json`](../package.json) (e.g. to `0.9.4`).
+1. Bump `"version"` in [`package.json`](../package.json) (e.g. to `0.9.5`).
 2. Commit that change on the branch you want to release.
 3. Create and push a matching tag (leading `v` required):
 
    ```bash
-   git tag v0.9.4
-   git push origin v0.9.4
+   git tag v0.9.5
+   git push origin v0.9.5
    ```
 
 4. Wait for the **Release** workflow on the Actions tab. When all build jobs succeed, a GitHub Release for that tag is created/updated with the assets below.
 
-The workflow **fails** if the tag is not exactly `v` + `package.json` `version` (e.g. tag `v0.9.4` requires `"version": "0.9.4"`).
+The workflow **fails** if the tag is not exactly `v` + `package.json` `version` (e.g. tag `v0.9.5` requires `"version": "0.9.5"`).
 
 ## What gets attached
 
 | Platform | Runner | Release asset |
 |----------|--------|----------------|
-| Windows | `windows-latest` | `SlideRelabeler Setup <version>.exe` (Squirrel installer only) |
+| Windows | `windows-latest` | `SlideRelabeler-<version> Setup.exe` (Squirrel installer only) |
 | macOS Apple Silicon | `macos-latest` | `SlideRelabeler-darwin-arm64-<version>.zip` (contains `SlideRelabeler.app`) |
 | Linux x64 | `ubuntu-latest` | `.deb` and `.rpm` |
 

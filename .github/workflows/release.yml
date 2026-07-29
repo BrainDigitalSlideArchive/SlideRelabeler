@@ -1,5 +1,5 @@
 # Build installers on tag push (v*) and attach them to a GitHub Release.
-# Tag must match package.json version (e.g. v0.9.4 ↔ "version": "0.9.4").
+# Tag must match package.json version (e.g. v0.9.5 ↔ "version": "0.9.5").
 # See docs/github-release-ci.md for signing secrets and release steps.
 
 name: Release
@@ -73,11 +73,15 @@ jobs:
           (& conda "shell.powershell" "hook") | Out-String | Invoke-Expression
           npm run make
 
+      - name: List Squirrel output
+        shell: pwsh
+        run: Get-ChildItem -Recurse out/make/squirrel.windows | Select-Object FullName
+
       - name: Upload Setup.exe
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: out/make/squirrel.windows/**/SlideRelabeler Setup *.exe
+          path: out/make/squirrel.windows/**/SlideRelabeler-* Setup.exe
           if-no-files-found: error
 
   macos-arm64:
@@ -195,7 +199,7 @@ jobs:
 
             | Platform | Asset |
             |----------|--------|
-            | Windows | `SlideRelabeler Setup … .exe` (Squirrel installer) |
+            | Windows | `SlideRelabeler-<version> Setup.exe` (Squirrel installer) |
             | macOS (Apple Silicon) | `.zip` containing `SlideRelabeler.app` |
             | Linux | `.deb` (Debian/Ubuntu) and `.rpm` (Fedora/RHEL-family) |
 

@@ -281,7 +281,7 @@ Making a squirrel distributable for win32/x64
 ```
 
 **Output Location:**
-- Installer: `out/make/squirrel.windows/x64/SlideRelabeler Setup X.X.X.exe`
+- Installer: `out/make/squirrel.windows/x64/SlideRelabeler-X.X.X Setup.exe`
 - The full path will be displayed at the end
 
 #### Step 7: Verify Build Success
@@ -291,7 +291,7 @@ Making a squirrel distributable for win32/x64
 **Expected Output:**
 ```
 Build was successful
-The build is @ C:\SoftwareDevelopment\SlideRelabeler\out\make\squirrel.windows\x64\SlideRelabeler Setup 0.1.8.exe
+The build is @ C:\SoftwareDevelopment\SlideRelabeler\out\make\squirrel.windows\x64\SlideRelabeler-0.1.8 Setup.exe
 Please navigate to the containing folder and install the application
 ```
 
@@ -449,7 +449,7 @@ This command:
 
 **Expected Output Location:**
 ```
-.\out\make\squirrel.windows\x64\SlideRelabeler Setup X.X.X.exe
+.\out\make\squirrel.windows\x64\SlideRelabeler-X.X.X Setup.exe
 ```
 
 ### Step 8: Verify Build
@@ -738,7 +738,7 @@ if ($installer) {
 
 **Expected Output:**
 ```
-✓ Installer found: C:\SoftwareDevelopment\SlideRelabeler\out\make\squirrel.windows\x64\SlideRelabeler Setup 0.1.8.exe
+✓ Installer found: C:\SoftwareDevelopment\SlideRelabeler\out\make\squirrel.windows\x64\SlideRelabeler-0.1.8 Setup.exe
   Size: 450.23 MB
   Created: 2024-01-15 10:30:00
 ```
@@ -759,7 +759,7 @@ Get-ChildItem .\out\make\squirrel.windows\x64\
 ```
 
 **Expected Files in `out/make/squirrel.windows/x64/`:**
-- `SlideRelabeler Setup X.X.X.exe` - Main installer
+- `SlideRelabeler-X.X.X Setup.exe` - Main installer
 - `RELEASES` - Squirrel release metadata
 - `SlideRelabeler-X.X.X-full.nupkg` - Application package
 
@@ -774,7 +774,7 @@ Get-ChildItem .\out\make\squirrel.windows\x64\
 
 2. Run the installer:
    ```powershell
-   .\SlideRelabeler Setup X.X.X.exe
+   .\SlideRelabeler-X.X.X Setup.exe
    ```
 
 3. Follow the installation wizard
@@ -828,7 +828,7 @@ Remove-Item -Recurse -Force .\dist -ErrorAction SilentlyContinue
 After successfully building the application:
 
 1. **Test the installer** on a clean Windows machine (if possible)
-2. **Distribute the installer** (`SlideRelabeler Setup X.X.X.exe`) to end users
+2. **Distribute the installer** (`SlideRelabeler-X.X.X Setup.exe`) to end users
 3. **Document any issues** you encountered for future reference
 4. **Consider creating a release** on GitHub with the installer attached
 
