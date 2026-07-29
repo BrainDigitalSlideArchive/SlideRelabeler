@@ -8,6 +8,8 @@ import {
     looksLikeWelcomeHtml,
     validateLoginStepResponse,
     validateRecordsListSetupResponse,
+    isEsmUnreachableError,
+    formatEsmLoginFailure,
 } from './esm_login_validation.js';
 
 const WELCOME_HTML = `<!DOCTYPE HTML>
@@ -168,5 +170,33 @@ describe('isLoginPageUrl', () => {
         assert.equal(isLoginPageUrl('https://esm.example.com/Login.php'), true);
         assert.equal(isLoginPageUrl('https://relay.example.com/esm/Login.php'), true);
         assert.equal(isLoginPageUrl('https://esm.example.com/Welcome.php'), false);
+    });
+});
+
+describe('isEsmUnreachableError', () => {
+    it('detects Electron net connection errors', () => {
+        assert.equal(isEsmUnreachableError({ message: 'net::ERR_CONNECTION_REFUSED' }), true);
+        assert.equal(isEsmUnreachableError({ code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND' }), true);
+        assert.equal(isEsmUnreachableError({ message: 'Login failed' }), false);
+    });
+});
+
+describe('formatEsmLoginFailure', () => {
+    it('returns friendly unreachable copy with openUrl', () => {
+        const result = formatEsmLoginFailure(
+            { message: 'net::ERR_CONNECTION_REFUSED' },
+            'https://esm.example.com',
+        );
+        assert.equal(result.kind, 'unreachable');
+        assert.equal(result.openUrl, 'https://esm.example.com');
+        assert.match(result.message, /Couldn't reach the eSlide Manager server/);
+        assert.match(result.message, /Open the link below/);
+    });
+
+    it('keeps auth failures as generic without openUrl', () => {
+        const result = formatEsmLoginFailure('Invalid username or password', 'https://esm.example.com');
+        assert.equal(result.kind, 'generic');
+        assert.equal(result.openUrl, null);
+        assert.equal(result.message, 'Invalid username or password');
     });
 });

@@ -130,7 +130,10 @@ ipcMain.handle('esm-login', async (event, connection, username, password) => {
     }
   } catch (error) {
     console.error('eSlideManager login error:', error.message || error);
-    return [false, { message: error.message || 'Login failed' }];
+    return [false, {
+      message: error.message || 'Login failed',
+      code: error.code || error.errno || null,
+    }];
   }
 });
 

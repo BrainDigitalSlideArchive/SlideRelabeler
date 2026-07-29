@@ -12,6 +12,7 @@ import {
   ESM_STAIN_FILTER_MATCH,
 } from '../../helpers/esm_profile_helpers';
 import { makeEmptySearchFeedback } from '../../helpers/esm_search_feedback';
+import { esmConnectionKey, findProfileById, profilesShareEsmHost } from '../../helpers/esm_session_helpers';
 
 function normalizeSearchRow(raw, profile = null) {
   if (!raw || typeof raw !== 'object') return null;
@@ -94,7 +95,12 @@ const esm_reducer = createReducer(default_state, (builder) => {
         const id = action.payload;
         if (!id) return;
         const exists = (draft.profiles || []).some((p) => p && p.id === id);
-        if (exists) draft.activeProfileId = id;
+        if (exists) {
+          draft.activeProfileId = id;
+          draft.error = false;
+          draft.errorMessage = null;
+          draft.errorOpenUrl = null;
+        }
       });
     })
     .addCase(esm_actions.ESM_ADD_PROFILE, (state, action) => {
@@ -134,17 +140,28 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.loading = false;
         draft.error = false;
         draft.errorMessage = null;
+        draft.errorOpenUrl = null;
         draft.profileSwitchOpen = false;
         draft.switchOriginProfileId = null;
+        const { profile } = getActiveProfileDraft(draft);
+        draft.sessionConnectionKey = profile ? esmConnectionKey(profile) : null;
       });
     })
     .addCase(esm_actions.ESM_LOGIN_ERROR, (state, action) => {
       return produce(state, (draft) => {
+        const payload = action.payload;
         draft.authenticated = false;
         draft.authToken = null;
+        draft.sessionConnectionKey = null;
         draft.loading = false;
         draft.error = true;
-        draft.errorMessage = action.payload;
+        if (payload && typeof payload === 'object') {
+          draft.errorMessage = payload.message != null ? String(payload.message) : 'Login failed';
+          draft.errorOpenUrl = payload.openUrl ? String(payload.openUrl) : null;
+        } else {
+          draft.errorMessage = payload != null ? String(payload) : 'Login failed';
+          draft.errorOpenUrl = null;
+        }
         draft.profileSwitchOpen = false;
         draft.switchOriginProfileId = null;
       });
@@ -153,9 +170,11 @@ const esm_reducer = createReducer(default_state, (builder) => {
       return produce(state, (draft) => {
         draft.authenticated = false;
         draft.authToken = null;
+        draft.sessionConnectionKey = null;
         draft.loading = false;
         draft.error = false;
         draft.errorMessage = null;
+        draft.errorOpenUrl = null;
         draft.password = '';
         if (!draft.rememberUsername) draft.username = '';
       });
@@ -166,27 +185,37 @@ const esm_reducer = createReducer(default_state, (builder) => {
         draft.switchOriginProfileId = draft.activeProfileId ?? null;
         draft.error = false;
         draft.errorMessage = null;
+        draft.errorOpenUrl = null;
       });
     })
     .addCase(esm_actions.ESM_CLOSE_PROFILE_SWITCH, (state) => {
       return produce(state, (draft) => {
-        draft.profileSwitchOpen = false;
-        draft.switchOriginProfileId = null;
-        draft.error = false;
-        draft.errorMessage = null;
-      });
-    })
-    .addCase(esm_actions.ESM_CONFIRM_PROFILE_SWITCH, (state, action) => {
-      return produce(state, (draft) => {
-        const id = action.payload ?? draft.activeProfileId;
-        if (id) {
-          const exists = (draft.profiles || []).some((p) => p && p.id === id);
-          if (exists) draft.activeProfileId = id;
+        const originId = draft.switchOriginProfileId;
+        if (originId) {
+          const exists = (draft.profiles || []).some((p) => p && p.id === originId);
+          if (exists) draft.activeProfileId = originId;
         }
         draft.profileSwitchOpen = false;
         draft.switchOriginProfileId = null;
         draft.error = false;
         draft.errorMessage = null;
+        draft.errorOpenUrl = null;
+      });
+    })
+    .addCase(esm_actions.ESM_CONFIRM_PROFILE_SWITCH, (state, action) => {
+      return produce(state, (draft) => {
+        const id = action.payload ?? draft.activeProfileId;
+        const origin = findProfileById(draft, draft.switchOriginProfileId);
+        const selected = findProfileById(draft, id);
+        if (!profilesShareEsmHost(origin, selected)) {
+          return;
+        }
+        draft.activeProfileId = selected.id;
+        draft.profileSwitchOpen = false;
+        draft.switchOriginProfileId = null;
+        draft.error = false;
+        draft.errorMessage = null;
+        draft.errorOpenUrl = null;
       });
     })
     .addCase(esm_actions.ESM_SET_LOADING, (state, action) => {
@@ -362,9 +391,11 @@ const esm_reducer = createReducer(default_state, (builder) => {
         activeProfileId: activeProfile?.id ?? profiles[0]?.id,
         authenticated: false,
         authToken: null,
+        sessionConnectionKey: null,
         loading: false,
         error: false,
         errorMessage: null,
+        errorOpenUrl: null,
         searchLoading: false,
         searchFeedback: makeEmptySearchFeedback(),
         searchRows: [makeEsmSearchRow(activeProfile)],

@@ -1,5 +1,5 @@
 # Build installers on tag push (v*) and attach them to a GitHub Release.
-# Tag must match package.json version (e.g. v0.9.3 ↔ "version": "0.9.3").
+# Tag must match package.json version (e.g. v0.9.4 ↔ "version": "0.9.4").
 # See docs/github-release-ci.md for signing secrets and release steps.
 
 name: Release
@@ -63,16 +63,14 @@ jobs:
 
       - name: Install npm dependencies
         shell: pwsh
-        run: |
-          (& conda "shell.powershell" "hook") | Out-String | Invoke-Expression
-          conda activate sliderelabeler
-          npm ci
+        run: npm ci
 
       - name: Build (npm run make)
         shell: pwsh
         run: |
+          # Ensure `conda` is on PATH for with-conda.ps1; do not activate the env
+          # (activation puts "*" in `conda env list`, which used to break path parsing).
           (& conda "shell.powershell" "hook") | Out-String | Invoke-Expression
-          conda activate sliderelabeler
           npm run make
 
       - name: Upload Setup.exe

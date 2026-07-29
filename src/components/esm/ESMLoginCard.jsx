@@ -18,6 +18,7 @@ export default function ESMLoginCard({
   loading,
   error,
   errorMessage,
+  errorOpenUrl,
   requestBase,
   disabled = false,
   onProfileChange,
@@ -31,11 +32,17 @@ export default function ESMLoginCard({
   onPasswordKeyPress,
 }) {
   const hasProfiles = profiles.length > 0;
+  const hasRequestBase = Boolean(requestBase);
+  const activeProfile = hasProfiles
+    ? (profiles.find((p) => p && p.id === activeProfileId) || profiles[0])
+    : null;
+  const activeProfileDescription = activeProfile?.description?.trim() || '';
   const showSameHostSwitch = profileSwitchOpen && authenticated && sameHostAsOrigin;
-  const showCredentials = !showSameHostSwitch && hasProfiles;
+  const showSetupNeeded = hasProfiles && !hasRequestBase && !showSameHostSwitch;
+  const showCredentials = hasProfiles && hasRequestBase && !showSameHostSwitch;
   const showRememberMe = !profileSwitchOpen;
   const canSignIn = Boolean(
-    requestBase
+    hasRequestBase
     && username !== ''
     && password !== ''
     && !loading
@@ -50,11 +57,17 @@ export default function ESMLoginCard({
     && showSameHostSwitch,
   );
 
+  const title = showSameHostSwitch
+    ? 'Switch profile'
+    : showSetupNeeded
+      ? 'Finish setting up this profile'
+      : 'Sign in';
+
   return (
     <div className="esm-login-card">
       <div className="esm-login-card__header">
         <h2 className="esm-login-card__title">
-          {profileSwitchOpen ? 'Switch profile' : 'Sign in'}
+          {title}
         </h2>
         {profileSwitchOpen && authenticated ? (
           <button
@@ -70,42 +83,64 @@ export default function ESMLoginCard({
 
       {error ? (
         <div className="esm-login-card__error" role="alert">
-          {errorMessage}
+          <p className="esm-login-card__error-text">{errorMessage}</p>
+          {errorOpenUrl ? (
+            <a
+              className="esm-login-card__error-link"
+              href={errorOpenUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {errorOpenUrl}
+            </a>
+          ) : null}
         </div>
       ) : null}
 
       {hasProfiles ? (
-        <div className="esm-login-card__profile-row">
-          <select
-            id="esm-active-profile"
-            className="esm-login-card__select"
-            aria-label="Profile"
-            disabled={disabled || loading}
-            value={activeProfileId ?? ''}
-            onChange={onProfileChange}
-          >
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-          <GridHoverTooltip
-            content={CONFIGURE_TOOLTIP}
-            show="always"
-            placement="below"
-            className="esm-login-card__gear-wrap"
-          >
-            <button
-              type="button"
-              className="esm-icon-btn esm-login-card__gear"
-              aria-label={CONFIGURE_TOOLTIP}
-              disabled={disabled}
-              onClick={onOpenConfig}
+        <div className="esm-login-card__profile-block">
+          <div className="esm-login-card__profile-row">
+            <select
+              id="esm-active-profile"
+              className="esm-login-card__select"
+              aria-label="Profile"
+              aria-describedby={activeProfileDescription ? 'esm-active-profile-description' : undefined}
+              disabled={disabled || loading}
+              value={activeProfileId ?? ''}
+              onChange={onProfileChange}
             >
-              <i className="fi fi-rr-settings" aria-hidden="true" />
-            </button>
-          </GridHoverTooltip>
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
+              ))}
+            </select>
+            <GridHoverTooltip
+              content={CONFIGURE_TOOLTIP}
+              show="always"
+              placement="below"
+              className="esm-login-card__gear-wrap"
+            >
+              <button
+                type="button"
+                className="esm-icon-btn esm-login-card__gear"
+                aria-label={CONFIGURE_TOOLTIP}
+                disabled={disabled}
+                onClick={onOpenConfig}
+              >
+                <i className="fi fi-rr-settings" aria-hidden="true" />
+              </button>
+            </GridHoverTooltip>
+          </div>
+          {activeProfileDescription ? (
+            <p
+              id="esm-active-profile-description"
+              className="esm-login-card__profile-description"
+              title={activeProfileDescription}
+            >
+              {activeProfileDescription}
+            </p>
+          ) : null}
         </div>
       ) : (
         <p className="esm-login-card__empty">
@@ -125,6 +160,25 @@ export default function ESMLoginCard({
         </GridHoverTooltip>
       ) : null}
 
+      {showSetupNeeded ? (
+        <>
+          <p className="esm-login-card__empty">
+            This profile needs a server URL before you can sign in. Open Configuration to add the eSlide Manager
+            URL under API Integrations.
+          </p>
+          <GridHoverTooltip content={CONFIGURE_TOOLTIP} show="always" placement="below">
+            <button
+              type="button"
+              className="esm-login-card__submit"
+              disabled={disabled}
+              onClick={onOpenConfig}
+            >
+              Open Configuration
+            </button>
+          </GridHoverTooltip>
+        </>
+      ) : null}
+
       {showSameHostSwitch ? (
         <>
           <p className="esm-login-card__already-in">You are already logged in.</p>
@@ -139,7 +193,7 @@ export default function ESMLoginCard({
         </>
       ) : null}
 
-      {showCredentials && !showSameHostSwitch ? (
+      {showCredentials ? (
         <>
           <div className="esm-login-card__fields">
             <div className="esm-login-card__field">

@@ -114,15 +114,47 @@
     line-height: 1.4;
   }
 
+  &__error-text {
+    margin: 0;
+  }
+
+  &__error-link {
+    display: inline-block;
+    margin-top: 0.45rem;
+    color: inherit;
+    font-weight: 600;
+    word-break: break-all;
+    text-underline-offset: 0.15em;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  &__profile-block {
+    margin-bottom: 1rem;
+  }
+
   &__profile-row {
     display: flex;
     align-items: stretch;
     gap: 0;
-    margin-bottom: 1rem;
     border: 1px solid $config-border;
     border-radius: 0.4rem;
     overflow: hidden;
     background: $config-panel-bg;
+  }
+
+  &__profile-description {
+    margin: 0.4rem 0.15rem 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: $config-text-secondary;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
   }
 
   &__select {

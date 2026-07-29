@@ -21,20 +21,42 @@ if (-not (Get-Command conda -ErrorAction SilentlyContinue)) {
     Write-Error "conda is not on PATH. Install Miniconda/Anaconda and create the env: conda env create -f environment-windows.yml"
 }
 
-$envList = conda env list 2>&1 | Out-String
-if ($envList -notmatch "(?m)^$EnvName\s") {
-    Write-Error "Conda environment '$EnvName' not found. Create it with: conda env create -f environment-windows.yml"
+# Resolve env prefix. Prefer JSON. Fall back to `conda env list` text, using the
+# last field so an active-env "*" marker is never mistaken for the path.
+function Get-CondaEnvPrefix([string]$Name) {
+    try {
+        $jsonText = & conda env list --json 2>$null
+        if ($LASTEXITCODE -eq 0 -and $jsonText) {
+            $data = $jsonText | ConvertFrom-Json
+            foreach ($p in @($data.envs)) {
+                if (-not $p) { continue }
+                $leaf = Split-Path -Leaf ([string]$p)
+                if ($leaf -eq $Name) {
+                    return [string]$p
+                }
+            }
+        }
+    } catch {
+        # fall through to text parse
+    }
+
+    $envList = & conda env list 2>&1 | Out-String
+    foreach ($line in ($envList -split "`r?`n")) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith("#")) { continue }
+        $tokens = $trimmed -split "\s+"
+        if ($tokens.Count -lt 2) { continue }
+        if ($tokens[0] -ne $Name) { continue }
+        $candidate = $tokens[-1]
+        if ($candidate -eq "*") { continue }
+        return $candidate
+    }
+    return $null
 }
 
-$prefix = $null
-foreach ($line in ($envList -split "`n")) {
-    if ($line -match "^\s*$EnvName\s+(\S+)") {
-        $prefix = $Matches[1]
-        break
-    }
-}
+$prefix = Get-CondaEnvPrefix $EnvName
 if (-not $prefix) {
-    Write-Error "Could not resolve path for conda environment '$EnvName'"
+    Write-Error "Conda environment '$EnvName' not found. Create it with: conda env create -f environment-windows.yml"
 }
 
 $python = Join-Path $prefix "python.exe"

@@ -49,6 +49,55 @@ function esmPayloadErrorMessage(data, fallback = 'eSlideManager request failed')
     return fallback;
 }
 
+/** True when Electron/net error looks like the host could not be reached. */
+export function isEsmUnreachableError(raw) {
+    const text = [
+        raw?.code,
+        raw?.errno,
+        raw?.message,
+        typeof raw === 'string' ? raw : null,
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    if (!text) return false;
+    return (
+        /err_connection_refused|err_connection_reset|err_connection_timed_out|err_connection_closed/.test(text)
+        || /err_name_not_resolved|err_address_unreachable|err_internet_disconnected|err_network_changed/.test(text)
+        || /err_timed_out|etimedout|econnrefused|enotfound|econnreset|eai_again|enetunreach/.test(text)
+        || /failed to fetch|network error|socket hang up|getaddrinfo/.test(text)
+    );
+}
+
+/**
+ * Normalize login IPC / catch errors for the login card.
+ * @param {string|{ message?: string, code?: string }|Error|null|undefined} raw
+ * @param {string} [requestBase] - Profile URL (or proxy) to open in a browser when unreachable
+ * @returns {{ message: string, openUrl: string|null, kind: 'unreachable'|'generic' }}
+ */
+export function formatEsmLoginFailure(raw, requestBase = '') {
+    const message =
+        (raw && typeof raw === 'object' && raw.message != null)
+            ? String(raw.message)
+            : (raw != null ? String(raw) : 'Login failed');
+    const openUrl = String(requestBase || '').trim() || null;
+    if (isEsmUnreachableError(raw) || isEsmUnreachableError(message)) {
+        return {
+            kind: 'unreachable',
+            openUrl,
+            message: openUrl
+                ? "Couldn't reach the eSlide Manager server. Check the profile URL and that the server is running. "
+                    + 'Open the link below in a browser to help diagnose the problem.'
+                : "Couldn't reach the eSlide Manager server. Check the profile URL and that the server is running.",
+        };
+    }
+    return {
+        kind: 'generic',
+        openUrl: null,
+        message: message || 'Login failed',
+    };
+}
+
 /**
  * Login steps (authenticate, DetermineHierarchy) may return HTML post-auth pages.
  * Success means not redirected back to Login.php and HTTP status < 400.

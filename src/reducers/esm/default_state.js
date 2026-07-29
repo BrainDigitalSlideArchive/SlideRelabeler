@@ -34,11 +34,13 @@ const default_state = {
     activeProfileId: defaultProfile.id,
     authenticated: false,
     authToken: null,
+    sessionConnectionKey: null,
     profileSwitchOpen: false,
     switchOriginProfileId: null,
     loading: false,
     error: false,
     errorMessage: null,
+    errorOpenUrl: null,
     searchLoading: false,
     searchFeedback: makeEmptySearchFeedback(),
 

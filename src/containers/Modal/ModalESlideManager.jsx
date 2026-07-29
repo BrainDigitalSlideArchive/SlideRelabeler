@@ -11,7 +11,10 @@ import ESMLoginCard from '../../components/esm/ESMLoginCard';
 import ESMSessionBar from '../../components/esm/ESMSessionBar';
 import { scrollConfigSectionIntoView } from '../../components/config-v2/ConfigV2Nav';
 import { getActiveProfile, getEsmConnectionConfig } from '../../helpers/esm_profile_helpers';
-import { selectedProfileSharesSwitchOriginHost } from '../../helpers/esm_session_helpers';
+import {
+  activeProfileCompatibleWithSession,
+  selectedProfileSharesSwitchOriginHost,
+} from '../../helpers/esm_session_helpers';
 
 import '../../components/esm/esm_portal.scss';
 
@@ -29,20 +32,29 @@ function ModalESlideManager() {
   const loading = useSelector((state) => state.esm.loading);
   const error = useSelector((state) => state.esm.error);
   const errorMessage = useSelector((state) => state.esm.errorMessage);
+  const errorOpenUrl = useSelector((state) => state.esm.errorOpenUrl);
   const searchLoading = useSelector((state) => state.esm.searchLoading);
   const searchFeedback = useSelector((state) => state.esm.searchFeedback);
   const disable_changes = useSelector((state) => state.files.disable_changes);
 
   const dispatch = useDispatch();
 
-  const showGate = !authenticated || profileSwitchOpen;
-  const showWorkspace = authenticated && !profileSwitchOpen;
+  const sessionOk = activeProfileCompatibleWithSession(esmState);
+  const showGate = !sessionOk || profileSwitchOpen;
+  const showWorkspace = sessionOk && !profileSwitchOpen;
   const sameHostAsOrigin = profileSwitchOpen
     ? selectedProfileSharesSwitchOriginHost(esmState, profile)
     : false;
 
   const handlePasswordKeyPress = (e) => {
-    if (e.key !== 'Enter' || username === '' || password === '' || loading || disable_changes) {
+    if (
+      e.key !== 'Enter'
+      || !requestBase
+      || username === ''
+      || password === ''
+      || loading
+      || disable_changes
+    ) {
       return;
     }
     if (profileSwitchOpen && authenticated && sameHostAsOrigin) {
@@ -89,6 +101,7 @@ function ModalESlideManager() {
                 loading={loading}
                 error={error}
                 errorMessage={errorMessage}
+                errorOpenUrl={errorOpenUrl}
                 requestBase={requestBase}
                 disabled={disable_changes}
                 onProfileChange={(e) => dispatch({
