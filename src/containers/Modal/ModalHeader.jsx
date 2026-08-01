@@ -8,7 +8,7 @@ function ModalHeader(props) {
   const dispatch = useDispatch();
 
   return (
-    <div className={type === 'image' || type === 'auditLog' ? '__header _large' : '__header'}>
+    <div className={type === 'image' || type === 'auditLog' || type === 'debug' ? '__header _large' : '__header'}>
       <div className={"__title"}>{title}</div>
       <div className={"__spacer"}/>
       {

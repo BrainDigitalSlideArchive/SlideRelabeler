@@ -1,90 +1,154 @@
-import React, {useEffect, useState} from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
-import JSONPretty from 'react-json-pretty';
-import 'react-json-pretty/themes/monikai.css';
+import * as debug_actions from '../../actions/debug';
+import { scrollConfigSectionIntoView } from '../../components/config-v2/ConfigV2Nav';
+import { drainEngineToDiagnosticsLog } from '../../helpers/diagnostics_drain.js';
+import Button from '../../components/controls/button/Button';
+import ModalHeader from './ModalHeader';
 
-import * as debug_actions from "../../actions/debug";
+import './ModalDebug.scss';
 
-import ModalHeader from "./ModalHeader";
+const CLEAR_CONFIRM = 'Clear the diagnostic log? This cannot be undone.';
 
-function render_error_messages(title, clear_action, display, set_display, messages, dispatch) {
-  return (
-    <div className="__messages">
-      <div className="__messages-header">
-        <div className="__messages-header-title">{title} #: {messages.length}</div>
-        <div className="__messages-header-spacer"/>
-        <div className="__messages-header-clear">
-          <button onClick={() => dispatch({type: clear_action})}>
-            <i className="fi fi fi-rr-trash-xmark"/>
-          </button>
-        </div>
-        
-        <div className="__messages-header-toggle">
-          {
-            display ? 
-            <button onClick={() => set_display(false)}><i className="fi fi-rr-square-minus"/></button> :
-            <button onClick={() => set_display(true)}><i className="fi fi-rr-square-plus"/></button>
-          }
-        </div>
-      </div>
-      {
-        display &&messages.map((message, index) => {
-          return (
-            <div key={index} className="__message">
-              <JSONPretty id="json-pretty" data={message}></JSONPretty>
-            </div>
-          )
-        })
-      }
-    </div>
-  )
+async function readDiagnosticsText() {
+  if (typeof electronAPI === 'undefined' || !electronAPI.readDiagnosticsLog) {
+    return '';
+  }
+  const result = await electronAPI.readDiagnosticsLog();
+  return typeof result?.text === 'string' ? result.text : '';
 }
 
 const ModalDebug = () => {
-  const { has_error, frontend_debug_messages, frontend_error_messages, backend_debug_messages, backend_error_messages } = useSelector(state => state.debug);
-
-  const [update, set_update] = useState(true);
-
-  const [display_frontend_debug_messages, set_display_frontend_debug_messages] = useState(false);
-  const [display_frontend_error_messages, set_display_frontend_error_messages] = useState(false);
-  const [display_backend_debug_messages, set_display_backend_debug_messages] = useState(false);
-  const [display_backend_error_messages, set_display_backend_error_messages] = useState(false);
-
   const dispatch = useDispatch();
+  const recording = useSelector((state) => !!state.config?.debug?.enable_debug);
+  const modalStack = useSelector((state) => state.modal?.stack ?? []);
+  const returnToAdvanced = modalStack.includes('config');
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const preRef = useRef(null);
+  const stickToBottomRef = useRef(true);
+
+  const loadLog = useCallback(async ({ drain = false } = {}) => {
+    setError('');
+    setLoading(true);
+    try {
+      if (drain && recording) {
+        await drainEngineToDiagnosticsLog();
+      }
+      const next = await readDiagnosticsText();
+      setText(next);
+    } catch (err) {
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [recording]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        if (recording) {
+          await drainEngineToDiagnosticsLog();
+        }
+        if (cancelled) return;
+        const next = await readDiagnosticsText();
+        if (!cancelled) setText(next);
+      } catch (err) {
+        if (!cancelled) setError(err?.message || String(err));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    const unsubscribe = typeof electronAPI !== 'undefined'
+      && electronAPI.onDiagnosticsLogUpdated
+      ? electronAPI.onDiagnosticsLogUpdated((payload) => {
+        if (payload && typeof payload.text === 'string') {
+          setText(payload.text);
+          setLoading(false);
+        }
+      })
+      : null;
+
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [recording]);
+
+  useEffect(() => {
+    const el = preRef.current;
+    if (!el || !stickToBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [text]);
+
+  function onScroll() {
+    const el = preRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = remaining < 48;
+  }
+
+  function handleClear() {
+    if (!window.confirm(CLEAR_CONFIRM)) return;
+    dispatch({ type: debug_actions.CLEAR_DIAGNOSTICS_LOG });
+  }
+
+  function handleClose() {
+    if (!returnToAdvanced) return;
+    requestAnimationFrame(() => {
+      setTimeout(() => scrollConfigSectionIntoView('config-advanced'), 50);
+    });
+  }
+
+  const empty = !loading && !error && !text.trim();
 
   return (
-    <div className="__modal">
-      <ModalHeader title={"Debug"} type={"debug"}/>
-      <div className="__content">
-        {
-          frontend_debug_messages.length > 0 && 
-          render_error_messages('Frontend Debug Messages', debug_actions.CLEAR_FRONTEND_DEBUG_MESSAGES, display_frontend_debug_messages, set_display_frontend_debug_messages, frontend_debug_messages, dispatch) 
-        }
-        {
-          frontend_error_messages.length > 0 &&
-           render_error_messages('Frontend Error Messages', debug_actions.CLEAR_FRONTEND_ERROR_MESSAGES, display_frontend_error_messages, set_display_frontend_error_messages, frontend_error_messages, dispatch)
-        }
-        {
-          backend_debug_messages.length > 0 && 
-          render_error_messages('Backend Debug Messages', debug_actions.CLEAR_BACKEND_DEBUG_MESSAGES, display_backend_debug_messages, set_display_backend_debug_messages, backend_debug_messages, dispatch)
-        }
-        {
-          backend_error_messages.length > 0 && 
-          render_error_messages('Backend Error Messages', debug_actions.CLEAR_BACKEND_ERROR_MESSAGES, display_backend_error_messages, set_display_backend_error_messages, backend_error_messages, dispatch)
-        }
-      </div>
-      <div className="__spacer"/>
-      <div className="__footer">
-        <div className="__button-label">
-          Export Debug JSON
+    <div className="__modal _large modal-debug">
+      <ModalHeader title="Diagnostic log" type="debug" onClose={handleClose} />
+      <div className="__content __content--config modal-debug__content">
+        <div className="config-panel modal-debug__panel">
+          <p className="modal-debug__intro">
+            {recording
+              ? 'Recording is on. New diagnostic messages appear here as they are written.'
+              : 'Recording is off. Showing the saved log; turn on Record diagnostic log in Advanced to capture new messages.'}
+          </p>
+          <div className="modal-debug__bar">
+            <Button
+              variant="onLight"
+              text="Refresh"
+              onClick={() => loadLog({ drain: true })}
+            />
+            <Button
+              variant="onLight"
+              text="Clear log"
+              onClick={handleClear}
+            />
+          </div>
+          {error ? (
+            <p className="modal-debug__error">{error}</p>
+          ) : null}
+          {loading ? (
+            <p className="modal-debug__empty">Loading…</p>
+          ) : empty ? (
+            <p className="modal-debug__empty">No diagnostic messages yet.</p>
+          ) : (
+            <pre
+              ref={preRef}
+              className="modal-debug__pre"
+              onScroll={onScroll}
+            >
+              {text}
+            </pre>
+          )}
         </div>
-        <button className="__button" onClick={() => dispatch({type: debug_actions.EXPORT_DEBUG_JSON})}>
-          <i className="fi fi-rr-file-export"/>
-        </button>
       </div>
     </div>
-  )
+  );
 };
 
 export default ModalDebug;

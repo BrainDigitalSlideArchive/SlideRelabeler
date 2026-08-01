@@ -5,24 +5,32 @@ import * as debug_actions from "../../actions/debug";
 import watch_export_debug_json from "./watch_export_debug_json";
 import clear_backend_error_messages from "./clear_backend_error_messages";
 import clear_backend_debug_messages from "./clear_backend_debug_messages";
+import watchDiagnosticsEnableAndDrain from "./watch_diagnostics_enable";
+import watchFrontendErrorsForDiagnostics from "./watch_frontend_errors_for_diagnostics";
+import {
+  watchClearDiagnosticsLog,
+  watchDrainDiagnosticsEngine,
+} from "./watch_diagnostics_log_actions";
 
 export function* debug_saga () {
   while(true) {
-    // Start all async watchers
     yield take(debug_actions.START_DEBUG_SAGA);
-    // const watch_get_backend_error_messages = yield fork(get_backend_error_messages);
-    // const watch_get_backend_debug_messages = yield fork(get_backend_debug_messages);
     const watch_clear_backend_error_messages = yield fork(clear_backend_error_messages);
     const watch_clear_backend_debug_messages = yield fork(clear_backend_debug_messages);
     const watch_export = yield fork(watch_export_debug_json);
+    const watch_enable = yield fork(watchDiagnosticsEnableAndDrain);
+    const watch_fe_errors = yield fork(watchFrontendErrorsForDiagnostics);
+    const watch_clear_diag = yield fork(watchClearDiagnosticsLog);
+    const watch_drain = yield fork(watchDrainDiagnosticsEngine);
 
-    // Stop all async watchers when the component is unmounted
     yield take(debug_actions.STOP_DEBUG_SAGA);
-    // yield cancel(watch_get_backend_error_messages);
-    // yield cancel(watch_get_backend_debug_messages);
     yield cancel(watch_clear_backend_error_messages);
     yield cancel(watch_clear_backend_debug_messages);
     yield cancel(watch_export);
+    yield cancel(watch_enable);
+    yield cancel(watch_fe_errors);
+    yield cancel(watch_clear_diag);
+    yield cancel(watch_drain);
   }
 }
 

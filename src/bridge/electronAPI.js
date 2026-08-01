@@ -198,6 +198,14 @@ const API = {
   globusStopCommandComplete: () => ipcRenderer.removeAllListeners('globus-command-complete'),
   globusStopCommandError: () => ipcRenderer.removeAllListeners('globus-command-error'),
   appendDebugLogLine: (line) => ipcRenderer.invoke('debug-append-log-line', line),
+  appendDiagnosticsLogLines: (lines) => ipcRenderer.invoke('diagnostics-log-append', lines),
+  readDiagnosticsLog: () => ipcRenderer.invoke('diagnostics-log-read'),
+  clearDiagnosticsLog: () => ipcRenderer.invoke('diagnostics-log-clear'),
+  onDiagnosticsLogUpdated: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('diagnostics-log-updated', handler);
+    return () => ipcRenderer.removeListener('diagnostics-log-updated', handler);
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', API);

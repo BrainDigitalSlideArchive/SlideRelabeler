@@ -1,0 +1,64 @@
+@use '../../styles/colors' as *;
+@use '../../styles/variables' as *;
+
+.Modal .__modal.modal-debug {
+  .modal-debug__content {
+    display: flex;
+    flex-direction: column;
+    height: calc($modal_height_large - 5em);
+    top: 5em;
+    overflow: hidden;
+  }
+
+  .modal-debug__panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 1.25rem 1.25rem;
+    color: $config-text-primary;
+  }
+
+  .modal-debug__intro {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: $config-text-secondary;
+  }
+
+  .modal-debug__bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .modal-debug__empty,
+  .modal-debug__error {
+    margin: 0;
+    font-size: 0.875rem;
+    color: $config-text-secondary;
+  }
+
+  .modal-debug__error {
+    color: $red;
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-debug__pre {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    overflow: auto;
+    background: $config-panel-surface;
+    border: 1px solid $config-border;
+    border-radius: 0.35rem;
+    color: $config-text-primary;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

@@ -18,6 +18,11 @@ import {
 } from './helpers/slide_path_access.js';
 import { WSI_DIALOG_EXTENSIONS, isWsiExtension } from './helpers/wsi_extensions.js';
 import { decodeStoreBuffer, encodeStoreJson } from './helpers/safe_store_codec.js';
+import {
+  appendDiagnosticsLines,
+  clearDiagnosticsLog,
+  readDiagnosticsLog,
+} from './helpers/diagnostics_log.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
@@ -210,6 +215,34 @@ ipcMain.handle('debug-append-log-line', async (event, line) => {
     await fs.appendFile(logPath, `${text}\n`, 'utf8');
   } catch (err) {
     console.error('debug-append-log-line failed:', err?.message || err);
+  }
+});
+
+ipcMain.handle('diagnostics-log-append', async (_event, lines) => {
+  try {
+    return await appendDiagnosticsLines(lines);
+  } catch (err) {
+    console.error('diagnostics-log-append failed:', err?.message || err);
+    return { text: '', error: String(err?.message || err) };
+  }
+});
+
+ipcMain.handle('diagnostics-log-read', async () => {
+  try {
+    const text = await readDiagnosticsLog();
+    return { text };
+  } catch (err) {
+    console.error('diagnostics-log-read failed:', err?.message || err);
+    return { text: '', error: String(err?.message || err) };
+  }
+});
+
+ipcMain.handle('diagnostics-log-clear', async () => {
+  try {
+    return await clearDiagnosticsLog();
+  } catch (err) {
+    console.error('diagnostics-log-clear failed:', err?.message || err);
+    return { text: '', error: String(err?.message || err) };
   }
 });
 

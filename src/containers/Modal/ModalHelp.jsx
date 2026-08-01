@@ -55,7 +55,7 @@ const SETTINGS_LINKS = [
   {
     id: 'config-advanced',
     label: 'Advanced',
-    detail: 'keep macro image, troubleshooting tools, startup disclaimer, restore defaults, and clear saved data',
+    detail: 'keep macro image, diagnostic log recording, startup disclaimer, restore defaults, and clear saved data',
   },
   {
     id: 'config-profiles',

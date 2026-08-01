@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as config_actions from '../../../actions/config';
 import * as app_actions from '../../../actions/app';
 import * as modal_actions from '../../../actions/modal';
+import * as debug_actions from '../../../actions/debug';
 import Button from '../../controls/button/Button';
 import ConfigSection from '../primitives/ConfigSection';
 import ConfigSectionPanel from '../primitives/ConfigSectionPanel';
@@ -21,6 +22,8 @@ const RESTORE_CONFIRM =
   'Restore default settings and clear the file list? The app will stay open. Your saved configuration profiles are kept.';
 const HARD_RESET_CONFIRM_EMPTY =
   'Clear all saved app data and close SlideRelabeler? You will need to open the app again.';
+const CLEAR_DIAGNOSTICS_CONFIRM =
+  'Clear the diagnostic log? This cannot be undone.';
 
 const DISCLAIMER_MODE_OPTIONS = [
   { value: DISCLAIMER_PROMPT_EVERY_LAUNCH, label: 'Every launch' },
@@ -94,6 +97,15 @@ export default function ConfigAdvancedSection() {
     });
   }
 
+  function openDiagnosticsLog() {
+    dispatch({ type: modal_actions.TOGGLE_MODAL, payload: { type: 'debug' } });
+  }
+
+  function clearDiagnosticsLog() {
+    if (!window.confirm(CLEAR_DIAGNOSTICS_CONFIRM)) return;
+    dispatch({ type: debug_actions.CLEAR_DIAGNOSTICS_LOG });
+  }
+
   return (
     <ConfigSection
       id="config-advanced"
@@ -125,14 +137,28 @@ export default function ConfigAdvancedSection() {
 
         <ConfigSettingHeader
           title="Troubleshooting"
-          description="Adds a toolbar button for diagnostic messages. Leave this off for normal use."
+          description="When on, SlideRelabeler records diagnostic messages to a local log for support. Leave this off for normal use. Turning it off stops recording but keeps the log until you clear it."
         />
         <ConfigBooleanRow
-          label="Show troubleshooting tools"
+          label="Record diagnostic log"
           checked={showDebug}
           disabled={disabled}
           onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_DEBUG })}
         />
+        <div className="cfg-panel-actions" style={{ marginTop: '0.5rem' }}>
+          <Button
+            variant="onLight"
+            text="View diagnostic log…"
+            disabled={disabled}
+            onClick={openDiagnosticsLog}
+          />
+          <Button
+            variant="onLight"
+            text="Clear log"
+            disabled={disabled}
+            onClick={clearDiagnosticsLog}
+          />
+        </div>
 
         <ConfigSettingHeader
           title="Startup disclaimer"

@@ -20,3 +20,8 @@ export const START_DEBUG_SAGA = 'START_DEBUG_SAGA';
 export const STOP_DEBUG_SAGA = 'STOP_DEBUG_SAGA';
 
 export const EXPORT_DEBUG_JSON = 'EXPORT_DEBUG_JSON';
+
+/** Drain engine rings into diagnostics.log (payload: { force?: boolean }). */
+export const DRAIN_DIAGNOSTICS_ENGINE = 'DRAIN_DIAGNOSTICS_ENGINE';
+/** Clear diagnostics.log and engine debug/error rings. */
+export const CLEAR_DIAGNOSTICS_LOG = 'CLEAR_DIAGNOSTICS_LOG';

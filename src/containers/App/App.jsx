@@ -83,7 +83,6 @@ const App = (props) => {
   let count = useSelector(state => state.files.count);
   let processing = useSelector(state => state.files.processing);
   let disable_changes = useSelector(state => state.files.disable_changes);
-  let debug_config = useSelector(state => state.config.debug);
   let file_rows = useSelector(state => state.files.file_rows);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
@@ -143,17 +142,6 @@ const App = (props) => {
                 <ApiLoadControl disabled={controlsDisabled} />
               </div>
               <div className={"__spacer"}/>
-              {
-                debug_config.enable_debug && (
-                  <button className={"__button-icon"}
-                      onClick={() => dispatch({type: modal_actions.TOGGLE_MODAL, payload: {type: 'debug'}})}>
-                    <i
-                      className=
-                        "fi fi-rr-exclamation"
-                    ></i>
-                  </button>
-                )
-              }
               <button
                 type="button"
                 className="__button __button--segmented __button--utility"
