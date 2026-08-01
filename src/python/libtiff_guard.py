@@ -30,6 +30,7 @@ _GET_JPEG_FRAME_SIZE_NO_EXTEND = """        if libtiff_ctypes.libtiff.TIFFGetFie
 
 _GUARD_INSTALLED = False
 _GUARD_EXECUTED = False
+_MODULE_NAME = "large_image_source_tiff.tiff_reader"
 
 
 def apply_tiff_reader_patches(source: str, path: Path | str = "tiff_reader.py") -> str:
@@ -58,9 +59,60 @@ def _apply_tiff_reader_patches(source: str, path: Path) -> str:
     return modified
 
 
+def resolve_tiff_reader_source(orig_spec) -> tuple[str | None, str]:
+    """
+    Load tiff_reader source text without assuming a real filesystem path.
+
+    Returns (source_or_None, filename_for_compile).
+    """
+    origin = getattr(orig_spec, "origin", None) or "tiff_reader.py"
+    filename = str(origin)
+
+    if origin and origin not in {"<unknown>", "frozen"}:
+        path = Path(origin)
+        try:
+            if path.is_file():
+                return path.read_text(encoding="utf-8"), filename
+        except OSError:
+            pass
+
+    loader = getattr(orig_spec, "loader", None)
+    mod_name = getattr(orig_spec, "name", None) or _MODULE_NAME
+
+    if loader is not None and hasattr(loader, "get_source"):
+        try:
+            source = loader.get_source(mod_name)
+            if source:
+                return source, filename
+        except Exception:
+            pass
+
+    if loader is not None and hasattr(loader, "get_data") and origin:
+        try:
+            data = loader.get_data(origin)
+            if data:
+                if isinstance(data, bytes):
+                    return data.decode("utf-8"), filename
+                return str(data), filename
+        except Exception:
+            pass
+
+    return None, filename
+
+
+def _exec_original_loader(orig_spec, module) -> None:
+    loader = getattr(orig_spec, "loader", None)
+    if loader is not None and hasattr(loader, "exec_module"):
+        loader.exec_module(module)
+        return
+    raise ImportError(
+        f"libtiff_guard: cannot load {_MODULE_NAME}; no source and no original loader"
+    )
+
+
 class _TiffReaderGuardFinder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path, target=None):
-        if fullname != "large_image_source_tiff.tiff_reader":
+        if fullname != _MODULE_NAME:
             return None
         for finder in sys.meta_path[1:]:
             if hasattr(finder, "find_spec"):
@@ -79,11 +131,31 @@ class _TiffReaderGuardLoader(importlib.abc.Loader):
 
     def exec_module(self, module):
         global _GUARD_EXECUTED
-        path = Path(self._orig_spec.origin)
-        modified = _apply_tiff_reader_patches(path.read_text(), path)
-        module.__file__ = str(path)
+        source, filename = resolve_tiff_reader_source(self._orig_spec)
+        if source is None:
+            print(
+                "[libtiff_guard] could not read tiff_reader source "
+                f"(origin={filename!r}); loading unpatched module",
+                file=sys.stderr,
+                flush=True,
+            )
+            _exec_original_loader(self._orig_spec, module)
+            return
+
+        try:
+            modified = _apply_tiff_reader_patches(source, Path(filename))
+        except RuntimeError as err:
+            print(
+                f"[libtiff_guard] patch skipped: {err}; loading unpatched module",
+                file=sys.stderr,
+                flush=True,
+            )
+            _exec_original_loader(self._orig_spec, module)
+            return
+
+        module.__file__ = filename
         module.__package__ = "large_image_source_tiff"
-        exec(compile(modified, str(path), "exec"), module.__dict__)
+        exec(compile(modified, filename, "exec"), module.__dict__)
         _GUARD_EXECUTED = True
 
 
@@ -92,7 +164,7 @@ def install_patchlibtiff_guard() -> None:
     global _GUARD_INSTALLED
     if _GUARD_INSTALLED:
         return
-    if "large_image_source_tiff.tiff_reader" in sys.modules:
+    if _MODULE_NAME in sys.modules:
         raise RuntimeError(
             "patchLibtiff guard must be installed before large_image_source_tiff.tiff_reader "
             "is imported"

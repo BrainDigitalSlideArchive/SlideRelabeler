@@ -287,6 +287,43 @@ describe('selectOutputReadiness', () => {
     assert.equal(result.outputDirRequired, false);
   });
 
+  it('local-only ready when no upload methods are enabled and auto_upload is off', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: false },
+      files: {
+        ...baseState.files,
+        file_rows: [rowWithDest('/out/a')],
+      },
+      config: {
+        ...baseConfig,
+        dsa_upload: { integrationEnabled: false },
+        globus_upload: { integrationEnabled: false },
+      },
+    });
+    assert.equal(result.uploadEnabled, false);
+    assert.equal(result.uploadConfigured, true);
+    assert.equal(result.processReady, true);
+  });
+
+  it('blocks process when auto_upload is on but no upload methods are enabled', () => {
+    const result = selectOutputReadiness({
+      ...baseState,
+      uploadRouting: { local_output_enabled: true, auto_upload: true },
+      files: {
+        ...baseState.files,
+        file_rows: [rowWithDest('/out/a')],
+      },
+      config: {
+        ...baseConfig,
+        dsa_upload: { integrationEnabled: false },
+        globus_upload: { integrationEnabled: false },
+      },
+    });
+    assert.equal(result.uploadConfigured, false);
+    assert.equal(result.processReady, false);
+  });
+
   it('processReady blocked when pattern rows missing columns', () => {
     const result = selectOutputReadiness({
       ...baseState,

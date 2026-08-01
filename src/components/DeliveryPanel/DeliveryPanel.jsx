@@ -109,14 +109,17 @@ export default function DeliveryPanel({
   const effectiveDestination = enabledDestinations.some((d) => d.value === uploadDestination)
     ? uploadDestination
     : (firstEnabled ?? uploadDestination);
-  const uploadColumnActive = hasUploadMethods ? uploadEnabled : true;
+  // Upload is only "on" when at least one method is enabled in config and the user opted in.
+  // With no methods: checkbox stays off/disabled and the empty-state CTA is shown (not the
+  // "will not be uploaded" copy, which is only for user-disabled upload with methods available).
+  const uploadColumnActive = hasUploadMethods && uploadEnabled;
   const uploadToggleDisabled = disabled || !hasUploadMethods;
 
   useEffect(() => {
-    if (hasUploadMethods || uploadEnabled) return;
+    if (hasUploadMethods || !uploadEnabled) return;
     dispatch({
       type: upload_routing_actions.SET_AUTO_UPLOAD,
-      payload: true,
+      payload: false,
     });
   }, [dispatch, hasUploadMethods, uploadEnabled]);
 

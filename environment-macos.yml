@@ -12,9 +12,14 @@ dependencies:
   - libexpat
   - libffi
   - libtiff
+  - libvips
   - libzlib
   - lz4
   - openssl
+  # Native OpenSlide matching the conda glib/iconv stack (same ABI as libvips).
+  # Prefer this over pip openslide-bin on macOS — the wheel links system iconv (_iconv)
+  # which clashes with conda libiconv (_libiconv) when DYLD prefers _internal.
+  - openslide
   - python=3.12
   - setuptools
   - xz
@@ -25,7 +30,6 @@ dependencies:
   - large-image-source-tiff
   - large-image-source-gdal
   - pip:
-      - openslide-bin
       - openslide-python
       - pyinstaller
       - lxml

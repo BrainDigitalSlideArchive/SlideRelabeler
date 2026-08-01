@@ -1,4 +1,4 @@
-import { take, put, fork } from 'redux-saga/effects';
+import { take, put, fork, call } from 'redux-saga/effects';
 import {make_file_row} from './add_file';
 
 import * as debug_actions from '../../actions/debug';
@@ -10,7 +10,7 @@ export function* add_folders_worker(folders) {
       let folder = folders[folder_idx];
       try {
         let file_rows = [];
-        let files = yield electronAPI.getAllWSIFilePaths(folder);
+        let files = yield call([electronAPI, electronAPI.getAllWSIFilePaths], folder);
         for (let file_idx in files) {
           let file_row = yield make_file_row(files[file_idx]);
           file_rows.push(file_row);
@@ -29,16 +29,20 @@ export function* add_folders_worker(folders) {
 
 export default function* add_folders() {
   while(true) {
-    const action = yield take(files_actions.ADD_FOLDERS);
+    yield take(files_actions.ADD_FOLDERS);
     yield put({type: files_actions.DISABLE_CHANGES});
-    const folders = yield electronAPI.openFoldersDialog();
+    try {
+      const folders = yield call([electronAPI, electronAPI.openFoldersDialog]);
 
-    if (folders) {
-      yield fork(add_folders_worker, folders);
+      if (folders) {
+        yield fork(add_folders_worker, folders);
+      }
+      yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true})
+      yield put({type: files_actions.UPDATE_FILES_WITHOUT_METADATA});
+    } catch (err) {
+      console.error('[add_folders] openFoldersDialog failed', err);
+    } finally {
+      yield put({type: files_actions.ENABLE_CHANGES});
     }
-    yield put({type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true})
-    yield put({type: files_actions.UPDATE_FILES_WITHOUT_METADATA});
-
-    yield put({type: files_actions.ENABLE_CHANGES});
   }
 }

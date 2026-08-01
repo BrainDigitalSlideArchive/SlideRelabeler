@@ -10,15 +10,31 @@ import os, sys, subprocess, shutil
 import grpc
 import grpc_health
 
+# Arch filter helpers live next to this spec.
+_SPEC_DIR = globals().get("SPECPATH") or os.path.dirname(os.path.abspath(globals().get("SPEC", "pyinstaller/engine.spec")))
+if _SPEC_DIR not in sys.path:
+    sys.path.insert(0, _SPEC_DIR)
+from binary_arch import (  # noqa: E402
+    build_arch,
+    filter_binaries,
+    assert_no_foreign_host_binaries,
+    conda_binary_entries,
+    override_binaries_from_conda,
+    install_conda_top_level_dylibs,
+)
+
 print("Current working directory: {}".format(os.getcwd()))
+print("Freeze build arch: {}".format(build_arch()))
+print("Spec dir: {}".format(_SPEC_DIR))
 
 # Current version of application
 version = '0.0.2'
 
 deid_tools_path = './src/python/DeidTools'
 # large_image_path_abs = os.path.abspath(large_image_path)
-# Vendored DeidTools *-bin trees exist for Windows/macOS only. Linux relies on
-# openslide/vips from the sliderelabeler env (pip: openslide-bin, pyvips, etc.).
+# Vendored DeidTools *-bin trees are used on Windows. On macOS, freeze natives
+# come from the sliderelabeler conda env (environment-macos.yml). Linux relies on
+# the env as well (pip openslide-bin / pyvips, etc.).
 abs_fonts_path = os.path.abspath(os.path.join(deid_tools_path, 'fonts'))
 abs_bin_path = abs_include_path = abs_share_path = None
 bin_path = include_path = share_path = None
@@ -48,8 +64,9 @@ if sys.platform == 'win32':
 
 datas = []
 binaries = []
-hiddenimports = []
-runtime_hooks = []
+hiddenimports = ['frozen_dylib_prefer']
+# Prefer bundled dylibs before engine.py imports (also called from engine.py).
+runtime_hooks = [os.path.join(_SPEC_DIR, 'runtime_hook.py')]
 
 d, h = collect_entry_point("large_image.source")
 datas += d
@@ -82,6 +99,11 @@ d, b, h = collect_all('large_image_source_gdal')
 datas += d
 binaries += b
 hiddenimports += h
+
+# Ship .py sources so libtiff_guard can patch tiff_reader in frozen builds
+# (PYZ-only bytecode has no readable origin path on disk).
+datas += collect_data_files('large_image_source_tiff', include_py_files=True)
+hiddenimports += collect_submodules('large_image_source_tiff')
 
 d, b, h = collect_all('libtiff')
 datas += d
@@ -142,18 +164,42 @@ if sys.platform == 'win32':
         (os.path.join('.', 'readme', 'README_windows.md'), 'README.md'),
     ]
 elif sys.platform == 'darwin':
-    bins = [
-        (os.path.join(abs_bin_path, 'libopenslide.1.dylib'), '.'),
-        (os.path.join(abs_bin_path, 'libtiff.dylib'), '.'),
-    ] + binaries
-
-    # runtime_hooks.append('./pyinstaller/runtime_hook.py')
+    # Conda-forge natives only (matches environment-macos.yml / CI). Analysis
+    # follows dylib deps. Do not seed DeidTools/mac-bin OpenSlide — it expects
+    # system _iconv and breaks when conda libiconv is on DYLD_LIBRARY_PATH.
+    bins = binaries + conda_binary_entries([
+        'libopenslide.1.dylib',
+        'libopenslide.dylib',
+        'libtiff.6.dylib',
+        'libtiff.dylib',
+        'libvips.42.dylib',
+        'libvips-cpp.42.dylib',
+        'libglib-2.0.0.dylib',
+        'libgobject-2.0.0.dylib',
+        'libgio-2.0.0.dylib',
+        'libgmodule-2.0.0.dylib',
+        'libintl.8.dylib',
+        'libiconv.2.dylib',
+        'libgdk_pixbuf-2.0.0.dylib',
+        'libcairo.2.dylib',
+        'libpango-1.0.0.dylib',
+        'libpangocairo-1.0.0.dylib',
+        'libpangoft2-1.0.0.dylib',
+        'libharfbuzz.0.dylib',
+        'libfontconfig.1.dylib',
+        'libfribidi.0.dylib',
+        'libexif.12.dylib',
+        'librsvg-2.2.dylib',
+    ])
+    bins = filter_binaries(bins)
 
 else:
     bins = binaries
 
 datas += [
-        (abs_fonts_path, 'fonts'),
+        # Upstream DeidTools.add_text_to_image loads
+        # dirname(__file__)/fonts/DejaVuSansMono.ttf — must sit under DeidTools/, not _MEIPASS/fonts.
+        (abs_fonts_path, 'DeidTools/fonts'),
     ]
 
 a = Analysis(
@@ -171,9 +217,18 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=runtime_hooks,
-    excludes=[],
+    # Force pyvips cffi path; host-built _libvips*.so often links Homebrew.
+    # openslide_bin ships a system-iconv OpenSlide that clashes with conda libiconv.
+    excludes=['_libvips', 'openslide_bin'],
     noarchive=False,
 )
+
+
+# Analysis discovers additional binaries; keep conda env only on darwin.
+if sys.platform == 'darwin':
+    a.binaries = filter_binaries(a.binaries)
+    a.binaries = override_binaries_from_conda(a.binaries)
+    assert_no_foreign_host_binaries(a.binaries, context='after Analysis')
 
 pyz = PYZ(a.pure)
 
@@ -205,6 +260,10 @@ if sys.platform == 'darwin':
                    upx_exclude=[],
                    name='engine.app',
                )
+    # COLLECT often rewrites top-level dylibs as SYMLINKs into PIL/.dylibs shims.
+    _dist = globals().get("DISTPATH") or os.path.join(os.getcwd(), "dist")
+    _internal = os.path.join(_dist, "engine.app", "_internal")
+    install_conda_top_level_dylibs(_internal)
 
 else:
     coll = COLLECT(

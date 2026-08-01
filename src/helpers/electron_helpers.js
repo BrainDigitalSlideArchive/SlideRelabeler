@@ -2,6 +2,7 @@ import {app, BrowserWindow, safeStorage} from "electron";
 import {join} from "path";
 import {accessSync, existsSync, readFileSync, writeFileSync} from "fs";
 import fs from "fs/promises";
+import { decodeStoreBuffer, encodeStoreJson } from "./safe_store_codec.js";
 
 export function create_window(id, dev_server_url, fileRoute, options = {}) {
     const window = new BrowserWindow({
@@ -40,12 +41,11 @@ export function clear_files_from_store() {
     try {
       accessSync(app_data_path, fs.constants.R_OK);
       let app_data = readFileSync(app_data_path);
-      let json_string = safeStorage.decryptString(app_data);
-      let json_data = JSON.parse(json_string);
+      let json_data = decodeStoreBuffer(app_data, safeStorage);
       delete json_data.files
 
-      let encrypted_data = safeStorage.encryptString(JSON.stringify(json_data));
-      writeFileSync(app_data_path, encrypted_data, {encoding: 'utf8'})
+      let encoded = encodeStoreJson(json_data, safeStorage);
+      writeFileSync(app_data_path, encoded)
     }
     catch(err) {
       console.error("Failed to delete files from store", err)

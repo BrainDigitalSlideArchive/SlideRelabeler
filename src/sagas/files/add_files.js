@@ -1,4 +1,4 @@
-import { take, put, fork, cancel } from 'redux-saga/effects';
+import { take, put, fork, cancel, call } from 'redux-saga/effects';
 
 import * as files_actions from '../../actions/files';
 import { make_file_row } from './add_file';
@@ -32,23 +32,21 @@ export function* add_files_worker(file_or_files) {
   }
 }
 
-// export function* cancel_add_files_worker(add_files_worker_task) {
-//   yield take(files_actions.CLEAR_FILES);
-//   yield cancel(add_files_worker_task);
-// }
-
 export default function* add_files() {
   while (true) {
-    const action = yield take(files_actions.ADD_FILES);
+    yield take(files_actions.ADD_FILES);
     yield put({ type: files_actions.DISABLE_CHANGES });
-    const file_or_files = yield electronAPI.openFileMultiDialog();
+    try {
+      const file_or_files = yield call([electronAPI, electronAPI.openFileMultiDialog]);
 
-    if (file_or_files) {
-      let add_files_worker_task = yield fork(add_files_worker, file_or_files);
-      // let cancel_add_files_worker_task = yield fork(cancel_add_files_worker, add_files_worker_task);
-
+      if (file_or_files) {
+        yield fork(add_files_worker, file_or_files);
+      }
+      yield put({ type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true });
+    } catch (err) {
+      console.error('[add_files] openFileMultiDialog failed', err);
+    } finally {
+      yield put({ type: files_actions.ENABLE_CHANGES });
     }
-    yield put({ type: files_actions.SET_CSV_NEEDS_OUTPUT_DIR, payload: true });
-    yield put({ type: files_actions.ENABLE_CHANGES });
   }
 }

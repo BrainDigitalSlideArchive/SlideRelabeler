@@ -90,6 +90,35 @@ function firstExistingPath(candidates) {
   return null;
 }
 
+/** Directory containing frozen native libs next to a PyInstaller onedir engine binary. */
+function resolveEngineInternalDir(launchCommand) {
+  if (!launchCommand) return null;
+  const dir = path.dirname(launchCommand);
+  return firstExistingPath([
+    join(dir, "_internal"),
+    join(dir, "..", "_internal"),
+  ]);
+}
+
+/** Prefer bundled dylibs over host /usr/local when spawning the frozen engine on macOS. */
+function withEngineLibraryPath(env, launchCommand, launchArgs) {
+  if (process.platform !== "darwin") return env;
+  if (Array.isArray(launchArgs) && launchArgs.length > 0) return env;
+  const internal = resolveEngineInternalDir(launchCommand);
+  if (!internal) return env;
+
+  const next = { ...env };
+  for (const key of ["DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"]) {
+    const prev = next[key] || "";
+    next[key] = prev ? `${internal}${path.delimiter}${prev}` : internal;
+  }
+  // Keep libvips from loading Homebrew Cellar plugin modules.
+  if (!next.VIPSHOME) {
+    next.VIPSHOME = internal;
+  }
+  return next;
+}
+
 function resolveProtoRoot() {
   const appAsar = join(process.resourcesPath || "", "app.asar");
   return (
@@ -333,12 +362,16 @@ export class GrpcPythonBridge {
 
     this._shell = spawn(this._launchCommand, this._launchArgs, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        ...this._env,
-        // Optional: enable tracemalloc flame region if your server supports it
-        // ENGINE_MEM_FLAME: "1",
-      },
+      env: withEngineLibraryPath(
+        {
+          ...process.env,
+          ...this._env,
+          // Optional: enable tracemalloc flame region if your server supports it
+          // ENGINE_MEM_FLAME: "1",
+        },
+        this._launchCommand,
+        this._launchArgs,
+      ),
       windowsHide: true,
     });
 

@@ -17,9 +17,14 @@ import {
   buildPathErrorForIpc,
 } from './helpers/slide_path_access.js';
 import { WSI_DIALOG_EXTENSIONS, isWsiExtension } from './helpers/wsi_extensions.js';
+import { decodeStoreBuffer, encodeStoreJson } from './helpers/safe_store_codec.js';
 
 // let bridge = new PythonBridge();
 let bridge = new GrpcPythonBridge();
+
+function dialogParent(event) {
+  return BrowserWindow.fromWebContents(event.sender) ?? undefined;
+}
 
 export { bridge };
 
@@ -1165,7 +1170,7 @@ ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) =
     dialog_options.filters.push({ name: 'JSON Files', extensions: ['json'] });
   }
 
-  return dialog.showSaveDialog(dialog_options).then(d => {
+  return dialog.showSaveDialog(dialogParent(event), dialog_options).then(d => {
     if (d.canceled) {
       return { error: true, message: 'No file selected' };
     } else {
@@ -1174,9 +1179,9 @@ ipcMain.handle('open-save-file-dialog', async (event, file_types, defaultPath) =
   });
 });
 
-ipcMain.handle('open-file-single-dialog', async () => {
+ipcMain.handle('open-file-single-dialog', async (event) => {
   const customFilter = { name: 'CSV Files (*.csv)', extensions: ['csv'] };
-  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then(d => {
+  return dialog.showOpenDialog(dialogParent(event), { filters: [customFilter], properties: ['openFile'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked
     if (d.canceled) {
@@ -1212,9 +1217,9 @@ ipcMain.handle('delete-file', async (event, file_path) => {
   }
 });
 
-ipcMain.handle('open-icon-single-dialog', async () => {
+ipcMain.handle('open-icon-single-dialog', async (event) => {
   const customFilter = { name: 'Image Files (*.tiff, *.tif, *.png, *.jpg)', extensions: ['tiff', 'tif', 'png', 'jpg'] };
-  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then(d => {
+  return dialog.showOpenDialog(dialogParent(event), { filters: [customFilter], properties: ['openFile'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked
     if (d.canceled) {
@@ -1261,9 +1266,7 @@ ipcMain.handle('get-store', async () => {
     try {
       accessSync(app_data_path, fs.constants.R_OK);
       let app_data = readFileSync(app_data_path);
-      let json_string = safeStorage.decryptString(app_data);
-      let json_data = JSON.parse(json_string);
-      return json_data;
+      return decodeStoreBuffer(app_data, safeStorage);
     } catch (err) {
       console.error("Cannot access previous app data from ", app_data_path, err)
     }
@@ -1280,8 +1283,7 @@ ipcMain.handle('get-file-from-store', async (event, idx) => {
     try {
       accessSync(app_data_path, fs.constants.R_OK);
       let app_data = await fs.readFile(app_data_path);
-      const json_string = safeStorage.decryptString(app_data);
-      const json_data = JSON.parse(json_string);
+      const json_data = decodeStoreBuffer(app_data, safeStorage);
       let value;
       if (json_data.files) {
         value = json_data.files.fileRows.pop(idx);
@@ -1299,8 +1301,8 @@ ipcMain.handle('get-file-from-store', async (event, idx) => {
 ipcMain.handle('set-store', async (event, data) => {
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
-  let encrypted_data = safeStorage.encryptString(JSON.stringify(data));
-  writeFileSync(app_data_path, encrypted_data, { encoding: 'utf8' })
+  const encoded = encodeStoreJson(data, safeStorage);
+  writeFileSync(app_data_path, encoded);
   try {
     BrowserWindow.getAllWindows().forEach((w) => {
       try {
@@ -1380,9 +1382,9 @@ ipcMain.handle('set-config-profiles', async (event, data) => {
   return { ok: true };
 });
 
-ipcMain.handle('open-json-file-dialog', async () => {
+ipcMain.handle('open-json-file-dialog', async (event) => {
   const customFilter = { name: 'JSON Files', extensions: ['json'] };
-  return dialog.showOpenDialog({ filters: [customFilter], properties: ['openFile'] }).then((d) => {
+  return dialog.showOpenDialog(dialogParent(event), { filters: [customFilter], properties: ['openFile'] }).then((d) => {
     if (d.canceled || !d.filePaths?.length) {
       return { error: true, message: 'No file selected' };
     }
@@ -1405,9 +1407,9 @@ ipcMain.handle('read-text-file', async (event, filePath) => {
 });
 
 // open-file-dialog: let the user pick files from the operating system
-ipcMain.handle('open-file-multi-dialog', async () => {
+ipcMain.handle('open-file-multi-dialog', async (event) => {
   // todo: enable streaming for this dialog in the case of there being a large number of files
-  return dialog.showOpenDialog({ filters: [wsiCustomFilter], properties: ['openFile', 'multiSelections'] }).then(d => {
+  return dialog.showOpenDialog(dialogParent(event), { filters: [wsiCustomFilter], properties: ['openFile', 'multiSelections'] }).then(d => {
 
     // if canceled, return; otherwise, return the list of files that were picked
     if (d.canceled) {
@@ -1422,9 +1424,9 @@ ipcMain.handle('open-file-multi-dialog', async () => {
 });
 
 // open-folder-dialog: let the user pick files from the operating system
-ipcMain.handle('open-folder-dialog', async () => {
+ipcMain.handle('open-folder-dialog', async (event) => {
   //open the file dialog
-  return dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] }).then(d => {
+  return dialog.showOpenDialog(dialogParent(event), { properties: ['openDirectory', 'createDirectory'] }).then(d => {
     // if canceled, return; otherwise, return the list of files that were picked
     if (d.canceled) {
       return { error: true, message: 'No folder selected' };
@@ -1435,14 +1437,13 @@ ipcMain.handle('open-folder-dialog', async () => {
 });
 
 ipcMain.handle('show-message-box', async (event, options) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  return dialog.showMessageBox(win ?? undefined, options ?? {});
+  return dialog.showMessageBox(dialogParent(event), options ?? {});
 });
 
 // open-folders-dialog: let the user pick multiple folders from the operating system
-ipcMain.handle('open-folders-dialog', async () => {
+ipcMain.handle('open-folders-dialog', async (event) => {
   //open the file dialog
-  return dialog.showOpenDialog({ properties: ['multiSelections', 'openDirectory', 'createDirectory'] }).then(d => {
+  return dialog.showOpenDialog(dialogParent(event), { properties: ['multiSelections', 'openDirectory', 'createDirectory'] }).then(d => {
     // if canceled, return; otherwise, return the list of files that were picked
     if (d.canceled) {
       return { error: true, message: 'No folder selected' };

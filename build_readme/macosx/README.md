@@ -71,6 +71,11 @@ node --version
 npm --version
 ```
 
+## Packaging note (conda only)
+
+The frozen Python engine is built **only** from the `sliderelabeler` conda environment (`environment-macos.yml`) — the same packages CI installs. That includes conda-forge `libvips` and `openslide` (plus pip `openslide-python`). Do **not** rely on Homebrew or `DeidTools/mac-bin` for OpenSlide/libvips: those link system iconv (`_iconv`) and break when conda `libiconv` (`_libiconv`) is on `DYLD_*` for the bundled glib stack. Prefer `npm run package` / `npm run make` (or `node scripts/run-with-conda.mjs …`) with the conda env available.
+
+
 ## Building the Application
 
 You have two options for building the application:
@@ -129,13 +134,15 @@ If you prefer to build manually or need more control over the process:
    npm install
    ```
 
-5. **Build the application:**
+5. **Build the application** (with the conda env activated, or via the npm scripts that wrap conda):
    ```bash
+   npm run package
+   # or full distributable:
    npm run make
    ```
 
    This command will:
-   - Run PyInstaller to package the Python code into `dist/engine.app`
+   - Run PyInstaller to freeze the Python engine from the conda env into `dist/engine.app` (no Homebrew libs)
    - Run Electron Forge to create the final application bundle
    - The output will be in the `out/` directory
 
@@ -226,7 +233,7 @@ To use the application:
 
 **Solution:**
 - Make sure the conda environment is activated: `conda activate sliderelabeler`
-- Check that PyInstaller can find the required binaries in `src/python/DeidTools/mac-bin/`
+- Confirm conda-forge natives are present (`libvips`, `openslide`) and that PyInstaller is run via `npm run package` / `node scripts/run-with-conda.mjs`
 - Verify that all dependencies in `environment-macos.yml` installed correctly
 - Check the error messages for specific missing dependencies
 
