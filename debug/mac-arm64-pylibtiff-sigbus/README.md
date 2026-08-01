@@ -111,7 +111,7 @@ chmod +x scripts/dev-patch-libtiff.sh
 # or: SLIDERELABELER_PATCH_LIBTIFF=0 ./scripts/dev.sh   # reproduce crash
 ```
 
-On **macOS arm64**, [`engine.py`](../../src/python/engine.py) auto-installs the guard when `SLIDERELABELER_PATCH_LIBTIFF` is unset. Check stderr for `libtiff guard auto-enabled`. **Windows / Intel Mac:** leave the flag unset; guard stays off.
+On **macOS arm64**, [`engine.py`](../../src/python/engine.py) auto-installs the guard when `SLIDERELABELER_PATCH_LIBTIFF` is unset. With engine `debug = True`, stderr shows `libtiff guard auto-enabled`. **Windows / Intel Mac:** leave the flag unset; guard stays off.
 
 ## Phase 2: narrowing steps
 

@@ -190,21 +190,24 @@ def bootstrap_env() -> Dict[str, Any]:
 
 def _maybe_install_patchlibtiff_guard() -> None:
   """Install tiff_reader guard on darwin/arm64 (auto) or when SLIDERELABELER_PATCH_LIBTIFF=1."""
-  from patch_libtiff_platform import patch_libtiff_mode, should_patch_libtiff
+  from patch_libtiff_platform import should_patch_libtiff
 
   if not should_patch_libtiff():
     return
   from libtiff_guard import install_patchlibtiff_guard
 
   install_patchlibtiff_guard()
-  mode = patch_libtiff_mode()
-  mode_label = "auto-enabled (darwin/arm64)" if mode == "auto" else "forced (SLIDERELABELER_PATCH_LIBTIFF=1)"
-  print(
-    f"[engine] libtiff guard {mode_label}: tiff_reader patches registered "
-    "(patchLibtiff + _getJpegTables + _getJpegFrameSize)",
-    file=sys.stderr,
-    flush=True,
-  )
+  if debug:
+    from patch_libtiff_platform import patch_libtiff_mode
+
+    mode = patch_libtiff_mode()
+    mode_label = "auto-enabled (darwin/arm64)" if mode == "auto" else "forced (SLIDERELABELER_PATCH_LIBTIFF=1)"
+    print(
+      f"[engine] libtiff guard {mode_label}: tiff_reader patches registered "
+      "(patchLibtiff + _getJpegTables + _getJpegFrameSize)",
+      file=sys.stderr,
+      flush=True,
+    )
 
 
 # -----------------------------
@@ -228,7 +231,7 @@ from DeidTools import DeidTools  # noqa: E402
 
 from patch_libtiff_platform import should_patch_libtiff
 
-if should_patch_libtiff():
+if debug and should_patch_libtiff():
   from libtiff_guard import is_guard_active
   print(
     f"[engine] libtiff guard active: guard_executed={is_guard_active()}",
@@ -251,96 +254,6 @@ try:
   large_image.canRead()
 except Exception:
   pass
-
-
-def _run_openslide_diag(slide_path: str) -> None:
-  """In-process OpenSlide/large_image probe for frozen vs conda debugging."""
-  import traceback
-  from pathlib import Path
-
-  def emit(msg: str) -> None:
-    print(f"[openslide-diag] {msg}", flush=True)
-
-  emit(f"frozen={getattr(sys, 'frozen', False)} meipass={getattr(sys, '_MEIPASS', None)}")
-  emit(f"slide={slide_path!r} exists={Path(slide_path).is_file()}")
-
-  # 1) openslide_bin
-  try:
-    import openslide_bin  # type: ignore
-
-    emit(f"openslide_bin OK file={getattr(openslide_bin, '__file__', None)}")
-    lib = getattr(openslide_bin, "libopenslide1", None)
-    emit(f"openslide_bin.libopenslide1={lib} name={getattr(lib, '_name', None)}")
-  except Exception as exc:
-    emit(f"openslide_bin FAIL {type(exc).__name__}: {exc}")
-    traceback.print_exc()
-
-  # 2) openslide import + loaded CDLL
-  try:
-    import openslide
-    import openslide.lowlevel as ll
-
-    emit(f"openslide OK file={openslide.__file__}")
-    lib = getattr(ll, "_lib", None)
-    emit(f"openslide.lowlevel._lib={lib} name={getattr(lib, '_name', None)}")
-  except Exception as exc:
-    emit(f"openslide FAIL {type(exc).__name__}: {exc}")
-    traceback.print_exc()
-
-  # 3) bare ctypes loads (basename vs absolute MEIPASS)
-  import ctypes
-
-  meipass = getattr(sys, "_MEIPASS", None)
-  candidates = ["libopenslide.1.dylib", "libopenslide.dylib"]
-  if meipass:
-    candidates.extend(
-      [
-        str(Path(meipass) / "libopenslide.1.dylib"),
-        str(Path(meipass) / "libopenslide.dylib"),
-      ]
-    )
-  for cand in candidates:
-    try:
-      loaded = ctypes.CDLL(cand)
-      emit(f"CDLL OK {cand!r} -> {getattr(loaded, '_name', loaded)}")
-    except Exception as exc:
-      emit(f"CDLL FAIL {cand!r}: {type(exc).__name__}: {exc}")
-
-  # 4) find_library after frozen_dylib_prefer
-  try:
-    import ctypes.util
-
-    emit(f"find_library('openslide')={ctypes.util.find_library('openslide')!r}")
-  except Exception as exc:
-    emit(f"find_library FAIL: {exc}")
-
-  # 5) large_image.open
-  try:
-    src = large_image.open(slide_path)
-    emit(f"large_image.open name={getattr(src, 'name', None)!r}")
-    try:
-      assoc = src.getAssociatedImagesList()
-    except Exception as exc:
-      assoc = f"<error {type(exc).__name__}: {exc}>"
-    emit(f"associated={assoc!r}")
-    try:
-      meta = src.getInternalMetadata() or {}
-      vendor = (meta.get("openslide") or {}).get("openslide.vendor")
-      emit(f"vendor={vendor!r} internal_keys={list(meta.keys())[:12]!r}")
-    except Exception as exc:
-      emit(f"getInternalMetadata FAIL: {type(exc).__name__}: {exc}")
-  except Exception as exc:
-    emit(f"large_image.open FAIL {type(exc).__name__}: {exc}")
-    traceback.print_exc()
-
-  emit("done")
-
-
-_diag_slide = (os.environ.get("SLIDERELABELER_OPENSLIDE_DIAG") or "").strip()
-if _diag_slide:
-  _run_openslide_diag(_diag_slide)
-  if os.environ.get("SLIDERELABELER_OPENSLIDE_DIAG_EXIT", "").strip() in {"1", "true", "yes"}:
-    sys.exit(0)
 
 
 # -----------------------------
