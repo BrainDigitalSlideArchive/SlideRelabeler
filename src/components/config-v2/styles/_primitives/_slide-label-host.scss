@@ -74,6 +74,61 @@
     min-height: 6.5rem;
   }
 
+  .cfg-label-font-size {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+  }
+
+  .cfg-label-font-size__range {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .cfg-label-font-size__value {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-label-font-size__input {
+    flex: 0 0 auto;
+    width: 3.5rem;
+    max-width: 3.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cfg-label-width-row__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .cfg-label-width-row__input {
+    width: 4.5rem;
+    max-width: 4.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cfg-label-width-row__unit {
+    font-size: 0.8125rem;
+    color: $cfg-ink-muted;
+  }
+
+  .cfg-label-pattern-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 4.5rem;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.35;
+    white-space: pre-wrap;
+  }
+
   &__rendered-preview {
     flex: 1 1 0;
     display: flex;
@@ -171,7 +226,7 @@
 
     .label-composition-mockup__zone--text {
       word-break: normal;
-      white-space: nowrap;
+      white-space: pre-line;
       overflow: hidden;
       text-overflow: ellipsis;
       min-height: 1.75em;

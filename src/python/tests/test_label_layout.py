@@ -10,6 +10,7 @@ from src.python.DeidTools import DeidTools
 def test_icon_qr_side_by_side_layout():
     deid_tools = DeidTools()
     icon_file_path = os.path.join(".", "src", "assets", "BDSA_clear.png")
+    label_width = 750
 
     output_dict = {
         'config': {
@@ -18,6 +19,8 @@ def test_icon_qr_side_by_side_layout():
                 'add_text': False,
                 'add_icon': True,
                 'add_qr': True,
+                'labelWidth': label_width,
+                'customizeLabelWidth': True,
                 'icon_file': {'source': {'path': str(icon_file_path)}},
             },
         },
@@ -33,6 +36,9 @@ def test_icon_qr_side_by_side_layout():
     qr_image, qr_height = deid_tools.add_qr_code_to_image(None, output_dict, 'layout-test', 0)
 
     assert combined_image is not None
+    assert combined_image.size[0] == label_width
+    assert icon_image.size[0] == label_width
+    assert qr_image.size[0] == label_width
     assert combined_height > 0
     assert combined_height < icon_height + qr_height, (
         "Side-by-side row should be shorter than stacked icon + QR bands"
@@ -57,6 +63,30 @@ def test_icon_qr_side_by_side_layout():
     assert has_right, "Expected QR content in the right half"
 
 
+def test_icon_qr_respects_custom_label_width():
+    deid_tools = DeidTools()
+    icon_file_path = os.path.join(".", "src", "assets", "BDSA_clear.png")
+    label_width = 600
+
+    output_dict = {
+        'config': {
+            'label': {
+                'qr_mode': {'value': 'uuid'},
+                'labelWidth': label_width,
+                'customizeLabelWidth': True,
+                'icon_file': {'source': {'path': str(icon_file_path)}},
+            },
+        },
+        '__reserved': {
+            'uuid': str(uuid.uuid4()),
+        },
+    }
+
+    combined_image, _ = deid_tools.add_icon_and_qr_row(None, output_dict, 'layout-test', 0)
+    assert combined_image.size[0] == label_width
+
+
 if __name__ == "__main__":
     test_icon_qr_side_by_side_layout()
-    print("test_icon_qr_side_by_side_layout passed")
+    test_icon_qr_respects_custom_label_width()
+    print("test_label_layout passed")

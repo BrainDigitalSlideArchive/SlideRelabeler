@@ -23,6 +23,7 @@ import {
   setupRenameValueGetter,
   setupRenameSingleClickEdit,
   setupOverflowTextRenderer,
+  setupLabelTextLargeTextEditor,
   setupNamingFieldEditable,
   setupNamingFieldCellClass,
   setupNamingFieldSingleClickEdit,
@@ -159,6 +160,7 @@ export function buildFileTableColumnDefs({
     columnDefs = setupNamingFieldCellClass(columnDefs, field);
   }
 
+  columnDefs = setupLabelTextLargeTextEditor(columnDefs);
   columnDefs = setupOverflowTextRenderer(columnDefs);
 
   if (!isPreview) {

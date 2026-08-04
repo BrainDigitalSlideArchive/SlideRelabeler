@@ -12,6 +12,7 @@ import {
   buildColumnAliasMap,
   evaluateFieldPattern,
 } from './pattern_engine.js';
+import { qrPayloadFromLabelText } from './label_text_display.js';
 
 export const NAMING_SOURCE = {
   DEFAULT: 'default',
@@ -98,7 +99,7 @@ export function resolveDefaultQrPayload({ outputName, labelText, uuid, dsaAlias 
 
   switch (spec.mode) {
     case 'label_text':
-      return labelText != null ? String(labelText) : '';
+      return qrPayloadFromLabelText(labelText);
     case 'uuid':
       return uuid != null ? String(uuid) : '';
     case 'pattern':

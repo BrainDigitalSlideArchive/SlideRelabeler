@@ -1606,7 +1606,7 @@
 
               .label-composition-mockup__zone--text {
                 word-break: normal;
-                white-space: nowrap;
+                white-space: pre-line;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 min-height: 1.75em;

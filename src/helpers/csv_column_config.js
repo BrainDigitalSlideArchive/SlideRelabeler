@@ -35,7 +35,7 @@ export const CSV_RESERVED_FIELD_SPECS = [
     role: 'Label text',
     defaultHeader: CSV_TEMPLATE_DEFAULT_HEADERS.label,
     required: false,
-    helper: 'When present in a row, overrides Slide label text defaults for that slide.',
+    helper: 'When present in a row, overrides Slide label text defaults for that slide. Quoted cells may include line breaks for multiline labels.',
   },
   {
     key: 'qrContent',

@@ -1,7 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 
 import * as config_actions from '../../../../actions/config';
+import {
+  LABEL_WIDTH_DEFAULT,
+  LABEL_WIDTH_MAX,
+  LABEL_WIDTH_MIN,
+  normalizeLabelWidthValue,
+} from '../../../../helpers/computed_field_config';
 import LabelSchematicPanel from '../../../config/LabelSchematicPanel';
 import ConfigFeatureBlock from '../../primitives/ConfigFeatureBlock';
 import LabelDefaultsEditor from './LabelDefaultsEditor';
@@ -48,6 +54,10 @@ export default function LabelComposer({
   iconPath,
 }) {
   const dispatch = useDispatch();
+  const customizeWidth = Boolean(labelConfig?.customizeLabelWidth);
+  const storedWidth = normalizeLabelWidthValue(labelConfig ?? {});
+  const [draftWidth, setDraftWidth] = useState(null);
+  const widthInputId = 'label-width-px-v2';
 
   const issueByFeature = useMemo(() => {
     const map = {};
@@ -60,6 +70,22 @@ export default function LabelComposer({
   function setLabelDefaults(partial) {
     dispatch({ type: config_actions.SET_LABEL_DEFAULTS, payload: partial });
     if (onRecompute) onRecompute();
+  }
+
+  function commitLabelWidth(raw) {
+    setDraftWidth(null);
+    const next = normalizeLabelWidthValue({
+      labelWidth: raw === '' || raw == null ? LABEL_WIDTH_DEFAULT : raw,
+    });
+    setLabelDefaults({ labelWidth: next, customizeLabelWidth: true });
+  }
+
+  function toggleCustomizeWidth(nextChecked) {
+    setDraftWidth(null);
+    setLabelDefaults({
+      customizeLabelWidth: nextChecked,
+      labelWidth: nextChecked ? storedWidth : LABEL_WIDTH_DEFAULT,
+    });
   }
 
   const toggles = {
@@ -121,9 +147,48 @@ export default function LabelComposer({
     return null;
   }
 
+  const widthDisabled = disabled || !customizeWidth;
+  const displayWidth = customizeWidth
+    ? (draftWidth != null ? draftWidth : String(storedWidth))
+    : String(LABEL_WIDTH_DEFAULT);
+
   return (
     <div className="cfg-label-layout label-composer">
       <div className="cfg-label-features label-composer__features">
+        <ConfigFeatureBlock
+          titleId="label-feature-width-v2-title"
+          title="Customize width"
+          hint="Default: 750 px"
+          checked={customizeWidth}
+          disabled={disabled}
+          inactive={!customizeWidth}
+          onChange={toggleCustomizeWidth}
+        >
+          <div className={customizeWidth ? undefined : 'cfg-labeled-row--inactive'}>
+            <div className="cfg-label-width-row__controls">
+              <input
+                id={widthInputId}
+                type="number"
+                className="__input-text cfg-label-width-row__input"
+                min={LABEL_WIDTH_MIN}
+                max={LABEL_WIDTH_MAX}
+                step={1}
+                disabled={widthDisabled}
+                value={displayWidth}
+                aria-label="Label width in pixels"
+                onChange={(e) => setDraftWidth(e.target.value)}
+                onBlur={() => {
+                  if (!customizeWidth) return;
+                  commitLabelWidth(draftWidth != null ? draftWidth : storedWidth);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+              />
+              <span className="cfg-label-width-row__unit" aria-hidden="true">px</span>
+            </div>
+          </div>
+        </ConfigFeatureBlock>
         {FEATURES.map((f) => {
           const checked = checkedByKey[f.key];
           const issue = issueByFeature[f.key];

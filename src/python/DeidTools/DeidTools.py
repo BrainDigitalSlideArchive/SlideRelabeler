@@ -135,87 +135,170 @@ class DeidTools:
         ]
         return aperioValues
 
+    @staticmethod
+    def _label_text_is_multiline(text):
+        if text is None:
+            return False
+        s = str(text)
+        return '\n' in s or '\r' in s
+
+    @staticmethod
+    def _normalize_label_title(title):
+        """Normalize newlines; drop a single trailing newline from editors."""
+        title = title or ''
+        if not isinstance(title, str):
+            title = str(title)
+        title = title.replace('\r\n', '\n').replace('\r', '\n')
+        if title.endswith('\n'):
+            title = title[:-1]
+        return title
+
+    def _load_label_font(self, point_size):
+        file_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'fonts', 'DejaVuSansMono.ttf'
+        )
+        try:
+            return PIL.ImageFont.truetype(font=file_path, size=max(1, int(point_size)))
+        except IOError:
+            try:
+                return PIL.ImageFont.truetype(font='arial.ttf', size=max(1, int(point_size)))
+            except IOError:
+                return PIL.ImageFont.load_default()
+
+    def _measure_multiline_text(self, title, font):
+        """Return (textW, textH) for multiline title using PIL multiline metrics."""
+        tmp = PIL.Image.new(self.pil_image_mode, (1, 1))
+        draw = PIL.ImageDraw.Draw(tmp)
+        left, top, right, bottom = draw.multiline_textbbox(
+            (0, 0), title, font=font, align='center', spacing=4,
+        )
+        return right - left, bottom - top
+
+    def _resolve_label_font_fraction(self, label_config, targetW):
+        """
+        Return font size as a fraction of targetW.
+        auto: start at 0.15 (caller runs fit loop); manual: clamped config fraction.
+        """
+        label_config = label_config or {}
+        mode = label_config.get('fontSizeMode') or 'auto'
+        if mode == 'manual':
+            try:
+                fraction = float(label_config.get('fontSize', 0.15))
+            except (TypeError, ValueError):
+                fraction = 0.15
+            return max(0.01, min(0.35, fraction)), True
+        return 0.15, False
+
+    @staticmethod
+    def _label_canvas_width(label_config=None):
+        """Fixed label canvas width in pixels (config.label.labelWidth)."""
+        default = 750
+        lo, hi = 100, 1500
+        label_config = label_config or {}
+        if not label_config.get('customizeLabelWidth'):
+            return default
+        try:
+            width = int(round(float(label_config.get('labelWidth', default))))
+        except (TypeError, ValueError):
+            width = default
+        return max(lo, min(hi, width))
+
+    def _fit_image_in_box(self, pil_image, max_w, max_h):
+        """Aspect-preserving scale so image fits inside max_w x max_h."""
+        if pil_image is None:
+            return None
+        max_w = max(1, int(max_w))
+        max_h = max(1, int(max_h))
+        w, h = pil_image.size
+        if w <= 0 or h <= 0:
+            return pil_image
+        scale = min(max_w / w, max_h / h)
+        new_w = max(1, int(round(w * scale)))
+        new_h = max(1, int(round(h * scale)))
+        if (new_w, new_h) == (w, h):
+            return pil_image.convert(self.pil_image_mode)
+        return pil_image.resize((new_w, new_h), PIL.Image.LANCZOS).convert(self.pil_image_mode)
+
+    def _resize_to_canvas_width(self, image, target_w, background='#000000'):
+        """Scale down or pillarbox so image width equals target_w."""
+        if image is None:
+            return PIL.Image.new(self.pil_image_mode, (target_w, target_w), background)
+        image = image.convert(self.pil_image_mode)
+        w, h = image.size
+        if w == target_w:
+            return image
+        bg = PIL.ImageColor.getcolor(background, self.pil_image_mode)
+        if w > target_w:
+            new_h = max(1, h * target_w // w)
+            return image.resize((target_w, new_h), PIL.Image.LANCZOS)
+        out = PIL.Image.new(self.pil_image_mode, (target_w, h), bg)
+        out.paste(image, ((target_w - w) // 2, 0))
+        return out
+
     def add_text_to_image(self, image, title, previouslyAdded=False, minWidth=384,
                           background='#000000', textColor='#ffffff', square=True,
-                          item=None):
+                          item=None, label_config=None):
         """
-        Add a title to an image.  If the image doesn't exist, a new image is made
-        the minimum width and appropriate height.  If the image does exist, a bar
-        is added at its top to hold the title.  If an existing image is smaller
-        than minWidth, it is pillarboxed to the minWidth.
+        Add a title to an image. Canvas width is fixed to config.label.labelWidth
+        (default 750). Multiline titles are supported; font size is auto-fit to
+        ~90% of that width or a manual fraction.
 
-        Rewritten from WSI DeiD given hardcoded font that is not available in windows.
-
-        :param image: a PIL image or None.
-        :param title: a text string.
-        :param previouslyAdded: if true and modifying an image, don't allocate more
-            space for the title; overwrite the top of the image instead.
-        :param minWidth: the minimum width for the new image.
-        :param background: the background color of the title and any necessary
-            pillarbox.
-        :param textColor: the color of the title text.
-        :param square: if True, output a square image.
-        :param item: the original item record.
-        :returns: a PIL image.
+        :param square: retained for API compatibility; width is never expanded for square.
+        :returns: (PIL image, title band height) or (image, 0) if nothing to draw.
         """
-        title = title or ''
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
-        image = image.convert(self.pil_image_mode)
-        imageDrawFont = None
-        w, h = image.size
-        background = PIL.ImageColor.getcolor(background, self.pil_image_mode)
+        title = self._normalize_label_title(title)
+        targetW = self._label_canvas_width(label_config)
+        background_rgb = PIL.ImageColor.getcolor(background, self.pil_image_mode)
         textColor = PIL.ImageColor.getcolor(textColor, self.pil_image_mode)
-        targetW = max(minWidth, w)
-        fontSize = 0.15
-        imageDraw = PIL.ImageDraw.Draw(image)
-        # Altered line from WSI DeID rewirtten so font is local to library
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'DejaVuSansMono.ttf')
-        for iter in range(3, 0, -1):
-            try:
-                imageDrawFont = PIL.ImageFont.truetype(
-                    font=file_path,
-                    size=int(fontSize * targetW),
-                )
-            except IOError:
-                try:
-                    imageDrawFont = PIL.ImageFont.truetype(
-                        font="arial.ttf",
-                        size=int(fontSize * targetW),
-                    )
-                except IOError:
-                    imageDrawFont = PIL.ImageFont.load_default()
-            if imageDrawFont is None:
-                imageDrawFont = PIL.ImageFont.load_default()
-            textL, textT, textR, textB = imageDrawFont.getbbox(title)
-            textW = textR - textL
-            # if there is no width, there is no title
-            if not textW:
-                return
-            textH = textB  # from old imageDraw.textsize(title, imageDrawFont)
-            if iter != 1 and (textW > targetW * 0.95 or textW < targetW * 0.85):
+
+        if image is None:
+            image = PIL.Image.new(self.pil_image_mode, (targetW, targetW), background_rgb)
+        else:
+            image = self._resize_to_canvas_width(image, targetW, background=background)
+
+        w, h = image.size
+
+        if not title.strip():
+            return image, 0
+
+        fontSize, manual = self._resolve_label_font_fraction(label_config, targetW)
+        imageDrawFont = None
+        textW = 0
+        textH = 0
+
+        fit_iters = 1 if manual else 3
+        for iter in range(fit_iters, 0, -1):
+            imageDrawFont = self._load_label_font(fontSize * targetW)
+            textW, textH = self._measure_multiline_text(title, imageDrawFont)
+            if not textW and not textH:
+                return image, 0
+            if not manual and iter != 1 and textW > 0 and (
+                textW > targetW * 0.95 or textW < targetW * 0.85
+            ):
                 fontSize = fontSize * targetW * 0.9 / textW
                 if fontSize < 0.01:
                     fontSize = 0.01
-        titleH = int(math.ceil(textH * 1.25))
-        if square and (w != h or (not previouslyAdded or w != targetW or h < titleH)):
-            if targetW < h + titleH:
-                targetW = h + titleH
-            else:
-                titleH = targetW - h
+
+        titleH = int(math.ceil(textH * 1.25)) if textH else 0
+        if titleH <= 0:
+            return image, 0
+        # Fixed-width layout: never grow targetW for square aspect.
         if previouslyAdded and w == targetW and h >= titleH:
             newImage = image.copy()
         else:
-            newImage = PIL.Image.new(mode=self.pil_image_mode, size=(targetW, h + titleH), color=background)
+            newImage = PIL.Image.new(mode=self.pil_image_mode, size=(targetW, h + titleH), color=background_rgb)
             newImage.paste(image, (int((targetW - w) / 2), titleH))
         imageDraw = PIL.ImageDraw.Draw(newImage)
-        imageDraw.rectangle((0, 0, targetW, titleH + self.sep_height), fill=background, outline=None, width=0)
-        imageDraw.text(
+        imageDraw.rectangle((0, 0, targetW, titleH + self.sep_height), fill=background_rgb, outline=None, width=0)
+        imageDraw.multiline_text(
             xy=(int((targetW - textW) / 2), int((titleH - textH) / 2) + self.sep_height),
             text=title,
             fill=textColor,
-            font=imageDrawFont)
-        titleH = titleH + self.sep_height*2
+            font=imageDrawFont,
+            align='center',
+            spacing=4,
+        )
+        titleH = titleH + self.sep_height * 2
         return newImage, titleH
 
     def check_if_needed_dir_exist(self):
@@ -615,12 +698,6 @@ class DeidTools:
             return None
 
         icon_image = PIL.Image.open(image_path)
-
-        if icon_image.size[0] > 740:
-            new_width = 740
-            new_height = new_width * icon_image.size[1] // icon_image.size[0]
-            icon_image = icon_image.resize((new_width, new_height), PIL.Image.LANCZOS)
-
         return icon_image.convert(self.pil_image_mode)
 
     def _resolve_qr_code_string(self, output_dict, desired_title):
@@ -665,21 +742,37 @@ class DeidTools:
         qr.make(fit=True)
         return qr.make_image(fill_color='black', back_color='white').convert('RGB')
 
+    def _paste_band_and_graphic(self, image, output_height, graphic, canvas_w):
+        """Build fixed-width canvas with prior band + centered graphic below."""
+        band_h = max(0, int(output_height))
+        if image is not None and band_h > 0:
+            band = image.crop((0, 0, image.size[0], min(band_h, image.size[1])))
+            band = self._resize_to_canvas_width(band, canvas_w)
+        else:
+            band = PIL.Image.new(self.pil_image_mode, (canvas_w, band_h))
+
+        graphic = graphic.convert(self.pil_image_mode)
+        new_h = band_h + self.sep_height * 2 + graphic.size[1]
+        out = PIL.Image.new(self.pil_image_mode, (canvas_w, new_h))
+        if band_h > 0:
+            out.paste(band, (0, 0))
+        gx = (canvas_w - graphic.size[0]) // 2
+        out.paste(graphic, (gx, band_h + self.sep_height))
+        return out, new_h
+
     def add_icon_to_image(self, image, output_dict, output_height=0):
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+        label_config = output_dict.get('config', {}).get('label', {})
+        canvas_w = self._label_canvas_width(label_config)
 
         icon_image = self._load_icon_image(output_dict)
         if icon_image is None:
-            return image, output_height
+            if image is None:
+                return PIL.Image.new(self.pil_image_mode, (canvas_w, max(1, output_height))), output_height
+            return self._resize_to_canvas_width(image, canvas_w), output_height
 
-        position = (image.size[0] // 2 - icon_image.size[0] // 2, output_height + self.sep_height)
-
-        image.paste(icon_image, position)
-
-        output_height = output_height + self.sep_height*2 + icon_image.size[1]
-
-        return image, output_height
+        max_side = max(1, canvas_w - self.sep_height * 2)
+        icon_image = self._fit_image_in_box(icon_image, max_side, max_side)
+        return self._paste_band_and_graphic(image, output_height, icon_image, canvas_w)
 
     def get_field_data(self, output_dict, field):
         if field == 'rename' or field == '__reserved.rename':
@@ -698,47 +791,37 @@ class DeidTools:
             return data
 
     def add_qr_code_to_image(self, image, output_dict, desired_title, output_height=0):
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+        label_config = output_dict.get('config', {}).get('label', {})
+        canvas_w = self._label_canvas_width(label_config)
 
         qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
         if qr_code_string is None or not str(qr_code_string).strip():
-            return image, output_height
+            if image is None:
+                return PIL.Image.new(self.pil_image_mode, (canvas_w, max(1, output_height))), output_height
+            return self._resize_to_canvas_width(image, canvas_w), output_height
 
         qr_code = self._make_qr_image(qr_code_string)
         if qr_code is None:
-            return image, output_height
+            if image is None:
+                return PIL.Image.new(self.pil_image_mode, (canvas_w, max(1, output_height))), output_height
+            return self._resize_to_canvas_width(image, canvas_w), output_height
 
-        image_cropped = image.crop((0, 0, image.size[0], output_height))
-        width = max(qr_code.size[0], image_cropped.size[0])
-
-        qr_code_left = width // 2 - qr_code.size[0] // 2
-        qr_code_top = output_height + self.sep_height
-        qr_loc = (qr_code_left, qr_code_top, qr_code_left + qr_code.size[0], qr_code_top + qr_code.size[1])
-
-        if qr_code.size[1] > (750 - output_height - self.sep_height):
-            image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
-            image.paste(image_cropped, (0,0))
-            image.paste(qr_code, qr_loc)
-        else:
-            image = PIL.Image.new(self.pil_image_mode, (width, output_height + qr_code.size[1] + self.sep_height*2))
-            image.paste(image_cropped, (0,0))
-            image.paste(qr_code, qr_loc)
-
-        output_height = qr_code.size[1] + output_height + self.sep_height + self.sep_height
-
-        return image, output_height
+        max_side = max(1, canvas_w - self.sep_height * 2)
+        qr_code = self._fit_image_in_box(qr_code, max_side, max_side)
+        return self._paste_band_and_graphic(image, output_height, qr_code, canvas_w)
 
     def add_icon_and_qr_row(self, image, output_dict, desired_title, output_height=0):
-        if image is None:
-            image = PIL.Image.new(self.pil_image_mode, (750, 750))
+        label_config = output_dict.get('config', {}).get('label', {})
+        canvas_w = self._label_canvas_width(label_config)
 
         icon_image = self._load_icon_image(output_dict)
         qr_code_string = self._resolve_qr_code_string(output_dict, desired_title)
         has_qr = qr_code_string is not None and str(qr_code_string).strip()
 
         if icon_image is None and not has_qr:
-            return image, output_height
+            if image is None:
+                return PIL.Image.new(self.pil_image_mode, (canvas_w, max(1, output_height))), output_height
+            return self._resize_to_canvas_width(image, canvas_w), output_height
         if icon_image is None:
             return self.add_qr_code_to_image(image, output_dict, desired_title, output_height)
         if not has_qr:
@@ -749,27 +832,33 @@ class DeidTools:
             return self.add_icon_to_image(image, output_dict, output_height)
 
         gap = self.sep_height
-        row_top = output_height + self.sep_height
+        col_w = max(1, (canvas_w - gap) // 2)
+        icon_image = self._fit_image_in_box(icon_image, col_w, col_w)
+        qr_code = self._fit_image_in_box(qr_code, col_w, col_w)
+
         row_height = max(icon_image.size[1], qr_code.size[1])
-        content_width = icon_image.size[0] + gap + qr_code.size[0]
+        band_h = max(0, int(output_height))
+        if image is not None and band_h > 0:
+            band = image.crop((0, 0, image.size[0], min(band_h, image.size[1])))
+            band = self._resize_to_canvas_width(band, canvas_w)
+        else:
+            band = PIL.Image.new(self.pil_image_mode, (canvas_w, band_h))
 
-        image_cropped = image.crop((0, 0, image.size[0], output_height))
-        width = max(content_width, image_cropped.size[0])
+        new_height = band_h + self.sep_height + row_height + self.sep_height
+        out = PIL.Image.new(self.pil_image_mode, (canvas_w, new_height))
+        if band_h > 0:
+            out.paste(band, (0, 0))
 
-        pair_left = (width - content_width) // 2
-        icon_left = pair_left
+        row_top = band_h + self.sep_height
+        # Two equal columns: left icon, right QR, each graphic centered in its cell.
+        icon_left = (col_w - icon_image.size[0]) // 2
         icon_top = row_top + (row_height - icon_image.size[1]) // 2
-        qr_left = pair_left + icon_image.size[0] + gap
+        qr_left = col_w + gap + (col_w - qr_code.size[0]) // 2
         qr_top = row_top + (row_height - qr_code.size[1]) // 2
+        out.paste(icon_image, (icon_left, icon_top))
+        out.paste(qr_code, (qr_left, qr_top))
 
-        new_height = output_height + self.sep_height + row_height + self.sep_height
-
-        image = PIL.Image.new(self.pil_image_mode, (width, new_height))
-        image.paste(image_cropped, (0, 0))
-        image.paste(icon_image, (icon_left, icon_top))
-        image.paste(qr_code, (qr_left, qr_top))
-
-        return image, new_height
+        return out, new_height
 
     def _should_compose_label_only(self, output_dict):
         preview = output_dict.get('__configPreview') or {}
@@ -821,18 +910,32 @@ class DeidTools:
                 labelImage = redact_image_area(labelImage, label_geojson)
 
         output_height = 0
+        label_text = self.get_label_text(output_dict)
+        if not isinstance(label_text, str):
+            label_text = str(label_text)
 
-        if label_config['add_text']:
-            text = self.get_label_text(output_dict)
-            if not isinstance(text, str):
-                text = str(text)
-            if len(text) > 0:
-                labelImage, output_height = self.add_text_to_image(labelImage, text, False, item=curItem)
-        if label_config['add_icon'] and label_config['add_qr']:
+        if label_config['add_text'] and len(label_text) > 0:
+            labelImage, output_height = self.add_text_to_image(
+                labelImage, label_text, False, item=curItem, label_config=label_config,
+            )
+
+        qr_mode = (
+            (label_config.get('qrContent') or {}).get('mode')
+            or label_config.get('qrDefault')
+        )
+        skip_qr = (
+            bool(label_config.get('add_qr'))
+            and qr_mode == 'label_text'
+            and self._label_text_is_multiline(label_text)
+        )
+        want_qr = bool(label_config.get('add_qr')) and not skip_qr
+        want_icon = bool(label_config.get('add_icon'))
+
+        if want_icon and want_qr:
             labelImage, output_height = self.add_icon_and_qr_row(labelImage, output_dict, desired_title, output_height)
-        elif label_config['add_icon']:
+        elif want_icon:
             labelImage, output_height = self.add_icon_to_image(labelImage, output_dict, output_height)
-        elif label_config['add_qr']:
+        elif want_qr:
             labelImage, output_height = self.add_qr_code_to_image(labelImage, output_dict, desired_title, output_height)
 
         if labelImage is not None:

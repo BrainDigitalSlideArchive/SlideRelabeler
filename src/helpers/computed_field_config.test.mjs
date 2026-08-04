@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { migrateConfigV3, normalizeLabelConfig, migrateAffixesToPattern, normalizeDsaUploadConfig } from './computed_field_config.js';
+import { migrateConfigV3, normalizeLabelConfig, migrateAffixesToPattern, normalizeDsaUploadConfig, fontSizeFractionToUi, fontSizeUiToFraction, getEffectiveLabelWidth } from './computed_field_config.js';
 
 describe('migrateAffixesToPattern', () => {
   it('folds uuid prefix into pattern', () => {
@@ -127,5 +127,49 @@ describe('normalizeLabelConfig', () => {
 
     assert.equal(label.textDefault, 'pattern');
     assert.equal(label.qrDefault, 'uuid');
+  });
+
+  it('defaults font size to auto 0.15', () => {
+    const label = normalizeLabelConfig({});
+    assert.equal(label.fontSizeMode, 'auto');
+    assert.equal(label.fontSize, 0.15);
+  });
+
+  it('clamps manual fontSize into range', () => {
+    const high = normalizeLabelConfig({ fontSizeMode: 'manual', fontSize: 9 });
+    assert.equal(high.fontSizeMode, 'manual');
+    assert.equal(high.fontSize, 0.35);
+
+    const low = normalizeLabelConfig({ fontSizeMode: 'manual', fontSize: 0 });
+    assert.equal(low.fontSize, 0.01);
+  });
+
+  it('defaults and clamps labelWidth', () => {
+    assert.equal(normalizeLabelConfig({}).labelWidth, 750);
+    assert.equal(normalizeLabelConfig({}).customizeLabelWidth, false);
+    assert.equal(normalizeLabelConfig({ labelWidth: 50 }).labelWidth, 100);
+    assert.equal(normalizeLabelConfig({ labelWidth: 99999 }).labelWidth, 1500);
+    assert.equal(normalizeLabelConfig({ labelWidth: 600.7 }).labelWidth, 601);
+  });
+
+  it('effective label width ignores custom value until customize is on', () => {
+    assert.equal(getEffectiveLabelWidth({ labelWidth: 900 }), 750);
+    assert.equal(getEffectiveLabelWidth({ customizeLabelWidth: true, labelWidth: 900 }), 900);
+  });
+});
+
+describe('fontSize UI scale', () => {
+  it('maps default fraction near mid-low of 1–100', () => {
+    assert.equal(fontSizeFractionToUi(0.15), 42);
+  });
+
+  it('round-trips UI endpoints', () => {
+    assert.equal(fontSizeFractionToUi(fontSizeUiToFraction(1)), 1);
+    assert.equal(fontSizeFractionToUi(fontSizeUiToFraction(100)), 100);
+  });
+
+  it('clamps UI input', () => {
+    assert.equal(fontSizeFractionToUi(fontSizeUiToFraction(0)), 1);
+    assert.equal(fontSizeFractionToUi(fontSizeUiToFraction(999)), 100);
   });
 });

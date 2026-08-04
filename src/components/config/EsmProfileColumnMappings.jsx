@@ -106,15 +106,18 @@ export default function EsmProfileColumnMappings({
         </label>
         {profile.labelTextMapping?.enabled && (
           <div className="esm-profile-column-mappings__pattern">
-            <InputText
+            <textarea
+              className="__input-text esm-profile-column-mappings__textarea"
               disabled={disabled}
-              omitLabel
-              variant="onLight"
-              ariaLabel="Label text pattern"
-              placeholder="{blockId} {stainId}"
+              aria-label="Label text pattern"
+              placeholder={'{blockId}\n{stainId}'}
               value={profile.labelTextMapping?.pattern ?? ''}
-              onChange={(v) => patchLabelText({ pattern: v })}
+              rows={3}
+              onChange={(e) => patchLabelText({ pattern: e.target.value })}
             />
+            <p className="esm-profile-column-mappings__hint">
+              Press Enter for a new line on the label.
+            </p>
             <PlaceholderChips
               catalog={ESM_PATTERN_PLACEHOLDERS}
               catalogLabel="Slide fields"

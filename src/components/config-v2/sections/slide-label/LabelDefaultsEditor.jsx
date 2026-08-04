@@ -5,6 +5,7 @@ import ConfigChoiceChips from '../../primitives/ConfigChoiceChips';
 import ConfigDetailPanel from '../../primitives/ConfigDetailPanel';
 import ConfigField from '../../primitives/ConfigField';
 import ConfigHelperText from '../../primitives/ConfigHelperText';
+import LabelFontSizeEditor from './LabelFontSizeEditor';
 
 const TEXT_OPTIONS = [
   {
@@ -20,7 +21,7 @@ const TEXT_OPTIONS = [
   {
     value: 'pattern',
     label: 'Custom pattern',
-    helper: 'Build label text from placeholders and column values.',
+    helper: 'Build label text from placeholders and column values. Press Enter for a new line.',
     patternPlaceholder: '{outputName}',
   },
 ];
@@ -34,7 +35,8 @@ const QR_OPTIONS = [
   {
     value: 'label_text',
     label: 'Use Label',
-    helper: "When QR is empty, encode each row's Label value.",
+    helper:
+      "When QR is empty, encode each row's Label value. Multiline labels are not supported: slides with line breaks in Label will not get a QR code.",
   },
   {
     value: 'uuid',
@@ -117,17 +119,31 @@ export default function LabelDefaultsEditor({
         {active === 'pattern' ? (
           <>
             <ConfigHelperText>Pattern</ConfigHelperText>
-            <ConfigField
-              size="fill"
-              omitLabel
-              disabled={controlsDisabled}
-              ariaLabel={isText ? 'Label text pattern' : 'QR content pattern'}
-              placeholder={
-                options.find((o) => o.value === 'pattern')?.patternPlaceholder ?? '{outputName}'
-              }
-              value={pattern}
-              onChange={onPatternChange}
-            />
+            {isText ? (
+              <textarea
+                className="__input-text cfg-label-pattern-textarea"
+                disabled={controlsDisabled}
+                aria-label="Label text pattern"
+                placeholder={
+                  options.find((o) => o.value === 'pattern')?.patternPlaceholder ?? '{outputName}'
+                }
+                value={pattern}
+                rows={3}
+                onChange={(e) => onPatternChange(e.target.value)}
+              />
+            ) : (
+              <ConfigField
+                size="fill"
+                omitLabel
+                disabled={controlsDisabled}
+                ariaLabel="QR content pattern"
+                placeholder={
+                  options.find((o) => o.value === 'pattern')?.patternPlaceholder ?? '{outputName}'
+                }
+                value={pattern}
+                onChange={onPatternChange}
+              />
+            )}
             <div className="computed-field-editor">
               <PlaceholderChips
                 catalog={placeholderCatalog}
@@ -141,6 +157,14 @@ export default function LabelDefaultsEditor({
           <ConfigHelperText>{activeOption?.helper}</ConfigHelperText>
         )}
       </ConfigDetailPanel>
+      {isText ? (
+        <LabelFontSizeEditor
+          labelConfig={labelConfig}
+          disabled={disabled}
+          inactive={inactive}
+          onChange={onChange}
+        />
+      ) : null}
     </div>
   );
 }

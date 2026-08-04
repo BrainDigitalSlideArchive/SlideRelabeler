@@ -20,6 +20,10 @@ import {
   getRowErrorDisplay,
   rowHasError,
 } from './file_table_row_helpers.js';
+import {
+  formatLabelTextCellDisplay,
+  isMultilineLabelText,
+} from './label_text_display.js';
 
 export function addFieldToColumn(file_cols, match_field_header_class, field, field_value) {
   let outputFileCols = [...file_cols];
@@ -324,15 +328,51 @@ const OVERFLOW_TEXT_FIELDS = [
   '__reserved.qrPayload',
 ];
 
+function LabelTextCellRenderer(params) {
+  const raw = params.value != null ? String(params.value) : '';
+  const display = formatLabelTextCellDisplay(raw);
+  const multiline = isMultilineLabelText(raw);
+  return (
+    <OverflowTitle
+      text={display}
+      tooltipContent={raw}
+      show={multiline ? 'always' : 'whenTruncated'}
+    />
+  );
+}
+
 export function setupOverflowTextRenderer(file_cols, fields = OVERFLOW_TEXT_FIELDS) {
   const fieldSet = new Set(fields);
   return file_cols.map((col) => {
     if (!col?.field || !fieldSet.has(col.field)) return col;
+    if (col.field === '__reserved.labelText') {
+      return {
+        ...col,
+        cellRenderer: LabelTextCellRenderer,
+      };
+    }
     return {
       ...col,
       cellRenderer: (params) => {
         const text = params.value != null ? String(params.value) : '';
         return <OverflowTitle text={text} />;
+      },
+    };
+  });
+}
+
+/** Popup large-text editor for multiline label text (Enter inserts newlines). */
+export function setupLabelTextLargeTextEditor(file_cols) {
+  return file_cols.map((col) => {
+    if (col?.field !== '__reserved.labelText') return col;
+    return {
+      ...col,
+      cellEditor: 'agLargeTextCellEditor',
+      cellEditorPopup: true,
+      cellEditorParams: {
+        rows: 4,
+        cols: 40,
+        maxLength: 4000,
       },
     };
   });

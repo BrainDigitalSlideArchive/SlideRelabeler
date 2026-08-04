@@ -371,6 +371,24 @@ const config_reducer  = createReducer(default_state, (builder) => {
           if (p.qrContent.mode !== undefined) draft.label.qrDefault = p.qrContent.mode;
           if (p.qrContent.pattern !== undefined) draft.label.qrPattern = p.qrContent.pattern;
         }
+        if (p.fontSizeMode !== undefined) {
+          draft.label.fontSizeMode = p.fontSizeMode === 'manual' ? 'manual' : 'auto';
+        }
+        if (p.fontSize !== undefined) {
+          const n = Number(p.fontSize);
+          if (Number.isFinite(n)) {
+            draft.label.fontSize = Math.min(0.35, Math.max(0.01, n));
+          }
+        }
+        if (p.labelWidth !== undefined) {
+          const n = Number(p.labelWidth);
+          if (Number.isFinite(n)) {
+            draft.label.labelWidth = Math.min(1500, Math.max(100, Math.round(n)));
+          }
+        }
+        if (p.customizeLabelWidth !== undefined) {
+          draft.label.customizeLabelWidth = Boolean(p.customizeLabelWidth);
+        }
       });
     })
     // .addCase(files_actions.CLEAR_FILES, (state, aciton) => {

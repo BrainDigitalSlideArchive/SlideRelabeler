@@ -5,6 +5,42 @@ export const DEFAULT_FIELD_SPEC = { mode: 'output_name', pattern: '' };
 export const OUTPUT_NAME_MODES = ['original', 'uuid', 'pattern'];
 export const LABEL_TEXT_MODES = ['output_name', 'none', 'pattern'];
 export const QR_CONTENT_MODES = ['output_name', 'label_text', 'uuid', 'pattern'];
+export const LABEL_FONT_SIZE_MODES = ['auto', 'manual'];
+export const LABEL_FONT_SIZE_MIN = 0.01;
+export const LABEL_FONT_SIZE_MAX = 0.35;
+export const LABEL_FONT_SIZE_DEFAULT = 0.15;
+/** Unitless UI scale for manual font size (maps linearly onto LABEL_FONT_SIZE_MIN..MAX). */
+export const LABEL_FONT_SIZE_UI_MIN = 1;
+export const LABEL_FONT_SIZE_UI_MAX = 100;
+export const LABEL_WIDTH_DEFAULT = 750;
+export const LABEL_WIDTH_MIN = 100;
+export const LABEL_WIDTH_MAX = 1500;
+
+/**
+ * Map stored fraction (0.01–0.35) → unitless UI size (1–100).
+ */
+export function fontSizeFractionToUi(fraction) {
+  const n = Number(fraction);
+  const clamped = Number.isFinite(n)
+    ? Math.min(LABEL_FONT_SIZE_MAX, Math.max(LABEL_FONT_SIZE_MIN, n))
+    : LABEL_FONT_SIZE_DEFAULT;
+  const span = LABEL_FONT_SIZE_MAX - LABEL_FONT_SIZE_MIN;
+  const t = (clamped - LABEL_FONT_SIZE_MIN) / span;
+  return Math.round(t * (LABEL_FONT_SIZE_UI_MAX - LABEL_FONT_SIZE_UI_MIN) + LABEL_FONT_SIZE_UI_MIN);
+}
+
+/**
+ * Map unitless UI size (1–100) → stored fraction (0.01–0.35).
+ */
+export function fontSizeUiToFraction(uiSize) {
+  const n = Number(uiSize);
+  const clamped = Number.isFinite(n)
+    ? Math.min(LABEL_FONT_SIZE_UI_MAX, Math.max(LABEL_FONT_SIZE_UI_MIN, Math.round(n)))
+    : fontSizeFractionToUi(LABEL_FONT_SIZE_DEFAULT);
+  const span = LABEL_FONT_SIZE_MAX - LABEL_FONT_SIZE_MIN;
+  const t = (clamped - LABEL_FONT_SIZE_UI_MIN) / (LABEL_FONT_SIZE_UI_MAX - LABEL_FONT_SIZE_UI_MIN);
+  return LABEL_FONT_SIZE_MIN + t * span;
+}
 /** Active rename modes after Same-as-file migration (legacy output_name/none coerce to rename off). */
 export const DSA_ALIAS_MODES = ['label_text', 'pattern'];
 export const DSA_ALIAS_LEGACY_SAME_AS_FILE_MODES = ['output_name', 'none'];
@@ -40,6 +76,52 @@ function normalizeItemMetadata(dsaConfig = {}) {
 }
 
 /**
+ * Normalize label fontSizeMode / fontSize (fraction of label width).
+ */
+export function normalizeLabelFontSize(labelConfig = {}) {
+  const mode = LABEL_FONT_SIZE_MODES.includes(labelConfig.fontSizeMode)
+    ? labelConfig.fontSizeMode
+    : 'auto';
+  let fontSize = LABEL_FONT_SIZE_DEFAULT;
+  if (labelConfig.fontSize != null && labelConfig.fontSize !== '') {
+    const n = Number(labelConfig.fontSize);
+    if (Number.isFinite(n)) {
+      fontSize = Math.min(LABEL_FONT_SIZE_MAX, Math.max(LABEL_FONT_SIZE_MIN, n));
+    }
+  }
+  return { fontSizeMode: mode, fontSize };
+}
+
+/**
+ * Normalize stored label canvas width in pixels (clamped).
+ */
+export function normalizeLabelWidthValue(labelConfig = {}) {
+  let labelWidth = LABEL_WIDTH_DEFAULT;
+  if (labelConfig.labelWidth != null && labelConfig.labelWidth !== '') {
+    const n = Number(labelConfig.labelWidth);
+    if (Number.isFinite(n)) {
+      labelWidth = Math.min(LABEL_WIDTH_MAX, Math.max(LABEL_WIDTH_MIN, Math.round(n)));
+    }
+  }
+  return labelWidth;
+}
+
+/**
+ * Effective canvas width: default unless customizeLabelWidth is on.
+ */
+export function getEffectiveLabelWidth(labelConfig = {}) {
+  if (!labelConfig?.customizeLabelWidth) {
+    return LABEL_WIDTH_DEFAULT;
+  }
+  return normalizeLabelWidthValue(labelConfig);
+}
+
+/** @deprecated use normalizeLabelWidthValue / getEffectiveLabelWidth */
+export function normalizeLabelWidth(labelConfig = {}) {
+  return getEffectiveLabelWidth(labelConfig);
+}
+
+/**
  * Migrate legacy label.textDefault / qrDefault / qrPattern into labelText / qrContent specs.
  */
 export function normalizeLabelConfig(labelConfig = {}) {
@@ -56,6 +138,10 @@ export function normalizeLabelConfig(labelConfig = {}) {
     ? normalizeSpec(labelConfig.qrContent, 'output_name')
     : { mode: qrMode, pattern: qrPattern };
 
+  const { fontSizeMode, fontSize } = normalizeLabelFontSize(labelConfig);
+  const labelWidth = normalizeLabelWidthValue(labelConfig);
+  const customizeLabelWidth = Boolean(labelConfig.customizeLabelWidth);
+
   return {
     ...labelConfig,
     labelText,
@@ -63,6 +149,10 @@ export function normalizeLabelConfig(labelConfig = {}) {
     textDefault: labelText.mode,
     qrDefault: qrContent.mode,
     qrPattern: qrContent.pattern,
+    fontSizeMode,
+    fontSize,
+    labelWidth,
+    customizeLabelWidth,
   };
 }
 

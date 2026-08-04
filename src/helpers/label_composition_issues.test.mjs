@@ -40,3 +40,18 @@ test('getLabelCompositionIssues no issues when composition complete', () => {
   );
   assert.equal(issues.length, 0);
 });
+
+test('getLabelCompositionIssues flags multiline label with Use Label QR', () => {
+  const issues = getLabelCompositionIssues(
+    {
+      add_qr: true,
+      qrContent: { mode: 'label_text' },
+      qrDefault: 'label_text',
+    },
+    { labelText: 'line1\nline2', qrPayload: '' },
+    null,
+  );
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].feature, 'qr');
+  assert.ok(issues[0].message.toLowerCase().includes('multiline'));
+});
