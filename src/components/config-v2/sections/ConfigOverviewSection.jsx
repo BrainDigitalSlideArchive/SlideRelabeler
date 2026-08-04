@@ -54,7 +54,7 @@ export const OVERVIEW_GLOSSARY = [
   {
     term: 'Label text',
     definition:
-      'Human-readable text printed on the new slide label image.',
+      'Text printed on the new slide label. It can span more than one line. Edit it per slide in the Label column of the file list, or set defaults and patterns under Settings → Slide label.',
   },
   {
     term: 'Macro image',

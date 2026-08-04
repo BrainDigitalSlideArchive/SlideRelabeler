@@ -189,6 +189,7 @@ const AppAgGrid = (props) => {
         enableCellTextSelection={enableCellTextSelection}
         undoRedoCellEditing={undoRedoCellEditing}
         undoRedoCellEditingLimit={undoRedoCellEditingLimit}
+        stopEditingWhenCellsLoseFocus={true}
         readOnlyEdit={true}
         getRowId={getRowId}
         getRowStyle={getRowStyle}

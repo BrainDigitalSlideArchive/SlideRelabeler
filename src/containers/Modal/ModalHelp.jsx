@@ -35,7 +35,7 @@ const SETTINGS_LINKS = [
   {
     id: 'config-slide-label',
     label: 'Slide label',
-    detail: 'label text, QR content, and optional icon',
+    detail: 'Label text (including multi-line), QR content, optional icon, font size, and label width',
   },
   {
     id: 'config-data-loading',
@@ -179,7 +179,8 @@ function ModalHelp() {
                 <li>
                   Another method is <Ui>CSV Import</Ui>. With a spreadsheet, you can define the location and
                   filename of many files at once, along with other columns the application can use (for example
-                  output names or label text). Column mapping and a sample template live under{' '}
+                  output names or label text; multi-line label cells work when the spreadsheet keeps the line
+                  break inside the cell). Column mapping and a sample template live under{' '}
                   <SettingsLink sectionId="config-data-loading">Settings → Data loading</SettingsLink>.
                 </li>
                 <li>
@@ -209,7 +210,11 @@ function ModalHelp() {
                 <li>
                   Many cells are editable: click a value such as <Ui>Output name</Ui>, <Ui>Label</Ui>, or{' '}
                   <Ui>QR</Ui> and change it directly in the table. Those edits can change the replacement label
-                  and the name of the de-identified file.
+                  and the name of the de-identified file. <Ui>Label</Ui> can use more than one line—press Enter
+                  in the editor for a new line. Tab or ⌘/Ctrl+Enter saves; Escape discards. Clicking outside
+                  the editor also saves. Multi-line labels show a ↵ mark in the table; hover to read the full
+                  text. Defaults and patterns for label text are under{' '}
+                  <SettingsLink sectionId="config-slide-label">Settings → Slide label</SettingsLink>.
                 </li>
                 <li>
                   <Ui>Copy To</Ui> lets you choose a per-row destination folder when you are saving locally,

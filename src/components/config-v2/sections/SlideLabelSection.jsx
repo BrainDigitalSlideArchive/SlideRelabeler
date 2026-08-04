@@ -15,9 +15,10 @@ import LabelComposer from './slide-label/LabelComposer';
 
 const SLIDE_LABEL_HELP = (
   <>
-    Choose what appears on the printed slide label: text, a QR code, and/or an icon. For text and QR,
-    set how empty cells are filled by default. Use <strong>Test it out</strong> to preview on the
-    sample row or the first loaded file.
+    Choose what appears on the printed slide label: text, a QR code, and/or an icon. Label text can use
+    multiple lines—press Enter in a custom pattern for a new line. For text and QR, set how empty cells are
+    filled by default. Use <strong>Test it out</strong> to preview on the sample row or the first loaded
+    file.
   </>
 );
 

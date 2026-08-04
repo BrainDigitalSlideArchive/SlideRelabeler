@@ -171,6 +171,7 @@ export default function ConfigPreviewRowEditor({
             defaultColDef={previewDefaultColDef}
             theme={fileTableTheme}
             readOnlyEdit
+            stopEditingWhenCellsLoseFocus={true}
             rowStyle={fileTableRowStyle}
             onCellEditRequest={handleCellEditRequest}
             onGridReady={lockColumnWidths}

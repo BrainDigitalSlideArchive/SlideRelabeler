@@ -6,6 +6,7 @@ import { markNamingFieldSource, NAMING_SOURCE } from './row_naming_defaults.js';
 import { DESTINATION_SOURCE, markDestinationSource } from './destination_directory.js';
 import AssociatedImagesIcons from '../components/AgGrid/AssociatedImagesIcons.jsx';
 import RenameCellEditor from '../components/AgGrid/RenameCellEditor.jsx';
+import LabelTextCellEditor from '../components/AgGrid/LabelTextCellEditor.jsx';
 import OverflowTitle from '../components/AgGrid/OverflowTitle.jsx';
 import OutputFilenameDisplay, { splitPathBasename } from '../components/AgGrid/OutputFilenameDisplay.jsx';
 import CollapsedPathIconCell from '../components/AgGrid/CollapsedPathIconCell.jsx';
@@ -361,18 +362,25 @@ export function setupOverflowTextRenderer(file_cols, fields = OVERFLOW_TEXT_FIEL
   });
 }
 
-/** Popup large-text editor for multiline label text (Enter inserts newlines). */
+/**
+ * Popup multiline editor for label text.
+ * Enter / Shift+Enter = newline (suppress grid); Tab = commit+move;
+ * Escape = revert; Cmd/Ctrl+Enter = commit then next cell.
+ */
 export function setupLabelTextLargeTextEditor(file_cols) {
   return file_cols.map((col) => {
     if (col?.field !== '__reserved.labelText') return col;
     return {
       ...col,
-      cellEditor: 'agLargeTextCellEditor',
+      cellEditor: LabelTextCellEditor,
       cellEditorPopup: true,
-      cellEditorParams: {
-        rows: 4,
-        cols: 40,
-        maxLength: 4000,
+      // PopupEditorWrapper listens natively before React onKeyDown; suppress so Enter
+      // inserts a newline instead of committing. Let Cmd/Ctrl+Enter through.
+      suppressKeyboardEvent: ({ editing, event }) => {
+        if (!editing) return false;
+        if (event.key !== 'Enter') return false;
+        if (event.metaKey || event.ctrlKey) return false;
+        return true;
       },
     };
   });
