@@ -4,6 +4,7 @@ import * as files_actions from '../../actions/files';
 import * as debug_actions from '../../actions/debug';
 import { buildFileRowErrorFromBackend } from '../../helpers/grpc_helpers';
 import { initDestinationSource } from '../../helpers/destination_directory.js';
+import { liftDeidFormatFromMetadataReply } from '../../helpers/deid_format_support.js';
 
 function isMetadataTerminal(file_row) {
     const reserved = file_row?.__reserved;
@@ -28,6 +29,7 @@ export function* update_file_metadata(file_row_idx, file_row) {
 
         let metadata = yield call(electronAPI.getMetadata, file_row.__reserved.source.path);
         metadata = Object.assign({}, file_row.__reserved, metadata);
+        liftDeidFormatFromMetadataReply(metadata);
 
         let output_dir = yield select(state => state.files.output_dir);
 

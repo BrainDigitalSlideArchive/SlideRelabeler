@@ -6,7 +6,31 @@ import {
   parseStoredRowError,
   extractBackendErrorCause,
   buildUserFacingErrorSummary,
+  isUnsupportedFormatSummary,
+  structToObject,
 } from './grpc_helpers.js';
+
+test('structToObject decodes GetMetadata-shaped protobuf Struct fields', () => {
+  const raw = {
+    fields: {
+      deid_format: { stringValue: 'aperio' },
+      sizeX: { numberValue: 46000 },
+    },
+  };
+  const decoded = structToObject(raw);
+  assert.equal(decoded.deid_format, 'aperio');
+  assert.equal(decoded.sizeX, 46000);
+});
+
+test('structToObject preserves empty deid_format string', () => {
+  const decoded = structToObject({
+    fields: {
+      deid_format: { stringValue: '' },
+    },
+  });
+  assert.equal(decoded.deid_format, '');
+  assert.equal(Object.prototype.hasOwnProperty.call(decoded, 'deid_format'), true);
+});
 
 test('formatBackendError returns user-facing summary for tilesource errors', () => {
   const err = {
@@ -105,4 +129,16 @@ test('buildFileRowErrorFromBackend maps FORMAT NOT AVAILABLE from PreviewMetadat
   };
   const { summary } = buildFileRowErrorFromBackend(err, 'Metadata preview failed');
   assert.match(summary, /not supported for de-identification/i);
+});
+
+test('buildFileRowErrorFromBackend maps unsupported_format from DeidProcess', () => {
+  const err = {
+    details: 'internal_error:DeidProcess: Exception: unsupported_format:unknown: This slide has no vendor metadata SlideRelabeler can de-identify.',
+    message: "Error invoking remote method 'process-file': Error: 13 INTERNAL: internal_error:DeidProcess: Exception: unsupported_format:unknown: This slide has no vendor metadata SlideRelabeler can de-identify.",
+  };
+  const { summary, details } = buildFileRowErrorFromBackend(err, 'Error processing file');
+  assert.equal(isUnsupportedFormatSummary(summary), true);
+  assert.match(summary, /copy files without changing them/i);
+  assert.doesNotMatch(summary, /re-downloading/i);
+  assert.match(details, /unsupported_format/);
 });

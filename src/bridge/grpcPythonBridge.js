@@ -624,11 +624,12 @@ export class GrpcPythonBridge {
         // - ProgressReply -> resp (typed)
         //
         // Note: with proto-loader defaults=true, missing fields appear as defaults.
-        // Also Struct is represented as a plain JS object with proto-loader.
+        // google.protobuf.Struct arrives as { fields: { key: Value } }; decode with
+        // structToObject before handing metadata to the renderer.
 
         if (methodName === "GetMetadata") {
           resolve({
-            metadata: resp.metadata ?? {},
+            metadata: structToObject(resp.metadata ?? {}),
             associatedImages: resp.associated_images ?? [],
             bytes: Number(resp.bytes ?? 0),
           });

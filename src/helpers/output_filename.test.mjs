@@ -27,6 +27,16 @@ describe('normalizeFilenameConfig', () => {
     const n = normalizeFilenameConfig({ use_uuid: true });
     assert.equal(n.source, 'uuid');
   });
+
+  it('defaults preserve_source_extension to false', () => {
+    const n = normalizeFilenameConfig({});
+    assert.equal(n.preserve_source_extension, false);
+  });
+
+  it('keeps preserve_source_extension when set', () => {
+    const n = normalizeFilenameConfig({ preserve_source_extension: true });
+    assert.equal(n.preserve_source_extension, true);
+  });
 });
 
 describe('migrateFilenameConfig', () => {

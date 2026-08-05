@@ -13,6 +13,7 @@ export const DEFAULT_FILENAME_CONFIG = {
   pattern: '',
   use_uuid: true,
   style: 'uuid',
+  preserve_source_extension: false,
 };
 
 const OUTPUT_FILENAME_COLUMN_DENYLIST = new Set([
@@ -112,6 +113,7 @@ export function normalizeFilenameConfig(filenameConfig = {}) {
     source,
     use_uuid: source === 'uuid',
     style: source === 'uuid' ? 'uuid' : 'readable',
+    preserve_source_extension: !!merged.preserve_source_extension,
   };
 }
 

@@ -11,6 +11,7 @@ import ConfigSectionPanel from '../primitives/ConfigSectionPanel';
 import ConfigSettingHeader from '../primitives/ConfigSettingHeader';
 import ConfigBooleanRow from '../primitives/ConfigBooleanRow';
 import ConfigChoiceChips from '../primitives/ConfigChoiceChips';
+import ConfigHelperText from '../primitives/ConfigHelperText';
 import {
   DISCLAIMER_PROMPT_ALLOW_REMEMBER,
   DISCLAIMER_PROMPT_EVERY_LAUNCH,
@@ -45,6 +46,9 @@ export default function ConfigAdvancedSection() {
 
   const saveMacro = useSelector((state) => !!state.config.wsi?.save_macro_image);
   const copyUnchanged = useSelector((state) => !!state.config.copy?.enable_copy_mode);
+  const preserveSourceExtension = useSelector(
+    (state) => !!state.config.filename?.preserve_source_extension,
+  );
   const showDebug = useSelector((state) => !!state.config.debug?.enable_debug);
   const disclaimer = useSelector((state) => state.config.disclaimer);
   const promptMode = disclaimer?.promptMode === DISCLAIMER_PROMPT_ALLOW_REMEMBER
@@ -134,6 +138,25 @@ export default function ConfigAdvancedSection() {
           disabled={disabled}
           onClick={() => dispatch({ type: config_actions.TOGGLE_ENABLE_COPY_MODE })}
         />
+
+        <ConfigSettingHeader
+          title="File extension"
+          description="By default, SlideRelabeler saves each de-identified file with the usual extension for that slide type (for example .svs or .tiff). Turn this on if you need to keep the original file extension exactly as it is (for example preserving capitalization, or .tif instead of .tiff), and normalizing the extension is not allowed."
+        />
+        <ConfigBooleanRow
+          label="Keep the original file extension"
+          checked={preserveSourceExtension}
+          disabled={disabled}
+          onClick={() =>
+            dispatch({
+              type: config_actions.SET_FILENAME_CONFIG,
+              payload: { preserve_source_extension: !preserveSourceExtension },
+            })
+          }
+        />
+        <ConfigHelperText>
+          This does not change how the file name itself is chosen under Output name — only the ending after the final dot. When this is on, the saved file keeps the same extension as the original.
+        </ConfigHelperText>
 
         <ConfigSettingHeader
           title="Troubleshooting"

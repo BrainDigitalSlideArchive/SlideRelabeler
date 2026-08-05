@@ -10,6 +10,7 @@ export const default_state = {
     column: '',
     use_uuid: true,
     style: 'uuid',
+    preserve_source_extension: false,
   },
   csv: {
     save_csv: true,

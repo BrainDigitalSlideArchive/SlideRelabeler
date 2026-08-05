@@ -1,11 +1,11 @@
 // helpers/esm_profile_helpers.js — eSM profile model, migration, and pattern application.
 
-import { applyRules } from './esm_transform_rules';
-import { buildEsmFieldTransforms, TRANSFORMABLE_ESM_FIELDS } from './esm_transform_cell';
-import { buildColumnAliasMap, evaluateFieldPattern } from './pattern_engine';
-import { getAccessionFromBarcodeId } from './esm_filename_helpers';
-import { applyDuplicateStrategy } from './slide_naming';
-import { markNamingFieldSource, NAMING_SOURCE } from './row_naming_defaults';
+import { applyRules } from './esm_transform_rules.js';
+import { buildEsmFieldTransforms, TRANSFORMABLE_ESM_FIELDS } from './esm_transform_cell.js';
+import { buildColumnAliasMap, evaluateFieldPattern } from './pattern_engine.js';
+import { getAccessionFromBarcodeId } from './esm_filename_helpers.js';
+import { applyDuplicateStrategy } from './slide_naming.js';
+import { markNamingFieldSource, NAMING_SOURCE } from './row_naming_defaults.js';
 import { isHiddenFileTableColumn } from './file_table_columns.js';
 
 export const ESM_OUTPUT_NAME_TARGET = '__reserved.rename';

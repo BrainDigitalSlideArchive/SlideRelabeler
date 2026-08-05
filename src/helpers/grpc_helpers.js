@@ -208,6 +208,17 @@ function pathSummaryFromCause(cause, errCode = '') {
   return summaryFromPathErrorCode('inaccessible');
 }
 
+/**
+ * Slide opens fine but carries no vendor metadata to de-identify (e.g. a slide
+ * converted to plain pyramidal TIFF). Re-downloading it will not help.
+ */
+export const UNSUPPORTED_FORMAT_SUMMARY =
+  'This slide has no vendor metadata to de-identify, so it is not supported for de-identification or metadata preview. It can still be delivered with "Copy files without changing them".';
+
+export function isUnsupportedFormatSummary(summary) {
+  return String(summary || '').trim() === UNSUPPORTED_FORMAT_SUMMARY;
+}
+
 export function buildUserFacingErrorSummary(cause, context = '', errCode = '') {
   if (isPathAccessCause(cause, errCode)) {
     return pathSummaryFromCause(cause, errCode);
@@ -224,8 +235,8 @@ export function buildUserFacingErrorSummary(cause, context = '', errCode = '') {
   if (lower.includes('no ifds')) {
     return 'This file does not appear to be a valid whole-slide image (missing image data).';
   }
-  if (lower.includes('format not available for deid')) {
-    return 'This file format is not supported for de-identification / metadata preview.';
+  if (lower.includes('unsupported_format:') || lower.includes('format not available for deid')) {
+    return UNSUPPORTED_FORMAT_SUMMARY;
   }
   if (context.toLowerCase().includes('metadata')) {
     return 'Metadata could not be read for this file. The file may be unreadable or in an unsupported format.';

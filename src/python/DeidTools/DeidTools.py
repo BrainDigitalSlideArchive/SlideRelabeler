@@ -72,6 +72,11 @@ from .czi_metadata import (
     sanitize_czi_metadata_xml,
     write_czi_metadata_xml,
 )
+from .output_extension import resolve_output_extension
+from .format_sniff import (
+    READER_CANDIDATES_FOR_FORMAT,
+    sniff_wsi_format,
+)
 
 # TODO: fix/test text size in generated label.
 # TODO: debug issue with libtiff large image source in MACOSX.
@@ -518,7 +523,7 @@ class DeidTools:
             if preview_metadata:
                 return prior_ifds, ifds
             else:
-                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "tiff")
+                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "philips")
 
     def redact_format_aperio(self, item: ImageItem, output_dir, redactList, title, labelImage, macroImage, preview_metadata=False):
         """
@@ -643,8 +648,40 @@ class DeidTools:
             if preview_metadata:
                 return prior_ifds, ifds
             else:
-                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "svs")
-        
+                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "aperio")
+
+    def _preserve_source_extension(self) -> bool:
+        output_dict = getattr(self, '_deid_output_dict', None) or {}
+        filename_cfg = (output_dict.get('config') or {}).get('filename') or {}
+        return bool(filename_cfg.get('preserve_source_extension'))
+
+    def _source_extension(self, source_path: str = None, output_dict=None) -> str:
+        reserved = (output_dict or getattr(self, '_deid_output_dict', None) or {}).get(
+            '__reserved'
+        ) or {}
+        source = reserved.get('source') or {}
+        ext = (source.get('parsed') or {}).get('ext')
+        if ext:
+            return ext
+        filename = source.get('filename')
+        if filename:
+            return os.path.splitext(filename)[1]
+        if source_path:
+            return os.path.splitext(source_path)[1]
+        path = source.get('path')
+        if path:
+            return os.path.splitext(path)[1]
+        return ''
+
+    def _detect_format_for_extension_policy(self, path: str):
+        """
+        Detect vendor format for extension policy (prediction and write).
+
+        Header-only sniff: name prediction must not pay for opening a slide.
+        An unknown format resolves to the source extension, so a plain TIFF is
+        never renamed as though it were a vendor file.
+        """
+        return sniff_wsi_format(path)
 
     def get_final_output_path(self, desired_output_path):
         no_desired_output_path = True
@@ -667,8 +704,12 @@ class DeidTools:
 
         return output_path        
 
-    def handle_write_tiff(self, sourcePath, ifds, output_dir, title, ext_without_dot):
-        output_path = os.path.join(output_dir, '{}.{}'.format(title, ext_without_dot))
+    def handle_write_tiff(self, sourcePath, ifds, output_dir, title, format_name):
+        source_ext = self._source_extension(sourcePath)
+        ext = resolve_output_extension(
+            format_name, source_ext, self._preserve_source_extension()
+        )
+        output_path = os.path.join(output_dir, '{}{}'.format(title, ext))
         final_output_path = self.get_final_output_path(output_path)
         partial_output_path = os.path.join('{}.partial'.format(final_output_path))
 
@@ -686,7 +727,11 @@ class DeidTools:
 
     def handle_write_czi(self, sourcePath, scrubbed_xml, output_dir, title, labelImage=None, macroImage=None):
         """Copy source CZI, commit sanitized metadata XML, replace Label/SlidePreview."""
-        output_path = os.path.join(output_dir, '{}.czi'.format(title))
+        source_ext = self._source_extension(sourcePath)
+        ext = resolve_output_extension(
+            'czi', source_ext, self._preserve_source_extension()
+        )
+        output_path = os.path.join(output_dir, '{}{}'.format(title, ext))
         final_output_path = self.get_final_output_path(output_path)
         partial_output_path = '{}.partial'.format(final_output_path)
 
@@ -761,6 +806,7 @@ class DeidTools:
 
 
     def get_output_path(self, output_dict):
+        self._deid_output_dict = output_dict
         if output_dict['config']['copy']['enable_copy_mode']:
             return os.path.join(output_dict['__reserved']['destinationDirectory'], output_dict['__reserved']['source']['filename'])
         else:
@@ -965,10 +1011,7 @@ class DeidTools:
             if str(source_path).lower().endswith('.czi'):
                 from .czi_tilesource import register_czi_tile_source
                 register_czi_tile_source()
-            if desired_title is not None:
-                curItem = ImageItem(source_path, {"name": desired_title})
-            else:
-                curItem = ImageItem(source_path)
+            curItem, _format = self.open_item_for_deid(source_path, desired_title)
 
             if str(source_path).lower().endswith('.czi'):
                 from .wsi_deid_process import get_standard_redactions_format_czi
@@ -1132,16 +1175,19 @@ class DeidTools:
         return temp
 
     def get_rename(self, output_dict):
-        config = output_dict.get('config', {})
-        filename_config = config.get('filename', {})
         reserved = output_dict.get('__reserved', {})
         source = reserved.get('source', {})
 
         temp = self._resolve_output_basename(output_dict)
 
-        ext = source.get('parsed', {}).get('ext')
-        if not ext and source.get('filename'):
-            ext = os.path.splitext(source.get('filename'))[1]
+        source_ext = self._source_extension(source.get('path'), output_dict)
+        preserve = bool(
+            (output_dict.get('config') or {})
+            .get('filename', {})
+            .get('preserve_source_extension')
+        )
+        fmt = self._detect_format_for_extension_policy(source.get('path'))
+        ext = resolve_output_extension(fmt, source_ext, preserve)
         if ext:
             temp = temp + ext
 
@@ -1165,11 +1211,7 @@ class DeidTools:
             from .wsi_deid_process import get_standard_redactions_format_czi
             register_czi_tile_source()
 
-        if desired_title is not None:
-            curItem = ImageItem(filename, {"name": desired_title})
-        else:
-            curItem = ImageItem(filename)
-
+        curItem, _format = self.open_item_for_deid(filename, desired_title)
         tileSource = curItem.tileSource
 
         if str(filename).lower().endswith('.czi'):
@@ -1334,7 +1376,7 @@ class DeidTools:
             if preview_metadata:
                 return prior_ifds, ifds
             else:
-                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ome.tif")
+                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ometiff")
 
     def redact_format_hamamatsu(self, item, output_dir, redactList, title, labelImage, macroImage, preview_metadata=False):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1393,8 +1435,8 @@ class DeidTools:
             if preview_metadata:
                 return prior_ifds, ifds
             else:
-                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "ndpi")
-            
+                return self.handle_write_tiff(sourcePath, ifds, output_dir, title, "hamamatsu")
+
     def determine_format(self, tileSource):
         internal_metadata = tileSource.getInternalMetadata() or {}
         try:
@@ -1416,6 +1458,7 @@ class DeidTools:
             return None
 
     def setup_deid(self, output_dict):
+        self._deid_output_dict = output_dict
         filename = output_dict['__reserved']['source']['path']
         output_dir = output_dict['__reserved']['destinationDirectory']
 
@@ -1450,34 +1493,92 @@ class DeidTools:
                 raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: czi"}))
             return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format
 
-        if desired_title is not None:
-            curItem = ImageItem(filename, {"name": desired_title})
-        else:
-            curItem = ImageItem(filename)
-
-        redactList = get_standard_redactions(curItem, desired_title)
-
-        newTitle = get_generated_title(
-            curItem
-        )  # The newtitle is the filename without the extension
+        curItem, format = self.open_item_for_deid(filename, desired_title)
         tileSource = curItem.tileSource
-
-        format = determine_format(tileSource)
-
-        if format is None:
-            format = self.determine_format(tileSource)
-
-        labelImage = self.get_deid_label(output_dict)
-        macroImage = self.get_deid_macro(output_dict)
 
         func = None
         if format is not None:
             # fadvise_willneed(curItem)  ## DETERMINE WHAT THIS FUNCTION DOSE..
             func = getattr(self, "redact_format_" + format, None)
         if func is None:
-            raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: {}".format(format)}))
+            raise Exception(
+                "unsupported_format:{}: This slide has no vendor metadata "
+                "SlideRelabeler can de-identify.".format(format or 'unknown')
+            )
+
+        redactList = get_standard_redactions(curItem, desired_title)
+
+        newTitle = get_generated_title(
+            curItem
+        )  # The newtitle is the filename without the extension
+
+        labelImage = self.get_deid_label(output_dict)
+        macroImage = self.get_deid_macro(output_dict)
 
         return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format
+
+    def _reopen_with_reader(self, path, desired_title, reader):
+        """Reopen ``path`` with a named large_image reader, or None if it cannot."""
+        try:
+            if reader == 'openslide':
+                import large_image_source_openslide
+
+                tile_source = large_image_source_openslide.OpenslideFileTileSource(path)
+            elif reader == 'ometiff':
+                import large_image_source_ometiff
+
+                tile_source = large_image_source_ometiff.OMETiffFileTileSource(path)
+            else:
+                return None
+
+            name = desired_title
+            if name is None:
+                name = os.path.splitext(os.path.basename(path))[0]
+            item = ImageItem(path, {"name": name}, skip_open=True)
+            item.tileSource = tile_source
+            return item
+        except Exception as exc:
+            if self.debug:
+                self.logger.info(
+                    "Reopen with %s reader failed for %s: %s", reader, path, exc
+                )
+            return None
+
+    def open_item_for_deid(self, path, desired_title):
+        """
+        Open ``path`` with a reader that exposes its vendor metadata.
+
+        large_image picks a reader from the file extension, so a vendor slide with
+        an unexpected extension (a `.tiff` Aperio file) opens through the plain
+        tiff reader and looks format-less.  Sniffing the file says which reader is
+        worth retrying; the reopened reader still has to report the format itself,
+        because each redaction plan reads that reader's own metadata.
+
+        :returns: (item, format) — format is None when nothing identifies it.
+        """
+        if desired_title is not None:
+            item = ImageItem(path, {"name": desired_title})
+        else:
+            item = ImageItem(path)
+
+        format = determine_format(item.tileSource) or self.determine_format(item.tileSource)
+        if format is not None:
+            return item, format
+
+        for reader in READER_CANDIDATES_FOR_FORMAT.get(sniff_wsi_format(path), ()):
+            if item.tileSource.name == reader:
+                continue
+            reopened = self._reopen_with_reader(path, desired_title, reader)
+            if reopened is None:
+                continue
+            format = (
+                determine_format(reopened.tileSource)
+                or self.determine_format(reopened.tileSource)
+            )
+            if format is not None:
+                return reopened, format
+
+        return item, None
 
     def preview_metadata(self, output_dict):
         curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format = self.setup_deid(output_dict)

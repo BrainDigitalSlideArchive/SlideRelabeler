@@ -394,8 +394,18 @@ def openFile(file: str, second: bool = False):
 def getMetadata(file: str) -> Dict[str, Any]:
   _assert_slide_path_readable(file)
   source = openFile(file)
+  metadata = source.getMetadata()
+  # Vendor format from the file itself, so the app can tell a de-identifiable
+  # slide from a plain pyramidal TIFF before a run starts.  '' means "opens, but
+  # nothing to de-identify". Omit the key if sniffing fails so the UI fails open.
+  try:
+    from DeidTools.format_sniff import sniff_wsi_format
+
+    metadata["deid_format"] = sniff_wsi_format(file) or ""
+  except Exception:
+    pass
   return {
-    "metadata": source.getMetadata(),
+    "metadata": metadata,
     "associatedImages": source.getAssociatedImagesList(),
     "bytes": os.path.getsize(file),
   }
@@ -590,9 +600,7 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
       return engine_pb2.StructReply(data=any_to_struct(out))
     except Exception:
       exc = traceback.format_exc()
-      _push_error(exc)
-      context.set_code(grpc.StatusCode.INTERNAL)
-      context.set_details("internal_error")
+      _set_internal_error(context, "DeidProcess", exc)
       return engine_pb2.StructReply()
 
   # --- Utilities / diagnostics ---
@@ -603,9 +611,7 @@ class EngineService(engine_pb2_grpc.EngineServiceServicer):
       return engine_pb2.StringReply(value=str(out))
     except Exception:
       exc = traceback.format_exc()
-      _push_error(exc)
-      context.set_code(grpc.StatusCode.INTERNAL)
-      context.set_details("internal_error")
+      _set_internal_error(context, "GetOutputPath", exc)
       return engine_pb2.StringReply()
 
   def GetProgress(self, request: engine_pb2.StructRequest, context: grpc.ServicerContext) -> engine_pb2.ProgressReply:

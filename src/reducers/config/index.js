@@ -21,6 +21,7 @@ function syncFilenameLegacyFields(draft) {
   draft.filename.source = normalized.source;
   draft.filename.use_uuid = normalized.use_uuid;
   draft.filename.style = normalized.style;
+  draft.filename.preserve_source_extension = normalized.preserve_source_extension;
 }
 
 // Helper function to deep merge config with defaults
