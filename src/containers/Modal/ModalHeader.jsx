@@ -4,7 +4,14 @@ import * as modal_actions from "../../actions/modal";
 import Switch from '../../components/controls/switch/Switch';
 
 function ModalHeader(props) {
-  const { title, type, onClose, display_changed_only, hideClose = false} = props;
+  const {
+    title,
+    type,
+    onClose,
+    display_changed_only,
+    show_changed_only = true,
+    hideClose = false,
+  } = props;
   const dispatch = useDispatch();
 
   return (
@@ -12,7 +19,7 @@ function ModalHeader(props) {
       <div className={"__title"}>{title}</div>
       <div className={"__spacer"}/>
       {
-        type === "metadata" &&
+        type === "metadata" && show_changed_only &&
         <Switch label="Changed Only" checked={display_changed_only} onChange={() => dispatch({type: modal_actions.TOGGLE_DISPLAY_CHANGED_ONLY})} />
       }
       {!hideClose ? (

@@ -111,6 +111,15 @@ build
 src/python/tests/dist
 src/python/tests/build
 
+# Native libCZI helper build trees
+native/czi_rw/build/
+native/czi_rw/**/CMakeFiles/
+native/czi_rw/**/*.so
+native/czi_rw/**/*.pyd
+native/czi_rw/**/*.dylib
+# Clone separately: git clone --depth 1 https://github.com/ZEISS/libczi.git native/czi_rw/third_party/libczi
+native/czi_rw/third_party/libczi/
+
 # Python bytecode
 __pycache__/
 *.py[cod]

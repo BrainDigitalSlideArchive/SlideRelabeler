@@ -65,6 +65,13 @@ from .wsi_deid_process import (
 from . import config
 from .file_io import TrackingFileIO
 from .DeIdImageItem import DeIdImageItem as ImageItem
+from .czi_metadata import (
+    flatten_czi_fields_to_fake_ifds,
+    pretty_print_czi_xml,
+    read_czi_metadata_xml,
+    sanitize_czi_metadata_xml,
+    write_czi_metadata_xml,
+)
 
 # TODO: fix/test text size in generated label.
 # TODO: debug issue with libtiff large image source in MACOSX.
@@ -397,7 +404,7 @@ class DeidTools:
             its mimetype.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            tileSource = ImageItem().tileSource(item)
+            tileSource = ImageItem.tile_source_from_item(item)
             sourcePath = tileSource._getLargeImagePath()
             tiffinfo = tifftools.read_tiff(sourcePath)
             xmldict = tileSource._tiffDirectories[-1]._description_record
@@ -667,7 +674,7 @@ class DeidTools:
 
         if os.path.exists(partial_output_path):
             os.unlink(partial_output_path)
-        
+
         tracking_file_io = TrackingFileIO(partial_output_path, 'w')
 
         tifftools.write_tiff(ifds, tracking_file_io)
@@ -676,6 +683,81 @@ class DeidTools:
         if self.debug:
             self.logger.info("Redacted file %s to %s", sourcePath, output_path)
         return output_path, "image/tiff"
+
+    def handle_write_czi(self, sourcePath, scrubbed_xml, output_dir, title, labelImage=None, macroImage=None):
+        """Copy source CZI, commit sanitized metadata XML, replace Label/SlidePreview."""
+        output_path = os.path.join(output_dir, '{}.czi'.format(title))
+        final_output_path = self.get_final_output_path(output_path)
+        partial_output_path = '{}.partial'.format(final_output_path)
+
+        if os.path.exists(partial_output_path):
+            os.unlink(partial_output_path)
+
+        from .czi_attachment_write import (
+            list_czi_attachment_names_via_czifile,
+            replace_label_and_macro_attachments,
+            verify_czi_attachments_intact,
+        )
+
+        try:
+            source_attachment_names = list_czi_attachment_names_via_czifile(sourcePath)
+        except Exception as exc:
+            raise Exception(json.dumps({
+                'error': 'Could not read source CZI attachments before write: {}'.format(exc),
+            }))
+
+        shutil.copy2(sourcePath, partial_output_path)
+        try:
+            write_czi_metadata_xml(partial_output_path, scrubbed_xml)
+            replace_label_and_macro_attachments(partial_output_path, labelImage, macroImage)
+            expected_present = []
+            if labelImage is not None:
+                expected_present.append('Label')
+            if macroImage is not None:
+                expected_present.append('SlidePreview')
+            verify_czi_attachments_intact(
+                partial_output_path,
+                required_names=source_attachment_names,
+                expected_present=expected_present,
+            )
+        except Exception:
+            try:
+                if os.path.exists(partial_output_path):
+                    os.unlink(partial_output_path)
+            except OSError:
+                pass
+            raise
+
+        output_path = self.attempt_replace_wsi_file(partial_output_path, output_path)
+        if self.debug:
+            self.logger.info("Redacted CZI file %s to %s", sourcePath, output_path)
+        return output_path, "image/czi"
+
+    def redact_format_czi(self, item, output_dir, redactList, title, labelImage, macroImage, preview_metadata=False):
+        """
+        Sanitize Zeiss CZI metadata XML and replace Label / SlidePreview attachments.
+        Does not open via OpenSlide / large_image.
+        """
+        sourcePath = getattr(item, 'filePath', None) or getattr(item, '_largeImagePath', None)
+        if not sourcePath:
+            tile_source = getattr(item, 'tileSource', None)
+            if tile_source is not None and hasattr(tile_source, '_getLargeImagePath'):
+                sourcePath = tile_source._getLargeImagePath()
+        if not sourcePath:
+            raise Exception(json.dumps({"error": "CZI source path missing for redact"}))
+        raw_xml = read_czi_metadata_xml(sourcePath)
+        scrubbed_xml, prior_vals, after_vals = sanitize_czi_metadata_xml(
+            raw_xml, title, redactList.get('metadata') or {}
+        )
+        prior_ifds, new_ifds = flatten_czi_fields_to_fake_ifds(prior_vals, after_vals)
+        if preview_metadata:
+            return prior_ifds, new_ifds, {
+                'prior_xml': pretty_print_czi_xml(raw_xml),
+                'new_xml': pretty_print_czi_xml(scrubbed_xml),
+            }
+        return self.handle_write_czi(
+            sourcePath, scrubbed_xml, output_dir, title, labelImage, macroImage
+        )
 
 
     def get_output_path(self, output_dict):
@@ -880,12 +962,21 @@ class DeidTools:
 
         if not compose_only:
             source_path = output_dict['__reserved']['source']['path']
+            if str(source_path).lower().endswith('.czi'):
+                from .czi_tilesource import register_czi_tile_source
+                register_czi_tile_source()
             if desired_title is not None:
                 curItem = ImageItem(source_path, {"name": desired_title})
             else:
                 curItem = ImageItem(source_path)
 
-            redactList = get_standard_redactions(curItem, desired_title)
+            if str(source_path).lower().endswith('.czi'):
+                from .wsi_deid_process import get_standard_redactions_format_czi
+                redactList = get_standard_redactions_format_czi(
+                    curItem, curItem.tileSource, None, desired_title or curItem.name
+                )
+            else:
+                redactList = get_standard_redactions(curItem, desired_title)
 
             tileSource = curItem.tileSource
 
@@ -901,9 +992,9 @@ class DeidTools:
                 and not config.getConfig("always_redact_label")
             ) or label_geojson is not None:
                 try:
-                    labelImage = PIL.Image.open(
-                        io.BytesIO(tileSource.getAssociatedImage("label")[0])
-                    )
+                    assoc = tileSource.getAssociatedImage("label")
+                    if assoc:
+                        labelImage = PIL.Image.open(io.BytesIO(assoc[0]))
                 except Exception:
                     pass
             if label_geojson is not None and labelImage is not None:
@@ -1069,6 +1160,11 @@ class DeidTools:
 
         desired_title = self._resolve_output_basename(output_dict)
 
+        if str(filename).lower().endswith('.czi'):
+            from .czi_tilesource import register_czi_tile_source
+            from .wsi_deid_process import get_standard_redactions_format_czi
+            register_czi_tile_source()
+
         if desired_title is not None:
             curItem = ImageItem(filename, {"name": desired_title})
         else:
@@ -1076,7 +1172,12 @@ class DeidTools:
 
         tileSource = curItem.tileSource
 
-        redactList = get_standard_redactions(curItem, desired_title)
+        if str(filename).lower().endswith('.czi'):
+            redactList = get_standard_redactions_format_czi(
+                curItem, tileSource, None, desired_title or curItem.name
+            )
+        else:
+            redactList = get_standard_redactions(curItem, desired_title)
 
         return curItem, tileSource, redactList
 
@@ -1096,12 +1197,12 @@ class DeidTools:
             try:
                 if 'wsi' in output_dict['config']:
                     if output_dict['config']['wsi']['save_macro_image']:
-                        macroImage = PIL.Image.open(
-                            io.BytesIO(tileSource.getAssociatedImage("macro")[0])
-                        )
-                        if redact_square:
+                        assoc = tileSource.getAssociatedImage("macro")
+                        if assoc:
+                            macroImage = PIL.Image.open(io.BytesIO(assoc[0]))
+                        if macroImage is not None and redact_square:
                             macroImage = redact_topleft_square(macroImage)
-                        elif macro_geojson:
+                        elif macroImage is not None and macro_geojson:
                             macroImage = redact_image_area(macroImage, macro_geojson)
 
                         # ImageItem().removeThumbnailFiles(item)
@@ -1119,7 +1220,11 @@ class DeidTools:
                 macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
             else:
                 try:
-                    macroImage = PIL.Image.open(io.BytesIO(tileSource.getAssociatedImage("macro")[0]))
+                    assoc = tileSource.getAssociatedImage("macro")
+                    if assoc:
+                        macroImage = PIL.Image.open(io.BytesIO(assoc[0]))
+                    else:
+                        macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
                 except Exception:
                     macroImage = PIL.Image.new(self.pil_image_mode, (50, 50))
 
@@ -1143,7 +1248,7 @@ class DeidTools:
         import large_image_source_ometiff
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            tileSource = ImageItem().tileSource(item)
+            tileSource = ImageItem.tile_source_from_item(item)
             sourcePath = tileSource._getLargeImagePath()
             tiffinfo = tifftools.read_tiff(sourcePath)
             ifds = tiffinfo['ifds']
@@ -1233,7 +1338,7 @@ class DeidTools:
 
     def redact_format_hamamatsu(self, item, output_dir, redactList, title, labelImage, macroImage, preview_metadata=False):
         with tempfile.TemporaryDirectory() as temp_dir:
-            tileSource = ImageItem().tileSource(item)
+            tileSource = ImageItem.tile_source_from_item(item)
             sourcePath = tileSource._getLargeImagePath()
             tiffinfo = tifftools.read_tiff(sourcePath)
             ifds = tiffinfo['ifds']
@@ -1292,6 +1397,12 @@ class DeidTools:
             
     def determine_format(self, tileSource):
         internal_metadata = tileSource.getInternalMetadata() or {}
+        try:
+            source_path = tileSource._getLargeImagePath()
+        except Exception:
+            source_path = None
+        if source_path and str(source_path).lower().endswith('.czi'):
+            return 'czi'
         make = (internal_metadata.get('Make') or '').lower()
         if make == 'hamamatsu':
             return 'hamamatsu'
@@ -1299,6 +1410,8 @@ class DeidTools:
             return 'aperio'
         elif make == 'philips':
             return 'philips'
+        elif make == 'zeiss':
+            return 'czi'
         else:
             return None
 
@@ -1311,6 +1424,32 @@ class DeidTools:
 
         desired_title = self.get_rename(output_dict)
 
+        # CZI: path-only item + redact list — no ImageItem → large_image.open / OpenSlide.
+        if str(filename).lower().endswith('.czi'):
+            from .czi_tilesource import CziDeidTileSource
+            from .wsi_deid_process import get_standard_redactions_format_czi
+
+            if desired_title is not None:
+                item_name = desired_title
+            else:
+                item_name = os.path.splitext(os.path.basename(filename))[0]
+            curItem = ImageItem(filename, {"name": item_name}, skip_open=True)
+            tileSource = CziDeidTileSource(filename)
+            curItem.tileSource = tileSource
+            redactList = get_standard_redactions_format_czi(
+                curItem, tileSource, None, item_name
+            )
+            newTitle = get_generated_title(curItem)
+            format = 'czi'
+            from .czi_tilesource import register_czi_tile_source
+            register_czi_tile_source()
+            labelImage = self.get_deid_label(output_dict)
+            macroImage = self.get_deid_macro(output_dict)
+            func = getattr(self, "redact_format_czi", None)
+            if func is None:
+                raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: czi"}))
+            return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format
+
         if desired_title is not None:
             curItem = ImageItem(filename, {"name": desired_title})
         else:
@@ -1322,15 +1461,15 @@ class DeidTools:
             curItem
         )  # The newtitle is the filename without the extension
         tileSource = curItem.tileSource
-        labelImage = self.get_deid_label(output_dict)
-
-        macroImage = self.get_deid_macro(output_dict)
 
         format = determine_format(tileSource)
 
         if format is None:
             format = self.determine_format(tileSource)
-            
+
+        labelImage = self.get_deid_label(output_dict)
+        macroImage = self.get_deid_macro(output_dict)
+
         func = None
         if format is not None:
             # fadvise_willneed(curItem)  ## DETERMINE WHAT THIS FUNCTION DOSE..
@@ -1338,12 +1477,17 @@ class DeidTools:
         if func is None:
             raise Exception(json.dumps({"error": "FORMAT NOT AVAILABLE FOR DEID YET: {}".format(format)}))
 
-        return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func
+        return curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format
 
     def preview_metadata(self, output_dict):
-        curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func = self.setup_deid(output_dict)
+        curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format = self.setup_deid(output_dict)
 
-        prior_ifds, new_ifds = func(curItem, output_dir, redactList, newTitle, labelImage, macroImage, preview_metadata=True)
+        preview_result = func(
+            curItem, output_dir, redactList, newTitle, labelImage, macroImage,
+            preview_metadata=True,
+        )
+        prior_ifds, new_ifds = preview_result[:2]
+        xml_metadata = preview_result[2] if len(preview_result) > 2 else None
 
         self.make_ifds_json_serializable(prior_ifds)
         self.make_ifds_json_serializable(new_ifds)
@@ -1351,7 +1495,7 @@ class DeidTools:
         self.replace_long_data(prior_ifds)
         self.replace_long_data(new_ifds)
 
-        return prior_ifds, new_ifds, redactList
+        return prior_ifds, new_ifds, redactList, xml_metadata
 
     def make_ifds_json_serializable(self, ifds):
         for ifd in ifds:
@@ -1363,11 +1507,18 @@ class DeidTools:
     def replace_long_data(self, ifds):
         for ifd in ifds:
             for tag in ifd['tags']:
-                if len(ifd['tags'][tag]['data']) > 10000:
-                    ifd['tags'][tag]['data'] = 'Long data length {}'.format(len(ifd['tags'][tag]['data']))
+                data = ifd['tags'][tag].get('data')
+                if data is None:
+                    ifd['tags'][tag]['data'] = ''
+                    continue
+                if not isinstance(data, str):
+                    data = str(data)
+                    ifd['tags'][tag]['data'] = data
+                if len(data) > 10000:
+                    ifd['tags'][tag]['data'] = 'Long data length {}'.format(len(data))
 
     def perform_deid(self, output_dict):
-        curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func = self.setup_deid(output_dict)
+        curItem, output_dir, tileSource, redactList, newTitle, labelImage, macroImage, func, format = self.setup_deid(output_dict)
 
         if output_dict['config']['copy']['enable_copy_mode']:
             output_path = os.path.join(output_dir, '{}.{}'.format(newTitle, output_dict['__reserved']['source']['parsed']['ext'][1:]))
@@ -1387,7 +1538,7 @@ class DeidTools:
 
         info = {
             # "format": format,
-            "model": model_information(tileSource, format),
+            "model": model_information(tileSource, format) if tileSource is not None else None,
             "mimetype": mimetype,
             "redactionCount": {
                 key: len([k for k, v in redactList[key].items() if "value" in v and v["value"] is None])
@@ -1395,8 +1546,8 @@ class DeidTools:
                 if key != "area"
             },
             "fieldCount": {
-                "metadata": metadata_field_count(tileSource, format, redactList),
-                "images": len(tileSource.getAssociatedImagesList()),
+                "metadata": metadata_field_count(tileSource, format, redactList) if tileSource is not None else {"visible": 0, "redactable": 0, "automatic": 0},
+                "images": len(tileSource.getAssociatedImagesList()) if tileSource is not None else 0,
             },
         }
 

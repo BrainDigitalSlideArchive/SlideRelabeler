@@ -32,6 +32,15 @@ conda activate $envName
 $envPath = (conda info --json | ConvertFrom-Json).default_prefix
 $largeImageOpenSlideTileSourcePath = "$envPath\Lib\site-packages\large_image_source_openslide\__init__.py"
 
+# Ensure CZI attachment writer (libCZI ReplaceAttachment) is built into the env
+Write-Host "Ensuring CZI attachment writer (sliderelabeler_czi_rw) is installed..."
+$env:PYTHON = (Get-Command python).Source
+& .\scripts\setup-czi-rw.ps1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to build CZI attachment writer"
+    exit $LASTEXITCODE
+}
+
 # Check if large image tile source is installed
 Write-Host "Checking if large image tile source is installed"
 # Find the line needed to be commented out to function properly in the OpenSlide tile source

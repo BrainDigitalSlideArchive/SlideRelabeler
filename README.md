@@ -24,10 +24,38 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
    - Linux: `conda env create -f environment-linux.yml`
 3. Activate: `conda activate sliderelabeler`
 4. Install JS deps: `npm install`
-5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`.
+5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`. The first run may take a few minutes to compile the CZI attachment writer (clones ZEISS/libczi once if missing; needs network).
 6. **Package:** when you want a distributable, run `npm run package` (app only) or `npm run make` (installer / zip / deb / rpm). These use the same conda wrapper so `pyinstaller` comes from the env. Output is under `out/`.
 
 Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md). Automated multi-platform releases: [docs/github-release-ci.md](docs/github-release-ci.md).
+
+### Zeiss CZI
+
+`.czi` viewing uses an app-provided **large_image** tile-source adapter backed by **pylibCZIrw** for main-slide tiles (including JPEG XR) and **czifile** for Label / SlidePreview / Thumbnail attachments. The Viewer, thumbnails, and associated images therefore use the same `large_image.open()` architecture as other slide formats. OpenSlide is not required for `.czi`.
+
+#### Process / Compare — metadata
+
+De-identification **scrubs the existing metadata XML in place** (`sanitize_czi_metadata_xml` → pylibCZIrw `edit_czi` / `set_xml`). We do **not** regenerate a fresh “acquisition-only” metadata tree: neither pylibCZIrw nor libCZI can rebuild microscope acquisition settings on an existing slide while omitting other field types. Create-time `write_metadata` only synthesizes minimal geometry from newly written pixels.
+
+Structural reference: the **ZISRAW (CZI) File Format** specification (Carl Zeiss / ZEN era PDF) describes UTF-8 XML under `ImageDocument`. XML is largely optional for decode — dimensions and pixel types live in binary SubBlock / SubBlockDirectory segments — so removing PHI containers does not prevent reopen.
+
+What the scrubber does:
+
+| Action | Targets |
+|--------|---------|
+| **Keep** | Scaling, Dimensions / channels, Image size/geometry, Instrument |
+| **Rewrite** | Document Title/Name and barcode `Content` → de-id title |
+| **Clear** | Document UserName / Description / Comment / Keywords; Filename-style leaves; Creator / Author / Operator where present |
+| **Remove containers** | Patient / Specimen / User / Experimenter, CustomAttributes, Annotations / Layers, AppInfo, **AutoSave** (paths such as ImageName / StorageFolder / SingleFile*) |
+| **Year-coarsen** | `AcquisitionDateAndTime` and Document `CreationDate` / `CreationDateTime` → `{year}-01-01T00:00:00Z` (same spirit as Aperio/Hamamatsu year-only redaction); clear if unparseable. Does **not** blanket-strip every Date under Instrument |
+
+Implementation: [`src/python/DeidTools/czi_metadata.py`](src/python/DeidTools/czi_metadata.py).
+
+#### Process — associated images
+
+Replace **Label** and **SlidePreview** (macro) via the app-local **libCZI** binding (`sliderelabeler_czi_rw` batch replace). Thumbnail is left unchanged. After write, an integrity check confirms `czifile` can still list attachments (including names present before the write).
+
+The native helper is built automatically by `scripts/with-conda.sh` / `with-conda.ps1` (used by `npm run dev` / `package` / `make`) and by `build_macos.sh` / `build_windows.ps1`. Env ymls include `cmake` and `cxx-compiler` for that build. Pin / patch details: [`native/czi_rw/README.md`](native/czi_rw/README.md).
 
 ## Integrations
 

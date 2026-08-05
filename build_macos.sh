@@ -99,6 +99,13 @@ conda activate "$ENV_NAME"
 echo "✓ Activated conda environment: $CONDA_DEFAULT_ENV"
 echo ""
 
+# Ensure CZI attachment writer (libCZI ReplaceAttachment) is built into the env
+echo "Ensuring CZI attachment writer (sliderelabeler_czi_rw) is installed..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHON="$(command -v python)"
+bash "$SCRIPT_DIR/scripts/setup-czi-rw.sh"
+echo ""
+
 # Check if large-image is installed (to catch any rawpy issues early)
 echo "Checking if large-image is installed..."
 if python -c "import large_image" 2>/dev/null; then

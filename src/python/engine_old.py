@@ -273,7 +273,7 @@ def deid_process(output_dict):
     return info
 
 def preview_metadata(output_dict):
-    prior_ifds, new_ifds, redactList = deid_tools.preview_metadata(output_dict)
+    prior_ifds, new_ifds, redactList, _xml_metadata = deid_tools.preview_metadata(output_dict)
     return prior_ifds, new_ifds, redactList
 
 def preview_label(output_dict):

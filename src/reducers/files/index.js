@@ -574,6 +574,12 @@ const files_reducer = createReducer(default_state, (builder) => {
     .addCase(preview_actions.SET_METADATA_PREVIEW, (state, action) => {
       return produce(state, draft => {
         draft.ifds[action.payload.path] = action.payload.table;
+        draft.metadata_xml ??= {};
+        if (action.payload.xml) {
+          draft.metadata_xml[action.payload.path] = action.payload.xml;
+        } else {
+          delete draft.metadata_xml[action.payload.path];
+        }
       })
     })
     .addCase(files_actions.SET_UPLOADING, (state, action) => {

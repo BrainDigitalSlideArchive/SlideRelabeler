@@ -228,6 +228,7 @@ _maybe_install_patchlibtiff_guard()
 import base64  # noqa: E402 (still used internally if needed)
 import large_image  # noqa: E402
 from DeidTools import DeidTools  # noqa: E402
+from DeidTools.czi_tilesource import register_czi_tile_source  # noqa: E402
 
 from patch_libtiff_platform import should_patch_libtiff
 
@@ -240,6 +241,7 @@ if debug and should_patch_libtiff():
   )
 
 large_image.config.setConfig('cache_sources', False)
+register_czi_tile_source()
 
 deid_tools = DeidTools(
   supress_print=True,
@@ -378,6 +380,8 @@ def openFile(file: str, second: bool = False):
   if not source:
     _assert_slide_path_readable(file)
     try:
+      # All viewing uses the large_image dispatcher.  The app-local CZI
+      # source supplies pylibCZIrw tiles and czifile attachments.
       source = large_image.open(file)
       openFiles[file] = source
     except Exception:
@@ -401,7 +405,10 @@ def getAssociatedImageBytes(file: str, name: str) -> Tuple[bytes, str]:
   f = openFile(file)
   if not f:
     raise Exception(f"Error: {file} is not open")
-  image, mime_type = f.getAssociatedImage(name)
+  result = f.getAssociatedImage(name)
+  if not result:
+    raise Exception(f"Associated image {name!r} not found for {file}")
+  image, mime_type = result
   return image, mime_type
 
 
@@ -437,13 +444,16 @@ def preview_macro(output_dict: Dict[str, Any]) -> Tuple[bytes, str]:
 
 
 def preview_metadata(output_dict: Dict[str, Any]) -> Dict[str, Any]:
-  prior_ifds, new_ifds, redactList = deid_tools.preview_metadata(output_dict)
-  # Return as dict so we can pack into Struct with 3 keys
-  return {
+  prior_ifds, new_ifds, redactList, xml_metadata = deid_tools.preview_metadata(output_dict)
+  # Return as a dict so the preview payload can be packed into Struct.
+  result = {
     "prior_ifds": prior_ifds,
     "new_ifds": new_ifds,
     "redactList": redactList,
   }
+  if xml_metadata:
+    result.update(xml_metadata)
+  return result
 
 
 def deid_process(output_dict: Dict[str, Any]) -> Any:

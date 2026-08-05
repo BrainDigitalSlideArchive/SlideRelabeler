@@ -42,7 +42,8 @@ function setup_table(tiff_tags, ifds_for_row) {
                 let tag_dict = {...tag};
                 delete tag_dict['data'];
                 table[i][tag_key] = tag_dict;
-                table[i][tag_key]['name'] = tiff_tags[tag_key] && tiff_tags[tag_key].name;
+                table[i][tag_key]['name'] =
+                    tag.name || (tiff_tags[tag_key] && tiff_tags[tag_key].name);
             }
             table[i][tag_key]['prior'] = formatTagData(tag['data']);
         }
@@ -58,7 +59,12 @@ function setup_table(tiff_tags, ifds_for_row) {
                 let tag_dict = {...tag};
                 delete tag_dict['data'];
                 table[i][tag_key] = tag_dict;
-                
+                if (!table[i][tag_key]['name']) {
+                    table[i][tag_key]['name'] =
+                        tag.name || (tiff_tags[tag_key] && tiff_tags[tag_key].name);
+                }
+            } else if (!table[i][tag_key]['name'] && tag.name) {
+                table[i][tag_key]['name'] = tag.name;
             }
             table[i][tag_key]['after'] = formatTagData(tag['data']);
         }
@@ -87,18 +93,22 @@ function setup_table(tiff_tags, ifds_for_row) {
 
 function extractPreviewMetadataArrays(response) {
     if (!response) {
-        return { prior_ifds: null, new_ifds: null };
+        return { prior_ifds: null, new_ifds: null, prior_xml: null, new_xml: null };
     }
     if (Array.isArray(response.prior_ifds) || Array.isArray(response.new_ifds)) {
         return {
             prior_ifds: response.prior_ifds,
             new_ifds: response.new_ifds,
+            prior_xml: response.prior_xml ?? response.priorXml ?? null,
+            new_xml: response.new_xml ?? response.newXml ?? null,
         };
     }
     const response_object = structToObject(response);
     return {
         prior_ifds: response_object.prior_ifds ?? response_object.priorIfds,
         new_ifds: response_object.new_ifds ?? response_object.newIfds,
+        prior_xml: response_object.prior_xml ?? response_object.priorXml ?? null,
+        new_xml: response_object.new_xml ?? response_object.newXml ?? null,
     };
 }
 
@@ -131,7 +141,7 @@ function* watch_preview_metadata() {
             });
 
             const response = yield call(electronAPI.previewMetadata, info);
-            const { prior_ifds, new_ifds } = extractPreviewMetadataArrays(response);
+            const { prior_ifds, new_ifds, prior_xml, new_xml } = extractPreviewMetadataArrays(response);
 
             if (!Array.isArray(prior_ifds) || !Array.isArray(new_ifds)) {
                 logMetadataPreview('saga-fail', {
@@ -168,7 +178,14 @@ function* watch_preview_metadata() {
 
             yield put({
                 type: preview_actions.SET_METADATA_PREVIEW,
-                payload: { path: sourcePath, row_idx: row_idx, table: table },
+                payload: {
+                    path: sourcePath,
+                    row_idx: row_idx,
+                    table: table,
+                    xml: typeof prior_xml === 'string' && typeof new_xml === 'string'
+                        ? { prior_xml, new_xml }
+                        : null,
+                },
             });
         } catch (error) {
             const { summary, details } = buildFileRowErrorFromBackend(error, 'Metadata preview failed');

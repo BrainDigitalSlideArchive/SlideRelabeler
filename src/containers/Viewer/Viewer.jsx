@@ -186,7 +186,20 @@ function Viewer(props) {
     }
 
     const params = encodeURLParameters(output_dict);
-    const associated_images = file_row.__reserved.associatedImages || [];
+    // Prefer live getMetadata (same source OSD uses) over hydrated file_row,
+    // which can lag when the viewer opens before store-updated lands.
+    let associated_images;
+    let assoc_source;
+    if (Array.isArray(metadata?.associatedImages)) {
+      associated_images = metadata.associatedImages;
+      assoc_source = 'metadata';
+    } else if (Array.isArray(file_row.__reserved.associatedImages)) {
+      associated_images = file_row.__reserved.associatedImages;
+      assoc_source = 'file_row';
+    } else {
+      associated_images = [];
+      assoc_source = 'none';
+    }
 
     const next_thumbnail_url = associated_images.includes('thumbnail')
       ? buildThumbnailProtocolUrl(file) : null;
@@ -201,6 +214,7 @@ function Viewer(props) {
 
     const urlsBuilt = {
       associated_images,
+      assoc_source,
       has_thumbnail: associated_images.includes('thumbnail'),
       has_label: associated_images.includes('label'),
       has_macro: associated_images.includes('macro'),
@@ -232,6 +246,7 @@ function Viewer(props) {
     row_idx_param,
     files.file_rows,
     config,
+    metadata,
   ]);
 
   const showViewerDebug = isViewerDebugEnabled();

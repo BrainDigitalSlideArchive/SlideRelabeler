@@ -111,10 +111,18 @@ def determine_format(tileSource):
     :returns: the vendor or None if unknown.
     """
     metadata = tileSource.getInternalMetadata() or {}
+    try:
+        source_path = tileSource._getLargeImagePath()
+    except Exception:
+        source_path = None
+    if source_path and str(source_path).lower().endswith('.czi'):
+        return 'czi'
     if tileSource.name == 'openslide':
-        if metadata.get('openslide', {}).get('openslide.vendor') in {
-                'aperio', 'hamamatsu', 'dicom'}:
-            return metadata['openslide']['openslide.vendor']
+        vendor = metadata.get('openslide', {}).get('openslide.vendor')
+        if vendor in {'aperio', 'hamamatsu', 'dicom'}:
+            return vendor
+        if vendor == 'zeiss':
+            return 'czi'
     if 'isyntax' in metadata:
         return 'isyntax'
     if 'xml' in metadata and any(k.startswith('PIM_DP_') for k in metadata['xml']):
@@ -132,7 +140,7 @@ def get_standard_redactions(item, title):
     :param title: the new title of the image.
     :returns: a redactList.
     """
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     func = None
     format = determine_format(tileSource)
@@ -201,6 +209,30 @@ def get_standard_redactions_format_aperio(item, tileSource, tiffinfo, title):
             redactList['metadata']['internal;openslide;' + key] = {
                 'value': None, 'automatic': True}
     return redactList
+
+
+def get_standard_redactions_format_czi(item, tileSource, tiffinfo, title):
+    """
+    Zeiss CZI redaction plan: sanitize metadata XML and replace Label/SlidePreview.
+    """
+    title_entry = generate_system_redaction_list_entry(title)
+    clear_entry = {'value': None, 'automatic': True}
+    images = {
+        'label': {'value': None, 'automatic': True},
+        'macro': {'value': None, 'automatic': True, 'square': True},
+    }
+    return {
+        'images': images,
+        'metadata': {
+            'czi;Document.Title': title_entry,
+            'czi;Document.Name': title_entry,
+            'czi;Document.UserName': clear_entry,
+            'czi;Document.Description': clear_entry,
+            'czi;Document.Comment': clear_entry,
+            'czi;Document.Keywords': clear_entry,
+            'czi;Barcode.Content': title_entry,
+        },
+    }
 
 
 def get_standard_redactions_format_hamamatsu(item, tileSource, tiffinfo, title):
@@ -421,7 +453,7 @@ def fadvise_willneed(item):
     :param item: the girder item.
     """
     try:
-        tileSource = ImageItem().tileSource(item)
+        tileSource = ImageItem.tile_source_from_item(item)
         path = tileSource._getLargeImagePath()
         fptr = open(path, 'rb')
         os.posix_fadvise(fptr.fileno(), 0, os.path.getsize(path), os.POSIX_FADV_WILLNEED)
@@ -470,7 +502,7 @@ def redact_item(item, tempdir):
     previouslyRedacted = bool(item.get('meta', {}).get('redacted'))
     redactList = get_redact_list(item)
     newTitle = get_generated_title(item)
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     labelImage = None
     label_geojson = redactList.get('images', {}).get('label', {}).get('geojson')
     if (('label' not in redactList['images'] and not config.getConfig('always_redact_label')) or
@@ -535,7 +567,7 @@ def aperio_value_list(item, redactList, title):
     :param redactList: the list of redactions (see get_redact_list).
     :param title: the new title for the item.
     """
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     metadata = tileSource.getInternalMetadata() or {}
     comment = metadata['openslide']['openslide.comment']
     aperioHeader = comment.split('|', 1)[0]
@@ -717,7 +749,7 @@ def redact_format_aperio(item, tempdir, redactList, title, labelImage, macroImag
     """
     import large_image_source_tiff.girder_source
 
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     logger.info('Redacting aperio file %s', sourcePath)
     tiffinfo = tifftools.read_tiff(sourcePath)
@@ -1078,7 +1110,7 @@ def redact_format_hamamatsu(item, tempdir, redactList, title, labelImage, macroI
     :returns: (filepath, mimetype) The redacted filepath in the tempdir and
         its mimetype.
     """
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     tiffinfo = tifftools.read_tiff(sourcePath)
     ifds = tiffinfo['ifds']
@@ -1171,7 +1203,7 @@ def redact_format_ometiff(item, tempdir, redactList, title, labelImage, macroIma
     """
     import large_image_source_ometiff.girder_source
 
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     logger.info('Redacting ometiff file %s', sourcePath)
     tiffinfo = tifftools.read_tiff(sourcePath)
@@ -1514,7 +1546,7 @@ def redact_format_philips(item, tempdir, redactList, title, labelImage, macroIma
     :returns: (filepath, mimetype) The redacted filepath in the tempdir and
         its mimetype.
     """
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     tiffinfo = tifftools.read_tiff(sourcePath)
     xmldict = tileSource._tiffDirectories[-1]._description_record
@@ -1759,7 +1791,7 @@ def redact_format_isyntax(item, tempdir, redactList, title, labelImage, macroIma
         },
     }
 
-    tileSource = ImageItem().tileSource(item)
+    tileSource = ImageItem.tile_source_from_item(item)
     sourcePath = tileSource._getLargeImagePath()
     header = b'<?xml version="1.0" encoding="UTF-8"?>\n'
 
@@ -2010,7 +2042,7 @@ def get_image_text(item):
     """
     reader = get_reader()
     results = []
-    tile_source = ImageItem().tileSource(item)
+    tile_source = ImageItem.tile_source_from_item(item)
     image_format = determine_format(tile_source)
     key = 'label'
     if image_format in ['aperio', 'philips', 'isyntax', 'ometiff', 'dicom']:
@@ -2057,7 +2089,7 @@ def get_image_barcode(item):
     :returns: a list of found text .
     """
     results = []
-    tile_source = ImageItem().tileSource(item)
+    tile_source = ImageItem.tile_source_from_item(item)
     image_format = determine_format(tile_source)
     key = 'label'
     if image_format in ['aperio', 'philips', 'isyntax', 'ometiff', 'dicom']:

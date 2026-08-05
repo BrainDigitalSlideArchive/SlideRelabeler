@@ -17,9 +17,9 @@ test('isWsiExtension accepts unified extension set', () => {
   assert.equal(isWsiExtension('slide.ndpi'), true);
   assert.equal(isWsiExtension('slide.tif'), true);
   assert.equal(isWsiExtension('slide.tiff'), true);
-  assert.equal(isWsiExtension('slide.czi'), false);
+  assert.equal(isWsiExtension('slide.czi'), true);
   assert.equal(isWsiExtension('slide.jpg'), false);
-  assert.deepEqual(WSI_SUPPORTED_EXTENSIONS.length, 4);
+  assert.deepEqual(WSI_SUPPORTED_EXTENSIONS.length, 5);
 });
 
 test('normalizeCsvConfig migrates legacy single-string columns to alternates', () => {

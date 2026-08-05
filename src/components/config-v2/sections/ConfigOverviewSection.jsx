@@ -94,7 +94,7 @@ export const OVERVIEW_GLOSSARY = [
   {
     term: 'Whole-slide image (WSI)',
     definition:
-      'A large digital microscopy file (for example .svs, .ndpi, .tif, or .tiff) that SlideRelabeler loads, de-identifies, and optionally uploads.',
+      'A large digital microscopy file (for example .svs, .ndpi, .tif, .tiff, or .czi) that SlideRelabeler loads, de-identifies, and optionally uploads.',
   },
 ];
 

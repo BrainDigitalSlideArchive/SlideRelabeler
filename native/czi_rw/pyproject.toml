@@ -1,0 +1,14 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "sliderelabeler-czi-rw"
+version = "0.1.2"
+description = "libCZI ReplaceAttachment helper for SlideRelabeler"
+requires-python = ">=3.10"
+
+[tool.scikit-build]
+wheel.packages = ["sliderelabeler_czi_rw"]
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"

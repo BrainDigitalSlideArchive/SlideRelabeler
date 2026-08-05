@@ -1,0 +1,13 @@
+diff --git a/Src/libCZI/CziReaderWriter.cpp b/Src/libCZI/CziReaderWriter.cpp
+index 9833d20..c6bb1df 100644
+--- a/Src/libCZI/CziReaderWriter.cpp
++++ b/Src/libCZI/CziReaderWriter.cpp
+@@ -900,7 +900,7 @@ std::tuple<bool, std::uint64_t, CCziAttachmentsDirectoryBase::AttachmentEntry> C
+     memcpy(entry.ContentFileType, addAttchmntInfo.contentFileType, sizeof(entry.ContentFileType));
+     memcpy(entry.Name, addAttchmntInfo.name, sizeof(entry.Name));
+ 
+-    return make_tuple(false, sizeOfSbBlk, entry);
++    return make_tuple(true, sizeOfSbBlk, entry);
+ }
+ 
+ std::tuple<bool, std::uint64_t, CCziAttachmentsDirectoryBase::AttachmentEntry> CCziReaderWriter::ReplaceAttachmentInplace(const libCZI::AddAttachmentInfo& addAttchmntInfo, const CCziAttachmentsDirectoryBase::AttachmentEntry& attchmntInfo, std::uint64_t existingSegmentAllocatedSize)

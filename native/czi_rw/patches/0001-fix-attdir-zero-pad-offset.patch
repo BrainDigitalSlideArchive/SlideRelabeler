@@ -1,0 +1,13 @@
+diff --git a/Src/libCZI/CziWriter.cpp b/Src/libCZI/CziWriter.cpp
+index e957ccf..c6445eb 100644
+--- a/Src/libCZI/CziWriter.cpp
++++ b/Src/libCZI/CziWriter.cpp
+@@ -771,7 +771,7 @@ void libCZI::ICziWriter::SyncAddSubBlock(const AddSubBlockInfoStridedBitmap& add
+ 
+     if (totalBytesWritten < attchmntDirSegmentHeaderAllocatedSize + sizeof(SegmentHeader))
+     {
+-        bytesWritten += CWriterUtils::WriteZeroes(info.writeFunc, attchmDirPos + bytesWritten, attchmntDirSegmentHeaderAllocatedSize + sizeof(SegmentHeader) - bytesWritten);
++        totalBytesWritten += CWriterUtils::WriteZeroes(info.writeFunc, attchmDirPos + totalBytesWritten, attchmntDirSegmentHeaderAllocatedSize + sizeof(SegmentHeader) - totalBytesWritten);
+     }
+ 
+     return make_tuple(attchmDirPos, static_cast<std::uint64_t>(attchmntDirSegmentHeaderAllocatedSize));

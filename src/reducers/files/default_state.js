@@ -61,6 +61,7 @@ export const default_state = {
     file_columns: [],
     processed_files: {},
     ifds: {},
+    metadata_xml: {},
     output_dir: null,
     input_dir: null,
     processing: false,

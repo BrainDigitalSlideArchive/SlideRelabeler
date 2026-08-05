@@ -66,4 +66,9 @@ export PYTHON
 export CONDA_PREFIX
 export PATH="${CONDA_PREFIX}/bin:${PATH}"
 
+if ! "$PYTHON" -c "from sliderelabeler_czi_rw import replace_or_add_attachment" 2>/dev/null; then
+  echo "[with-conda] Building CZI attachment writer (one-time)..." >&2
+  bash "$ROOT/scripts/setup-czi-rw.sh"
+fi
+
 exec "$@"

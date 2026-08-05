@@ -39,11 +39,15 @@ function normalizePreviewMetadataData(rawData) {
   const prior_ifds = decoded.prior_ifds ?? decoded.priorIfds;
   const new_ifds = decoded.new_ifds ?? decoded.newIfds;
   const redactList = decoded.redactList ?? decoded.redact_list ?? [];
+  const prior_xml = decoded.prior_xml ?? decoded.priorXml;
+  const new_xml = decoded.new_xml ?? decoded.newXml;
 
   return {
     prior_ifds: Array.isArray(prior_ifds) ? prior_ifds : [],
     new_ifds: Array.isArray(new_ifds) ? new_ifds : [],
     redactList,
+    prior_xml: typeof prior_xml === "string" ? prior_xml : null,
+    new_xml: typeof new_xml === "string" ? new_xml : null,
     _debug: {
       dataType: rawData === null ? "null" : typeof rawData,
       hasFields: !!(rawData && typeof rawData === "object" && rawData.fields),
@@ -441,7 +445,14 @@ export class GrpcPythonBridge {
       throw new Error(`Could not find engine.EngineService in proto loaded from ${this._protoPath}`);
     }
 
-    this._client = new EngineService(this._address, grpc.credentials.createInsecure());
+    this._client = new EngineService(
+      this._address,
+      grpc.credentials.createInsecure(),
+      {
+        "grpc.max_receive_message_length": 128 * 1024 * 1024,
+        "grpc.max_send_message_length": 128 * 1024 * 1024,
+      },
+    );
     console.log(`[py grpc] connected ${this._address}`);
   }
 
@@ -647,6 +658,8 @@ export class GrpcPythonBridge {
             prior_ifds: normalized.prior_ifds,
             new_ifds: normalized.new_ifds,
             redactList: normalized.redactList,
+            prior_xml: normalized.prior_xml,
+            new_xml: normalized.new_xml,
           });
           return;
         }

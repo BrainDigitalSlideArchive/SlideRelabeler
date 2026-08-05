@@ -115,6 +115,28 @@ datas += d
 binaries += b
 hiddenimports += h
 
+# Zeiss CZI metadata edit (pylibCZIrw / libCZI native bindings)
+d, b, h = collect_all('pylibCZIrw')
+datas += d
+binaries += b
+hiddenimports += h
+
+# Zeiss CZI associated images (Label / SlidePreview / Thumbnail)
+d, b, h = collect_all('czifile')
+datas += d
+binaries += b
+hiddenimports += h
+
+# libCZI ReplaceAttachment helper (pip install ./native/czi_rw)
+try:
+    d, b, h = collect_all('sliderelabeler_czi_rw')
+    datas += d
+    binaries += b
+    hiddenimports += h
+    hiddenimports += ['_sliderelabeler_czi_rw', 'sliderelabeler_czi_rw']
+except Exception as exc:
+    print('WARNING: sliderelabeler_czi_rw not collectable:', exc)
+
 # --- Force-collect gRPC core (grpcio) ---
 d_grpc, b_grpc, h_grpc = collect_all("grpc")
 datas += d_grpc

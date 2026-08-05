@@ -87,6 +87,16 @@ if (Test-Path $scriptsDir) { $pathParts += $scriptsDir }
 $pathParts += $prefix
 $env:PATH = ($pathParts + $env:PATH) -join [IO.Path]::PathSeparator
 
+& $python -c "from sliderelabeler_czi_rw import replace_or_add_attachment" 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[with-conda] Building CZI attachment writer (one-time)..."
+    $setupPs1 = Join-Path $Root "scripts\setup-czi-rw.ps1"
+    & $setupPs1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to build CZI attachment writer (scripts/setup-czi-rw.ps1)"
+    }
+}
+
 $cmd = $args[0]
 $cmdArgs = @()
 if ($args.Count -gt 1) {

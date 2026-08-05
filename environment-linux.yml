@@ -17,6 +17,9 @@ dependencies:
   - openssl
   - python=3.12
   - setuptools
+  # Native build tools for sliderelabeler_czi_rw (libCZI ReplaceAttachment).
+  - cmake
+  - cxx-compiler
   - xz
   - zlib
   - zstd
@@ -25,10 +28,16 @@ dependencies:
   - large-image-source-tiff
   - large-image-source-gdal
   - pip:
-      - openslide-bin
+      - openslide-bin>=4.0.1
       - openslide-python
       - pyinstaller
       - lxml
+      # Zeiss CZI: main-slide tiles + metadata via pylibCZIrw; attachments via czifile.
+      # Attachment writer built by with-conda / build scripts (scripts/setup-czi-rw.sh).
+      - pylibCZIrw
+      - czifile
+      - pybind11
+      - scikit-build-core
       # Required by the new gRPC-based Python engine (`src/python/engine.py`)
       # so Electron can complete the READY <port> handshake.
       - grpcio>=1.78.0

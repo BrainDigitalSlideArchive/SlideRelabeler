@@ -19,9 +19,12 @@ dependencies:
   # Native OpenSlide matching the conda glib/iconv stack (same ABI as libvips).
   # Prefer this over pip openslide-bin on macOS — the wheel links system iconv (_iconv)
   # which clashes with conda libiconv (_libiconv) when DYLD prefers _internal.
-  - openslide
+  - openslide>=4.0.1
   - python=3.12
   - setuptools
+  # Native build tools for sliderelabeler_czi_rw (libCZI ReplaceAttachment).
+  - cmake
+  - cxx-compiler
   - xz
   - zlib
   - zstd
@@ -33,6 +36,13 @@ dependencies:
       - openslide-python
       - pyinstaller
       - lxml
+      # Zeiss CZI: main-slide tiles + metadata via pylibCZIrw; attachments via czifile.
+      # Attachment writer (sliderelabeler_czi_rw) is built by with-conda / build scripts
+      # via scripts/setup-czi-rw.sh — not listed here (needs libczi clone + compile).
+      - pylibCZIrw
+      - czifile
+      - pybind11
+      - scikit-build-core
       # Required by the new gRPC-based Python engine (`src/python/engine.py`)
       # so Electron can complete the READY <port> handshake.
       - grpcio>=1.78.0
