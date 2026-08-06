@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const entitlements = path.join(root, 'build', 'entitlements.mac.plist');
+const entitlements = path.join(root, 'scripts', 'entitlements.mac.plist');
 
 const HELPERS = [
   path.join(root, 'dist', 'engine.app'),
