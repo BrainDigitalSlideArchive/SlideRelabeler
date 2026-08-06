@@ -39,7 +39,7 @@ function resolvePyInstaller() {
 
 /**
  * Enable macOS signing / notarization only when CI secrets (or local env) are present.
- * Windows Authenticode uses CSC_LINK + CSC_KEY_PASSWORD via the packager when set; no packagerConfig flag required.
+ * Windows Authenticode uses CSC_LINK + CSC_KEY_PASSWORD via the packager when set (CI maps WIN_CSC_* → those env vars); no packagerConfig flag required.
  * See docs/github-release-ci.md.
  */
 function buildPackagerConfig() {

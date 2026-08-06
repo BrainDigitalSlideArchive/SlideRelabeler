@@ -43,17 +43,19 @@ See also [build_readme/linux/README.md](../build_readme/linux/README.md).
 
 Builds are **unsigned** until you add repository secrets. Empty/missing secrets leave packaging unchanged (usable builds with Gatekeeper / SmartScreen friction).
 
-Set secrets under **Settings → Secrets and variables → Actions**:
+Set secrets under **Settings → Secrets and variables → Actions** (repository secrets):
 
 | Secret | Used on | Purpose |
 |--------|---------|---------|
-| `CSC_LINK` | macOS, Windows | Path or base64 contents of the signing certificate (`.p12` / `.pfx`) |
-| `CSC_KEY_PASSWORD` | macOS, Windows | Certificate password |
+| `CSC_LINK` | macOS | Path or base64 contents of the Developer ID Application certificate (`.p12`) |
+| `CSC_KEY_PASSWORD` | macOS | Password for that `.p12` |
+| `WIN_CSC_LINK` | Windows | Path or base64 contents of the Authenticode certificate (`.pfx` / `.p12`) |
+| `WIN_CSC_KEY_PASSWORD` | Windows | Password for that Windows certificate |
 | `APPLE_IDENTITY` | macOS | Optional explicit identity, e.g. `Developer ID Application: Your Name (TEAMID)` |
 | `APPLE_ID` | macOS | Apple ID email for notarization |
 | `APPLE_APP_SPECIFIC_PASSWORD` | macOS | [App-specific password](https://support.apple.com/en-us/HT204397) |
 | `APPLE_TEAM_ID` | macOS | 10-character Team ID |
 
-[`forge.config.js`](../forge.config.js) enables `osxSign` / `osxNotarize` when `CSC_LINK` (and notarization env vars) are set on macOS. Windows Authenticode uses `CSC_LINK` + `CSC_KEY_PASSWORD` when present.
+[`forge.config.js`](../forge.config.js) enables `osxSign` / `osxNotarize` when `CSC_LINK` (and notarization env vars) are set on macOS. The Windows job maps `WIN_CSC_*` into `CSC_LINK` / `CSC_KEY_PASSWORD` for the packager; omit those secrets to ship an unsigned Windows installer.
 
 Further reading: [Electron Forge signing](https://www.electronforge.io/guides/code-signing), Simon Willison [sign/notarize Electron on macOS](https://til.simonwillison.net/electron/sign-notarize-electron-macos).
