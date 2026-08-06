@@ -47,7 +47,7 @@ Set secrets under **Settings → Secrets and variables → Actions** (repository
 
 | Secret | Used on | Purpose |
 |--------|---------|---------|
-| `CSC_LINK` | macOS | Path or base64 contents of the Developer ID Application certificate (`.p12`) |
+| `CSC_LINK` | macOS | **Base64** of the Developer ID Application `.p12` (not the `.cer` alone). Example: `base64 -i Certificates.p12 \| pbcopy` |
 | `CSC_KEY_PASSWORD` | macOS | Password for that `.p12` |
 | `WIN_CSC_LINK` | Windows | Path or base64 contents of the Authenticode certificate (`.pfx` / `.p12`) |
 | `WIN_CSC_KEY_PASSWORD` | Windows | Password for that Windows certificate |
@@ -55,6 +55,10 @@ Set secrets under **Settings → Secrets and variables → Actions** (repository
 | `APPLE_ID` | macOS | Apple ID email for notarization |
 | `APPLE_APP_SPECIFIC_PASSWORD` | macOS | [App-specific password](https://support.apple.com/en-us/HT204397) |
 | `APPLE_TEAM_ID` | macOS | 10-character Team ID |
+
+### macOS signing notes
+
+Electron Forge / `@electron/osx-sign` does **not** auto-import `CSC_LINK` (that is an electron-builder feature). The Release workflow imports the `.p12` into a temporary keychain with [`apple-actions/import-codesign-certs`](https://github.com/Apple-Actions/import-codesign-certs) when `CSC_LINK` is set, then lists identities (`security find-identity -p codesigning -v`) before `npm run make`.
 
 [`forge.config.js`](../forge.config.js) enables `osxSign` / `osxNotarize` when `CSC_LINK` (and notarization env vars) are set on macOS. The Windows job maps `WIN_CSC_*` into `CSC_LINK` / `CSC_KEY_PASSWORD` for the packager; omit those secrets to ship an unsigned Windows installer.
 

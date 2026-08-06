@@ -100,6 +100,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Import Apple signing certificate
+        if: env.CSC_LINK != ''
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.CSC_LINK }}
+          p12-password: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: List codesigning identities
+        if: env.CSC_LINK != ''
+        run: security find-identity -p codesigning -v
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
