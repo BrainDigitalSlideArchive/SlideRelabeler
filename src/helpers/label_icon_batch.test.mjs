@@ -2,10 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  LABEL_ICON_MISSING_MESSAGE,
   LABEL_ICON_UNREADABLE_MESSAGE,
   attachLabelIconBytes,
   configForLabelPreview,
   getLabelIconPath,
+  isLabelIconMissing,
   needsLabelIconFile,
   resolveLabelIconForBatch,
   MAX_PREVIEW_ICON_BYTES_BASE64,
@@ -17,6 +19,15 @@ describe('needsLabelIconFile', () => {
     assert.equal(needsLabelIconFile({ label: { add_icon: true, icon_file: null } }), false);
     assert.equal(needsLabelIconFile({ label: { add_icon: false, icon_file: { source: { path: '/a.png' } } } }), false);
     assert.equal(needsLabelIconFile({}), false);
+  });
+});
+
+describe('isLabelIconMissing', () => {
+  it('is true when icon is on without a path', () => {
+    assert.equal(isLabelIconMissing({ label: { add_icon: true, icon_file: null } }), true);
+    assert.equal(isLabelIconMissing({ label: { add_icon: true, icon_file: { source: { path: '' } } } }), true);
+    assert.equal(isLabelIconMissing({ label: { add_icon: true, icon_file: { source: { path: '/a.png' } } } }), false);
+    assert.equal(isLabelIconMissing({ label: { add_icon: false } }), false);
   });
 });
 
@@ -32,11 +43,17 @@ describe('resolveLabelIconForBatch', () => {
     label: { add_icon: true, icon_file: { source: { path: '/Desktop/logo.png' } } },
   };
 
-  it('skips when no icon file is required', () => {
+  it('skips when icon is disabled', () => {
     assert.deepEqual(
       resolveLabelIconForBatch({ label: { add_icon: false } }, null),
       { ok: true, bytesBase64: null },
     );
+  });
+
+  it('fails closed when icon is enabled without a path', () => {
+    const result = resolveLabelIconForBatch({ label: { add_icon: true, icon_file: null } }, null);
+    assert.equal(result.ok, false);
+    assert.equal(result.message, LABEL_ICON_MISSING_MESSAGE);
   });
 
   it('returns buffered bytes when read succeeds', () => {

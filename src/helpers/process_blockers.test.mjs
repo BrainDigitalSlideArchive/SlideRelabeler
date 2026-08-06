@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  LABEL_ICON_MISSING_DETAIL,
+  LABEL_ICON_MISSING_SUMMARY,
   LABEL_ICON_UNREADABLE_DETAIL,
   LABEL_ICON_UNREADABLE_SUMMARY,
 } from './label_icon_batch.js';
@@ -28,6 +30,18 @@ const ready = {
 describe('getProcessBlockerMessage', () => {
   it('asks for files when the table is empty', () => {
     assert.equal(getProcessBlockerMessage(0, ready), 'Select files to inspect and process');
+  });
+
+  it('flags missing label icon ahead of delivery issues', () => {
+    const notReady = {
+      ...ready,
+      processReady: false,
+      anyDeliveryEnabled: false,
+    };
+    assert.equal(
+      getProcessBlockerMessage(2, notReady, { iconMissing: true }),
+      LABEL_ICON_MISSING_SUMMARY,
+    );
   });
 
   it('flags unreadable label icon ahead of delivery issues', () => {
@@ -72,7 +86,11 @@ describe('getProcessBlockerMessage', () => {
 });
 
 describe('getProcessBlockerDetail', () => {
-  it('expands label-icon guidance for the popover', () => {
+  it('expands missing and unreadable label-icon guidance for the popover', () => {
+    assert.equal(
+      getProcessBlockerDetail(1, ready, { iconMissing: true }),
+      LABEL_ICON_MISSING_DETAIL,
+    );
     assert.equal(
       getProcessBlockerDetail(1, ready, { iconReadable: false }),
       LABEL_ICON_UNREADABLE_DETAIL,
@@ -98,7 +116,11 @@ describe('getProcessBlockerDetail', () => {
 });
 
 describe('getProcessBlockerSettingsSection', () => {
-  it('deep-links icon issues to Slide label', () => {
+  it('deep-links missing and unreadable icon issues to Slide label', () => {
+    assert.equal(
+      getProcessBlockerSettingsSection(1, ready, { iconMissing: true }),
+      'config-slide-label',
+    );
     assert.equal(
       getProcessBlockerSettingsSection(1, ready, { iconReadable: false }),
       'config-slide-label',
@@ -139,8 +161,9 @@ describe('getProcessBlockerSettingsSection', () => {
 });
 
 describe('isProcessReadinessBlocked', () => {
-  it('blocks on empty table, unread icon, or processReady false', () => {
+  it('blocks on empty table, missing/unread icon, or processReady false', () => {
     assert.equal(isProcessReadinessBlocked(0, ready), true);
+    assert.equal(isProcessReadinessBlocked(1, ready, { iconMissing: true }), true);
     assert.equal(isProcessReadinessBlocked(1, ready, { iconReadable: false }), true);
     assert.equal(isProcessReadinessBlocked(1, { ...ready, processReady: false }), true);
     assert.equal(isProcessReadinessBlocked(1, ready, { iconReadable: true }), false);

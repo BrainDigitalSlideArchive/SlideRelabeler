@@ -14,6 +14,7 @@ import {
   getProcessBlockerSettingsSection,
   isProcessReadinessBlocked,
 } from '../../helpers/process_blockers.js';
+import { isLabelIconMissing } from '../../helpers/label_icon_batch.js';
 import useLabelIconForPreview from '../../components/config/useLabelIconForPreview.js';
 import { openConfigSettings } from '../../components/config-v2/ConfigV2Nav';
 import HelpIconPopover from '../../components/controls/HelpIconPopover';
@@ -46,10 +47,11 @@ function ProcessFilesControl({
   count,
   processing,
   iconReadable,
+  iconMissing,
   dispatch,
 }) {
   const messageId = useId();
-  const iconOpts = { iconReadable };
+  const iconOpts = { iconReadable, iconMissing };
   const message = getProcessBlockerMessage(count, outputReadiness, iconOpts);
   const detail = getProcessBlockerDetail(count, outputReadiness, iconOpts);
   const settingsSectionId = getProcessBlockerSettingsSection(count, outputReadiness, iconOpts);
@@ -132,6 +134,7 @@ const App = (props) => {
   let uploadRouting = useSelector((state) => state.uploadRouting);
   let outputReadiness = useSelector(selectOutputReadiness);
   const { iconReadable } = useLabelIconForPreview(config);
+  const iconMissing = isLabelIconMissing(config);
 
   const dispatch = useDispatch();
   const destSummary = summarizeDestinationDirectories(file_rows);
@@ -236,6 +239,7 @@ const App = (props) => {
             count={count}
             processing={processing}
             iconReadable={iconReadable}
+            iconMissing={iconMissing}
             dispatch={dispatch}
           />
         </div>

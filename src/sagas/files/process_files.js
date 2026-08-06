@@ -22,7 +22,6 @@ import {
 } from '../../helpers/globus_upload_batch.js';
 import {
   getLabelIconPath,
-  needsLabelIconFile,
   resolveLabelIconForBatch,
 } from '../../helpers/label_icon_batch.js';
 
@@ -280,10 +279,13 @@ function* process_files_worker(labelIconBytesBase64 = null) {
 
 function* prepareLabelIconForBatch() {
   const config = yield select((state) => state.config);
-  if (!needsLabelIconFile(config)) {
+  if (!config?.label?.add_icon) {
     return { ok: true, bytesBase64: null };
   }
   const path = getLabelIconPath(config);
+  if (!path) {
+    return resolveLabelIconForBatch(config, null);
+  }
   const readResult = yield call(electronAPI.readLabelIconBytes, path);
   return resolveLabelIconForBatch(config, readResult);
 }

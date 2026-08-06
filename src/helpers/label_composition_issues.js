@@ -1,16 +1,18 @@
 // helpers/label_composition_issues.js — incomplete label composition warnings for config UI.
 
 import { isMultilineLabelText } from './label_text_display.js';
-import { LABEL_ICON_UNREADABLE_SUMMARY } from './label_icon_batch.js';
+import {
+  LABEL_ICON_MISSING_DETAIL,
+  LABEL_ICON_MISSING_SUMMARY,
+  LABEL_ICON_UNREADABLE_SUMMARY,
+} from './label_icon_batch.js';
 
-export const LABEL_ICON_MISSING_SUMMARY = 'No image selected.';
-
-export const LABEL_ICON_MISSING_DETAIL = (
-  'Although Image is selected, an actual image file still needs to be provided. '
-  + 'Otherwise, no image will be rendered onto the label.'
-);
-
-export { LABEL_ICON_UNREADABLE_SUMMARY, LABEL_ICON_UNREADABLE_DETAIL } from './label_icon_batch.js';
+export {
+  LABEL_ICON_MISSING_DETAIL,
+  LABEL_ICON_MISSING_SUMMARY,
+  LABEL_ICON_UNREADABLE_SUMMARY,
+  LABEL_ICON_UNREADABLE_DETAIL,
+} from './label_icon_batch.js';
 
 export const LABEL_QR_MULTILINE_SUMMARY = (
   'Multiline labels are not encoded as QR. Slides with line breaks in Label will omit the QR code.'

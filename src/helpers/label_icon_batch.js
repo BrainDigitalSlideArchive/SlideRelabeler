@@ -11,6 +11,15 @@ export const LABEL_ICON_UNREADABLE_SUMMARY =
 export const LABEL_ICON_UNREADABLE_DETAIL =
   'Missing file or permission — choose the image again under Slide label.';
 
+/** Process dialog when Image is on but no file was chosen. */
+export const LABEL_ICON_MISSING_MESSAGE =
+  'Image is enabled for the label but no image file is selected. Open Configuration → Slide label, choose an image, then retry Process. Your file list is unchanged.';
+
+export const LABEL_ICON_MISSING_SUMMARY = 'No image selected.';
+
+export const LABEL_ICON_MISSING_DETAIL =
+  'Image is enabled but no file is selected. Choose an image under Slide label.';
+
 /** Cap base64 length so preview-label:// query strings stay within URL limits. */
 export const MAX_PREVIEW_ICON_BYTES_BASE64 = 400_000;
 
@@ -21,12 +30,21 @@ export function getLabelIconPath(config) {
   return String(config?.label?.icon_file?.source?.path ?? '').trim();
 }
 
+/** True when Image/icon is enabled on the label. */
+export function isLabelIconEnabled(config) {
+  return !!config?.label?.add_icon;
+}
+
+/** True when Image is on but no path is stored. */
+export function isLabelIconMissing(config) {
+  return isLabelIconEnabled(config) && !getLabelIconPath(config);
+}
+
 /**
- * True when Process needs a readable icon file (icon enabled and a path is set).
- * Icon enabled with no path stays a soft skip (existing Python behavior).
+ * True when Process needs to read icon bytes (icon enabled and a path is set).
  */
 export function needsLabelIconFile(config) {
-  return !!config?.label?.add_icon && !!getLabelIconPath(config);
+  return isLabelIconEnabled(config) && !!getLabelIconPath(config);
 }
 
 /**
@@ -66,13 +84,17 @@ export function configForLabelPreview(config, bytesBase64) {
 
 /**
  * Interpret the result of reading the label icon for a batch.
+ * Icon enabled with no path fails closed (same as unreadable for Process).
  * @param {object|null} readResult — from electronAPI.readLabelIconBytes
  * @param {object} config
  * @returns {{ ok: true, bytesBase64: string|null } | { ok: false, message: string }}
  */
 export function resolveLabelIconForBatch(config, readResult) {
-  if (!needsLabelIconFile(config)) {
+  if (!isLabelIconEnabled(config)) {
     return { ok: true, bytesBase64: null };
+  }
+  if (!getLabelIconPath(config)) {
+    return { ok: false, message: LABEL_ICON_MISSING_MESSAGE };
   }
   if (readResult?.ok && readResult.base64) {
     return { ok: true, bytesBase64: String(readResult.base64) };

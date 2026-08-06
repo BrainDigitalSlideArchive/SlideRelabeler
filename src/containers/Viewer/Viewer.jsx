@@ -14,8 +14,10 @@ import {
   PREVIEW_ERROR_KEY,
 } from '../../helpers/metadata_preview_ui';
 import {
+  LABEL_ICON_MISSING_SUMMARY,
   LABEL_ICON_UNREADABLE_SUMMARY,
   configForLabelPreview,
+  isLabelIconMissing,
 } from '../../helpers/label_icon_batch.js';
 import './Viewer.scss';
 
@@ -85,6 +87,7 @@ function Viewer(props) {
   const config = useSelector((state) => state.config);
 
   const { bytesBase64: labelIconBytes, iconReadable } = useLabelIconForPreview(config);
+  const iconMissing = isLabelIconMissing(config);
   const previewConfig = useMemo(
     () => configForLabelPreview(config, labelIconBytes),
     [config, labelIconBytes],
@@ -322,7 +325,11 @@ function Viewer(props) {
                         alt="After label"
                         onError={() => logImgLoadError('preview_label', preview_label_url)}
                       />
-                      {iconReadable === false ? (
+                      {iconMissing ? (
+                        <div className="__preview-icon-warning" role="status">
+                          {LABEL_ICON_MISSING_SUMMARY}
+                        </div>
+                      ) : iconReadable === false ? (
                         <div className="__preview-icon-warning" role="status">
                           {LABEL_ICON_UNREADABLE_SUMMARY}
                         </div>

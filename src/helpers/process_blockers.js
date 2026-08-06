@@ -1,6 +1,8 @@
 // helpers/process_blockers.js — main-window Process button gate messages.
 
 import {
+  LABEL_ICON_MISSING_DETAIL,
+  LABEL_ICON_MISSING_SUMMARY,
   LABEL_ICON_UNREADABLE_DETAIL,
   LABEL_ICON_UNREADABLE_SUMMARY,
 } from './label_icon_batch.js';
@@ -15,13 +17,16 @@ export const DELIVERY_LOCAL_FOLDER_SUMMARY =
 /**
  * @param {number} count — loaded file rows
  * @param {object} outputReadiness — from selectOutputReadiness
- * @param {{ iconReadable?: boolean|null }} [options]
- *   When iconReadable === false, label icon path is set but unreadable.
+ * @param {{ iconReadable?: boolean|null, iconMissing?: boolean }} [options]
  * @returns {string} Empty when Process can proceed (aside from processing/disable_changes).
  */
 export function getProcessBlockerMessage(count, outputReadiness, options = {}) {
   if (count === 0) {
     return 'Select files to inspect and process';
+  }
+
+  if (options.iconMissing) {
+    return LABEL_ICON_MISSING_SUMMARY;
   }
 
   if (options.iconReadable === false) {
@@ -55,6 +60,9 @@ export function getProcessBlockerMessage(count, outputReadiness, options = {}) {
  * (App renders one paragraph in that case).
  */
 export function getProcessBlockerDetail(count, outputReadiness, options = {}) {
+  if (count > 0 && options.iconMissing) {
+    return LABEL_ICON_MISSING_DETAIL;
+  }
   if (count > 0 && options.iconReadable === false) {
     return LABEL_ICON_UNREADABLE_DETAIL;
   }
@@ -68,7 +76,7 @@ export function getProcessBlockerDetail(count, outputReadiness, options = {}) {
  */
 export function getProcessBlockerSettingsSection(count, outputReadiness, options = {}) {
   if (count === 0) return null;
-  if (options.iconReadable === false) return 'config-slide-label';
+  if (options.iconMissing || options.iconReadable === false) return 'config-slide-label';
   if (outputReadiness?.patternValidation?.blocking) return 'config-output-filename';
   // Enable toggles + local folder/Copy To are on the main Output delivery panel.
   if (!outputReadiness?.anyDeliveryEnabled) return null;
@@ -85,6 +93,7 @@ export function getProcessBlockerSettingsSection(count, outputReadiness, options
  */
 export function isProcessReadinessBlocked(count, outputReadiness, options = {}) {
   if (count === 0) return true;
+  if (options.iconMissing) return true;
   if (options.iconReadable === false) return true;
   if (!outputReadiness?.processReady) return true;
   return false;
