@@ -23,8 +23,9 @@ import {
 } from '../../helpers/globus_upload_batch.js';
 import { pickProcessedOutputPath } from '../../helpers/process_output_path.js';
 import { shouldSkipUnsupportedRow } from '../../helpers/deid_format_support.js';
+import { attachLabelIconBytes } from '../../helpers/label_icon_batch.js';
 
-export default function* process_file(file_row_idx, file_row) {
+export default function* process_file(file_row_idx, file_row, labelIconBytesBase64 = null) {
   let monitor_progress = null;
   try {
     const config = yield select(state => state.config);
@@ -68,8 +69,9 @@ export default function* process_file(file_row_idx, file_row) {
       };
     }
 
+    const processConfig = attachLabelIconBytes(config, labelIconBytesBase64);
     let info = {
-      config: config,
+      config: processConfig,
       ...rowForProcess
     };
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import OpenSeadragon from '../../components/OpenSeaDragon/OpenSeadragon';
+import useLabelIconForPreview from '../../components/config/useLabelIconForPreview.js';
 
 import { encodeURLParameters } from '../../helpers/url_helpers';
 import { buildThumbnailProtocolUrl } from '../../helpers/thumbnail_helpers.js';
@@ -12,6 +13,10 @@ import {
   hasUsableMetadataTable,
   PREVIEW_ERROR_KEY,
 } from '../../helpers/metadata_preview_ui';
+import {
+  LABEL_ICON_UNREADABLE_SUMMARY,
+  configForLabelPreview,
+} from '../../helpers/label_icon_batch.js';
 import './Viewer.scss';
 
 import * as app_actions from '../../actions/app';
@@ -78,6 +83,12 @@ function Viewer(props) {
   const dispatch = useDispatch();
   const files = useSelector((state) => state.files);
   const config = useSelector((state) => state.config);
+
+  const { bytesBase64: labelIconBytes, iconReadable } = useLabelIconForPreview(config);
+  const previewConfig = useMemo(
+    () => configForLabelPreview(config, labelIconBytes),
+    [config, labelIconBytes],
+  );
 
   const [metadata, setMetadata] = useState(null);
   const [image_type, set_image_type] = useState('');
@@ -175,7 +186,7 @@ function Viewer(props) {
     const output_dict = {
       ...file_row,
       __reserved: file_row.__reserved,
-      config,
+      config: previewConfig,
     };
 
     let file_encoded;
@@ -245,7 +256,7 @@ function Viewer(props) {
     rowIndex,
     row_idx_param,
     files.file_rows,
-    config,
+    previewConfig,
     metadata,
   ]);
 
@@ -311,6 +322,11 @@ function Viewer(props) {
                         alt="After label"
                         onError={() => logImgLoadError('preview_label', preview_label_url)}
                       />
+                      {iconReadable === false ? (
+                        <div className="__preview-icon-warning" role="status">
+                          {LABEL_ICON_UNREADABLE_SUMMARY}
+                        </div>
+                      ) : null}
                     </td>
                   ) : (
                     <td>Row processed</td>

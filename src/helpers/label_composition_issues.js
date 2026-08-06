@@ -1,6 +1,7 @@
 // helpers/label_composition_issues.js — incomplete label composition warnings for config UI.
 
 import { isMultilineLabelText } from './label_text_display.js';
+import { LABEL_ICON_UNREADABLE_SUMMARY } from './label_icon_batch.js';
 
 export const LABEL_ICON_MISSING_SUMMARY = 'No image selected.';
 
@@ -8,6 +9,8 @@ export const LABEL_ICON_MISSING_DETAIL = (
   'Although Image is selected, an actual image file still needs to be provided. '
   + 'Otherwise, no image will be rendered onto the label.'
 );
+
+export { LABEL_ICON_UNREADABLE_SUMMARY, LABEL_ICON_UNREADABLE_DETAIL } from './label_icon_batch.js';
 
 export const LABEL_QR_MULTILINE_SUMMARY = (
   'Multiline labels are not encoded as QR. Slides with line breaks in Label will omit the QR code.'
@@ -17,16 +20,32 @@ export const LABEL_QR_MULTILINE_SUMMARY = (
  * @param {object} labelConfig
  * @param {{ labelText?: string, qrPayload?: string }} resolved
  * @param {string|null|undefined} iconPath
+ * @param {{ iconReadable?: boolean|null }} [options]
+ *   When `iconReadable === false`, path is set but Electron cannot read the file.
+ *   Omit / null while the async check is pending so we do not flash a false warning.
  * @returns {Array<{ feature: 'icon'|'qr'|'text', message: string }>}
  */
-export function getLabelCompositionIssues(labelConfig, { labelText, qrPayload } = {}, iconPath) {
+export function getLabelCompositionIssues(
+  labelConfig,
+  { labelText, qrPayload } = {},
+  iconPath,
+  options = {},
+) {
   const issues = [];
 
-  if (labelConfig?.add_icon && !String(iconPath ?? '').trim()) {
-    issues.push({
-      feature: 'icon',
-      message: LABEL_ICON_MISSING_SUMMARY,
-    });
+  if (labelConfig?.add_icon) {
+    const path = String(iconPath ?? '').trim();
+    if (!path) {
+      issues.push({
+        feature: 'icon',
+        message: LABEL_ICON_MISSING_SUMMARY,
+      });
+    } else if (options.iconReadable === false) {
+      issues.push({
+        feature: 'icon',
+        message: LABEL_ICON_UNREADABLE_SUMMARY,
+      });
+    }
   }
 
   if (labelConfig?.add_qr) {

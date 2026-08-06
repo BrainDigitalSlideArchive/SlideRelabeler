@@ -821,12 +821,37 @@ class DeidTools:
         if not icon_file:
             return None
 
-        image_path = icon_file.get('source', {}).get('path')
-        if not image_path or not str(image_path).strip() or not os.path.exists(image_path):
-            return None
+        # Prefer batch-buffered bytes so path revoke / TCC mid-run cannot break Process.
+        raw_b64 = icon_file.get('bytes_base64')
+        if raw_b64 is None:
+            raw_b64 = (icon_file.get('source') or {}).get('bytes_base64')
+        if raw_b64:
+            try:
+                data = base64.b64decode(raw_b64)
+                icon_image = PIL.Image.open(io.BytesIO(data))
+                return icon_image.convert(self.pil_image_mode)
+            except Exception as exc:
+                if self.debug:
+                    self.logger.info("Failed to load icon from buffered bytes: %s", exc)
+                return None
 
-        icon_image = PIL.Image.open(image_path)
-        return icon_image.convert(self.pil_image_mode)
+        image_path = icon_file.get('source', {}).get('path')
+        if not image_path or not str(image_path).strip():
+            return None
+        try:
+            if not os.path.exists(image_path):
+                return None
+            icon_image = PIL.Image.open(image_path)
+            return icon_image.convert(self.pil_image_mode)
+        except OSError as exc:
+            # Missing, permission (macOS TCC), or unreadable — soft-skip like no icon.
+            if self.debug:
+                self.logger.info("Failed to load icon from path %s: %s", image_path, exc)
+            return None
+        except Exception as exc:
+            if self.debug:
+                self.logger.info("Failed to load icon from path %s: %s", image_path, exc)
+            return None
 
     def _resolve_qr_code_string(self, output_dict, desired_title):
         qr_data = {}

@@ -20,6 +20,11 @@ import {
   resolveMaxUploadBatchSize,
   takeDeferredGlobusUploads,
 } from '../../helpers/globus_upload_batch.js';
+import {
+  getLabelIconPath,
+  needsLabelIconFile,
+  resolveLabelIconForBatch,
+} from '../../helpers/label_icon_batch.js';
 
 function countPendingUploads(file_rows, dsa_upload_queue, globus_upload_queue) {
   const queuedRowIds = new Set();
@@ -186,7 +191,7 @@ function* watch_cancel_process_files(process_files_task) {
   yield put({ type: auditLog_actions.SET_AUDIT_LOG_CURRENT_RUN, payload: null });
 }
 
-function* process_files_worker() {
+function* process_files_worker(labelIconBytesBase64 = null) {
   const file_rows = yield select(state => state.files.file_rows);
   const runId = createRunId();
   let batchFinalized = false;
@@ -227,7 +232,7 @@ function* process_files_worker() {
                 break;
               }
             }
-            yield call(process_file, file_row_idx, file_row);
+            yield call(process_file, file_row_idx, file_row, labelIconBytesBase64);
             if (batchSize != null && batchSize > 1) {
               yield* flushDeferredGlobusUploads(batchSize);
             }
@@ -273,6 +278,16 @@ function* process_files_worker() {
   }
 }
 
+function* prepareLabelIconForBatch() {
+  const config = yield select((state) => state.config);
+  if (!needsLabelIconFile(config)) {
+    return { ok: true, bytesBase64: null };
+  }
+  const path = getLabelIconPath(config);
+  const readResult = yield call(electronAPI.readLabelIconBytes, path);
+  return resolveLabelIconForBatch(config, readResult);
+}
+
 function* cancel_cancel_watch_during_processing(watch_cancel_process_files_task) {
   let run_cancel_watch = true;
 
@@ -291,8 +306,24 @@ function* cancel_cancel_watch_during_processing(watch_cancel_process_files_task)
 export default function* process_files() {
   while (true) {
     yield take(files_actions.PROCESS_FILES);
+
+    const iconPrep = yield call(prepareLabelIconForBatch);
+    if (!iconPrep.ok) {
+      yield call(electronAPI.showMessageBox, {
+        type: 'error',
+        title: 'Cannot process files',
+        message: iconPrep.message,
+        buttons: ['OK'],
+        defaultId: 0,
+      });
+      continue;
+    }
+
     yield put({ type: files_actions.TOGGLE_PROCESSING });
-    const process_files_worker_task = yield fork(process_files_worker);
+    const process_files_worker_task = yield fork(
+      process_files_worker,
+      iconPrep.bytesBase64,
+    );
     const watch_cancel_process_files_task = yield fork(watch_cancel_process_files, process_files_worker_task);
 
     yield fork(cancel_cancel_watch_during_processing, watch_cancel_process_files_task);

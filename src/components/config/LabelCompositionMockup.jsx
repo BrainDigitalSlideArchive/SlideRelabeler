@@ -17,6 +17,7 @@ export default function LabelCompositionMockup({
   textTemplate,
   qrTemplate,
   iconPath,
+  iconUnreadable = false,
   compact = false,
 }) {
   const [iconPreviewSrc, setIconPreviewSrc] = useState(null);
@@ -38,7 +39,7 @@ export default function LabelCompositionMockup({
   const showBothOff = !addIcon && !addQr;
 
   useEffect(() => {
-    if (!addIcon || !iconPath) {
+    if (!addIcon || !iconPath || iconUnreadable) {
       setIconPreviewSrc(null);
       return undefined;
     }
@@ -57,10 +58,23 @@ export default function LabelCompositionMockup({
     return () => {
       cancelled = true;
     };
-  }, [addIcon, iconPath]);
+  }, [addIcon, iconPath, iconUnreadable]);
 
   const iconZoneContent = (() => {
     if (!addIcon) return 'Image';
+    if (iconUnreadable && iconPath) {
+      return (
+        <>
+          <ExampleIconSvg className="label-composition-mockup__icon-svg" />
+          <span
+            className="label-composition-mockup__region-label label-composition-mockup__region-label--muted"
+            title={iconPath}
+          >
+            Image not readable
+          </span>
+        </>
+      );
+    }
     if (iconPreviewSrc) {
       return (
         <>

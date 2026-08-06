@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, { useEffect, useId } from 'react';
 import bdsaLogo from "../../assets/BDSA_folder_clear.png";
 import {useSelector, useDispatch} from "react-redux";
 
@@ -8,6 +8,15 @@ import * as file_actions from "../../actions/files";
 import * as config_actions from "../../actions/config";
 import * as debug_actions from "../../actions/debug";
 import { useAppVersion } from "../../helpers/useAppVersion";
+import {
+  getProcessBlockerDetail,
+  getProcessBlockerMessage,
+  getProcessBlockerSettingsSection,
+  isProcessReadinessBlocked,
+} from '../../helpers/process_blockers.js';
+import useLabelIconForPreview from '../../components/config/useLabelIconForPreview.js';
+import { openConfigSettings } from '../../components/config-v2/ConfigV2Nav';
+import HelpIconPopover from '../../components/controls/HelpIconPopover';
 
 import AppAgGrid from "../../components/AgGrid/AppAgGrid";
 import GridHoverTooltip from "../../components/AgGrid/GridHoverTooltip";
@@ -30,53 +39,87 @@ function render_cancel_clear_button(disable_changes, file_count, processing, dis
   )
 }
 
-function getProcessBlockerMessage(count, outputReadiness) {
-  if (count === 0) {
-    return 'Select files to inspect and process';
-  }
-
-  if (outputReadiness.patternValidation?.blocking) {
-    return outputReadiness.patternValidation.messages?.[0]
-      || 'Fix pattern column references before processing.';
-  }
-
-  if (!outputReadiness.anyDeliveryEnabled) {
-    return 'Configure output delivery — enable local save and/or upload';
-  }
-
-  if (outputReadiness.localEnabled && !outputReadiness.localConfigured) {
-    return 'Set Copy To for all files or choose a folder for all';
-  }
-
-  if (outputReadiness.uploadEnabled && !outputReadiness.uploadConfigured) {
-    const blocker = outputReadiness.uploadReadiness?.blockers?.[0];
-    return blocker || 'Finish upload connection setup before processing';
-  }
-
-  return '';
-}
-
-function render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch) {
-  const message = getProcessBlockerMessage(count, outputReadiness);
-  const processBlocked = count === 0
-    || processing
-    || !outputReadiness.processReady
-    || disable_changes;
+function ProcessFilesControl({
+  uploadRouting,
+  outputReadiness,
+  disable_changes,
+  count,
+  processing,
+  iconReadable,
+  dispatch,
+}) {
+  const messageId = useId();
+  const iconOpts = { iconReadable };
+  const message = getProcessBlockerMessage(count, outputReadiness, iconOpts);
+  const detail = getProcessBlockerDetail(count, outputReadiness, iconOpts);
+  const settingsSectionId = getProcessBlockerSettingsSection(count, outputReadiness, iconOpts);
+  const readinessBlocked = isProcessReadinessBlocked(count, outputReadiness, iconOpts);
+  const processBlocked = readinessBlocked || processing || disable_changes;
+  // Chip + hover tip: readiness block with files loaded (not empty table / not mid-run).
+  const showWarning = count > 0 && readinessBlocked && !processing;
 
   const autoUp = !!uploadRouting?.auto_upload;
   const processLabel = autoUp ? 'Process and Upload' : 'Process Files';
 
+  function openSettingsFromBlocker() {
+    if (!settingsSectionId) return;
+    openConfigSettings(dispatch, settingsSectionId);
+  }
+
+  const showSettingsAction = Boolean(settingsSectionId);
+
   return (
-    <div className="__process-files">
-      <button className={processBlocked ? "__action-button _disabled" : "__action-button"}
-              disabled={processBlocked}
-              onClick={() => dispatch({type: file_actions.PROCESS_FILES})}>
-                {processLabel}
-      </button>
-      {message.length > 0 && <div className="__process-files-message">{message}</div>}
+    <div className={`__process-files${showWarning ? ' __process-files--blocked' : ''}`}>
+      <div className="__process-files-row">
+        {showWarning ? (
+          <GridHoverTooltip
+            content="Not ready to process. Click for details"
+            show="always"
+            delay={0}
+            placement="below"
+          >
+            <HelpIconPopover
+              helpLabel={message || 'Why Process is blocked'}
+              variant="onDark"
+              glyph="!"
+            >
+              <div className="__process-files-popover" id={messageId}>
+                {detail !== message ? (
+                  <>
+                    <p className="__process-files-popover-title">{message}</p>
+                    <p className="__process-files-popover-body">{detail}</p>
+                  </>
+                ) : (
+                  <p className="__process-files-popover-body">{message}</p>
+                )}
+                {showSettingsAction ? (
+                  <button
+                    type="button"
+                    className="__process-files-popover-action"
+                    onClick={openSettingsFromBlocker}
+                  >
+                    Open Settings
+                  </button>
+                ) : null}
+              </div>
+            </HelpIconPopover>
+          </GridHoverTooltip>
+        ) : null}
+        <button
+          type="button"
+          className={processBlocked ? '__action-button _disabled' : '__action-button'}
+          disabled={processBlocked}
+          aria-label={showWarning ? `${processLabel}. ${message}` : undefined}
+          title={!showWarning && message && !processing ? message : undefined}
+          onClick={() => dispatch({ type: file_actions.PROCESS_FILES })}
+        >
+          {processLabel}
+        </button>
+      </div>
     </div>
-  )
+  );
 }
+
 const App = (props) => {
   let output_dir = useSelector(state => state.files.output_dir);
   const appVersion = useAppVersion();
@@ -84,9 +127,11 @@ const App = (props) => {
   let processing = useSelector(state => state.files.processing);
   let disable_changes = useSelector(state => state.files.disable_changes);
   let file_rows = useSelector(state => state.files.file_rows);
+  const config = useSelector((state) => state.config);
 
   let uploadRouting = useSelector((state) => state.uploadRouting);
   let outputReadiness = useSelector(selectOutputReadiness);
+  const { iconReadable } = useLabelIconForPreview(config);
 
   const dispatch = useDispatch();
   const destSummary = summarizeDestinationDirectories(file_rows);
@@ -184,7 +229,15 @@ const App = (props) => {
         <div className='__controls-csv-xlsx'>
           {render_cancel_clear_button(disable_changes, count, processing, dispatch)}
           <div className={"__spacer"}/>
-          {render_process_files_button(uploadRouting, outputReadiness, disable_changes, count, processing, dispatch)}
+          <ProcessFilesControl
+            uploadRouting={uploadRouting}
+            outputReadiness={outputReadiness}
+            disable_changes={disable_changes}
+            count={count}
+            processing={processing}
+            iconReadable={iconReadable}
+            dispatch={dispatch}
+          />
         </div>
         <div id='table'>
           <AppAgGrid

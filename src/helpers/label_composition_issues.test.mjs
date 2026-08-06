@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLabelCompositionIssues } from './label_composition_issues.js';
+import {
+  getLabelCompositionIssues,
+  LABEL_ICON_UNREADABLE_SUMMARY,
+} from './label_composition_issues.js';
 
 test('getLabelCompositionIssues flags missing icon', () => {
   const issues = getLabelCompositionIssues(
@@ -17,6 +20,28 @@ test('getLabelCompositionIssues ignores icon when disabled', () => {
     { add_icon: false },
     {},
     null,
+  );
+  assert.equal(issues.length, 0);
+});
+
+test('getLabelCompositionIssues flags unreadable icon when path set', () => {
+  const issues = getLabelCompositionIssues(
+    { add_icon: true },
+    {},
+    '/gone.png',
+    { iconReadable: false },
+  );
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].feature, 'icon');
+  assert.equal(issues[0].message, LABEL_ICON_UNREADABLE_SUMMARY);
+});
+
+test('getLabelCompositionIssues does not flag path while readability pending', () => {
+  const issues = getLabelCompositionIssues(
+    { add_icon: true },
+    {},
+    '/logo.png',
+    { iconReadable: null },
   );
   assert.equal(issues.length, 0);
 });

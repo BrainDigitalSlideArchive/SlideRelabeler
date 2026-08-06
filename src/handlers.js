@@ -1291,6 +1291,23 @@ ipcMain.handle('read-local-image-preview', async (_event, filePath) => {
   }
 });
 
+/** Read label-icon bytes for a Process batch (any image PIL can open, including TIFF). */
+ipcMain.handle('read-label-icon-bytes', async (_event, filePath) => {
+  if (!filePath || typeof filePath !== 'string' || !filePath.trim()) {
+    return { ok: false, reason: 'missing' };
+  }
+  try {
+    await fs.access(filePath, fs.constants.R_OK);
+    const data = readFileSync(filePath);
+    return { ok: true, base64: data.toString('base64') };
+  } catch (err) {
+    if (err?.code === 'ENOENT') {
+      return { ok: false, reason: 'missing' };
+    }
+    return { ok: false, reason: 'unreadable' };
+  }
+});
+
 ipcMain.handle('get-store', async () => {
   let user_data_path = app.getPath('userData')
   let app_data_path = join(user_data_path, 'deid.tmp')
@@ -1510,7 +1527,7 @@ ipcMain.handle('check-file-exists', async (event, file_path) => {
 
 ipcMain.handle('check-file-readable', async (event, file_path) => {
   try {
-    await fs.access(file, fs.constants.R_OK);
+    await fs.access(file_path, fs.constants.R_OK);
     return true;
   }
   catch {
@@ -1520,7 +1537,7 @@ ipcMain.handle('check-file-readable', async (event, file_path) => {
 
 ipcMain.handle('check-file-writeable', async (event, file_path) => {
   try {
-    await fs.access(file, fs.constants.W_OK);
+    await fs.access(file_path, fs.constants.W_OK);
     return true;
   }
   catch {

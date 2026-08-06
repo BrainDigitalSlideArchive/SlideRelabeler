@@ -8,7 +8,12 @@ import {
   LABEL_WIDTH_MIN,
   normalizeLabelWidthValue,
 } from '../../../../helpers/computed_field_config';
+import {
+  LABEL_ICON_UNREADABLE_SUMMARY,
+  configForLabelPreview,
+} from '../../../../helpers/label_icon_batch.js';
 import LabelSchematicPanel from '../../../config/LabelSchematicPanel';
+import useLabelIconForPreview from '../../../config/useLabelIconForPreview.js';
 import ConfigFeatureBlock from '../../primitives/ConfigFeatureBlock';
 import LabelDefaultsEditor from './LabelDefaultsEditor';
 import LabelImageFileRow from './LabelImageFileRow';
@@ -59,13 +64,30 @@ export default function LabelComposer({
   const [draftWidth, setDraftWidth] = useState(null);
   const widthInputId = 'label-width-px-v2';
 
+  const { bytesBase64, iconReadable } = useLabelIconForPreview(config);
+  const previewConfig = useMemo(
+    () => configForLabelPreview(config, bytesBase64),
+    [config, bytesBase64],
+  );
+
   const issueByFeature = useMemo(() => {
     const map = {};
     for (const issue of schematicPreview.issues ?? []) {
       map[issue.feature] = issue;
     }
+    if (iconReadable === false) {
+      map.icon = { feature: 'icon', message: LABEL_ICON_UNREADABLE_SUMMARY };
+    }
     return map;
-  }, [schematicPreview.issues]);
+  }, [schematicPreview.issues, iconReadable]);
+
+  const mergedPreviewWarnings = useMemo(() => {
+    const next = [...previewWarnings];
+    if (iconReadable === false && !next.includes(LABEL_ICON_UNREADABLE_SUMMARY)) {
+      next.unshift(LABEL_ICON_UNREADABLE_SUMMARY);
+    }
+    return next;
+  }, [previewWarnings, iconReadable]);
 
   function setLabelDefaults(partial) {
     dispatch({ type: config_actions.SET_LABEL_DEFAULTS, payload: partial });
@@ -201,7 +223,7 @@ export default function LabelComposer({
               checked={checked}
               disabled={disabled}
               inactive={!checked}
-              incomplete={f.key !== 'icon' && Boolean(issue) && checked}
+              incomplete={Boolean(issue) && checked}
               issueMessage={f.key === 'icon' ? undefined : issue?.message}
               onChange={() => toggles[f.key]?.()}
             >
@@ -217,10 +239,11 @@ export default function LabelComposer({
         addIcon={addIcon}
         labelConfig={labelConfig}
         iconPath={iconPath}
-        config={config}
+        iconUnreadable={iconReadable === false}
+        config={previewConfig}
         previewRow={previewRow}
         previewFilePath={previewFilePath}
-        previewWarnings={previewWarnings}
+        previewWarnings={mergedPreviewWarnings}
       />
     </div>
   );

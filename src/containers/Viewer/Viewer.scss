@@ -50,6 +50,14 @@ body{
       padding: 0.65rem 0.5rem 0.75rem;
     }
 
+    &-icon-warning {
+      margin-top: 0.35rem;
+      font-size: 0.75rem;
+      line-height: 1.25;
+      color: $surface-warning-text;
+      text-align: left;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;

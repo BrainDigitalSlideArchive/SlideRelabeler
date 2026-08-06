@@ -12,6 +12,7 @@ export default function LabelSchematicPanel({
   addIcon,
   labelConfig,
   iconPath,
+  iconUnreadable = false,
   config,
   previewRow,
   previewFilePath,
@@ -38,6 +39,7 @@ export default function LabelSchematicPanel({
         textTemplate={templates.labelText}
         qrTemplate={templates.qrPayload}
         iconPath={iconPath}
+        iconUnreadable={iconUnreadable}
       />
       <LabelRenderedPreviewPanel
         addText={addText}
