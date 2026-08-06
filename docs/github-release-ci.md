@@ -60,6 +60,10 @@ Set secrets under **Settings → Secrets and variables → Actions** (repository
 
 Electron Forge / `@electron/osx-sign` does **not** auto-import `CSC_LINK` (that is an electron-builder feature). The Release workflow imports the `.p12` into a temporary keychain with [`apple-actions/import-codesign-certs`](https://github.com/Apple-Actions/import-codesign-certs) when `CSC_LINK` is set, then lists identities (`security find-identity -p codesigning -v`) before `npm run make`.
 
+**Nested PyInstaller helpers.** `engine.app` and `globus_cli.app` are COLLECT folders (not real `.app` bundles) copied into `SlideRelabeler.app/Contents/Resources`. Apple notarization rejects the zip if those Mach-Os are unsigned or ad-hoc. When `CSC_LINK` is set, Forge `prePackage` runs [`scripts/sign-pyinstaller-helpers.mjs`](../scripts/sign-pyinstaller-helpers.mjs) after PyInstaller: deep Developer ID sign (hardened runtime + timestamp + [`build/entitlements.mac.plist`](../build/entitlements.mac.plist)) of every Mach-O under those trees, then Forge signs/notarizes the outer app once. You do **not** notarize the helpers separately.
+
+macOS PyInstaller builds disable UPX (it breaks notarizable signatures).
+
 [`forge.config.js`](../forge.config.js) enables `osxSign` / `osxNotarize` when `CSC_LINK` (and notarization env vars) are set on macOS. The Windows job maps `WIN_CSC_*` into `CSC_LINK` / `CSC_KEY_PASSWORD` for the packager; omit those secrets to ship an unsigned Windows installer.
 
 Further reading: [Electron Forge signing](https://www.electronforge.io/guides/code-signing), Simon Willison [sign/notarize Electron on macOS](https://til.simonwillison.net/electron/sign-notarize-electron-macos).

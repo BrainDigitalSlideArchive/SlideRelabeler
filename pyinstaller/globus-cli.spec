@@ -25,7 +25,8 @@ exe = EXE(
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    # UPX breaks Developer ID / notarization on macOS; keep enabled elsewhere.
+    upx=(sys.platform != 'darwin'),
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -40,7 +41,7 @@ if sys.platform == 'darwin':
                    a.binaries,
                    a.datas,
                    strip=False,
-                   upx=True,
+                   upx=False,
                    upx_exclude=[],
                    name='globus_cli.app',
                )

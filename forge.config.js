@@ -122,6 +122,16 @@ module.exports = {
         env: execEnv,
         stdio: 'inherit',
       });
+
+      // Nested COLLECT trees must be Developer-ID signed before the outer app is notarized.
+      // See scripts/sign-pyinstaller-helpers.mjs and docs/github-release-ci.md.
+      if (os.platform() === 'darwin' && process.env.CSC_LINK) {
+        console.log('** Deep-signing PyInstaller helpers for notarization **');
+        execSync('node ./scripts/sign-pyinstaller-helpers.mjs', {
+          env: execEnv,
+          stdio: 'inherit',
+        });
+      }
     }
   },
   makers: [
