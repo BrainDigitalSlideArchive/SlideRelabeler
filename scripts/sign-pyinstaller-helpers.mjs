@@ -6,8 +6,12 @@
  * leaves them with invalid/ad-hoc signatures inside SlideRelabeler.app/Contents/Resources.
  * Notarize then fails with "The signature of the binary is invalid."
  *
- * Run after PyInstaller, before Electron packager signs the outer app.
- * Requires Developer ID in the keychain (CI: apple-actions/import-codesign-certs).
+ * Prefer signing the copies already inside the packaged app (Forge afterCopyExtraResources)
+ * and configure osxSign.ignore so the outer app sign does not re-touch them.
+ *
+ * Usage:
+ *   node scripts/sign-pyinstaller-helpers.mjs [helperRoot ...]
+ * Defaults to dist/engine.app and dist/globus_cli.app when no paths are given.
  *
  * Env:
  *   APPLE_IDENTITY — optional; defaults to first "Developer ID Application" identity
@@ -22,7 +26,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const entitlements = path.join(root, 'scripts', 'entitlements.mac.plist');
 
-const HELPERS = [
+const DEFAULT_HELPERS = [
   path.join(root, 'dist', 'engine.app'),
   path.join(root, 'dist', 'globus_cli.app'),
 ];
@@ -109,7 +113,7 @@ function signHelperTree(helperRoot, identity) {
   if (machOs.length === 0) {
     throw new Error(`No Mach-O binaries found under ${helperRoot}`);
   }
-  console.log(`** Signing ${machOs.length} Mach-O file(s) in ${path.basename(helperRoot)} **`);
+  console.log(`** Signing ${machOs.length} Mach-O file(s) in ${helperRoot} **`);
   for (const filePath of machOs) {
     console.log(`  codesign ${path.relative(helperRoot, filePath)}`);
     codesignFile(filePath, identity);
@@ -129,10 +133,13 @@ function main() {
     throw new Error(`Missing entitlements file: ${entitlements}`);
   }
 
+  const helpers = process.argv.slice(2).filter(Boolean);
+  const targets = helpers.length > 0 ? helpers.map((p) => path.resolve(p)) : DEFAULT_HELPERS;
+
   const identity = resolveIdentity();
   console.log(`** PyInstaller helper identity: ${identity} **`);
 
-  for (const helper of HELPERS) {
+  for (const helper of targets) {
     signHelperTree(helper, identity);
   }
 

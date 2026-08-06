@@ -40,9 +40,42 @@ function resolvePyInstaller() {
 /**
  * Enable macOS signing / notarization only when CI secrets (or local env) are present.
  * CI must import the Developer ID .p12 into the keychain first (see release.yml); CSC_LINK alone does not install the cert for Forge/osx-sign.
+ * PyInstaller helpers are deep-signed in afterCopyExtraResources; osxSign.ignore keeps Forge from re-signing them.
  * Windows Authenticode uses CSC_LINK + CSC_KEY_PASSWORD via the packager when set (CI maps WIN_CSC_* → those env vars); no packagerConfig flag required.
  * See docs/github-release-ci.md.
  */
+function isPyInstallerHelperPath(filePath) {
+  return /[/\\](engine\.app|globus_cli\.app)([/\\]|$)/.test(filePath);
+}
+
+function findPackagedHelperRoots(stagingPath) {
+  const roots = [];
+  const tryResources = (resourcesDir) => {
+    const engine = path.join(resourcesDir, 'engine.app');
+    const globus = path.join(resourcesDir, 'globus_cli.app');
+    if (fs.existsSync(engine) && fs.existsSync(globus)) {
+      roots.push(engine, globus);
+      return true;
+    }
+    return false;
+  };
+
+  if (tryResources(path.join(stagingPath, 'Contents', 'Resources'))) {
+    return roots;
+  }
+
+  if (!fs.existsSync(stagingPath)) {
+    return roots;
+  }
+  for (const name of fs.readdirSync(stagingPath)) {
+    if (!name.endsWith('.app')) continue;
+    if (tryResources(path.join(stagingPath, name, 'Contents', 'Resources'))) {
+      return roots;
+    }
+  }
+  return roots;
+}
+
 function buildPackagerConfig() {
   const packagerConfig = {
     asar: true,
@@ -65,9 +98,40 @@ function buildPackagerConfig() {
   }
 
   if (os.platform() === 'darwin' && process.env.CSC_LINK) {
-    packagerConfig.osxSign = process.env.APPLE_IDENTITY
-      ? { identity: process.env.APPLE_IDENTITY }
-      : {};
+    packagerConfig.afterCopyExtraResources = [
+      (buildPath, _electronVersion, platform, _arch, callback) => {
+        if (platform !== 'darwin') {
+          callback();
+          return;
+        }
+        try {
+          const helpers = findPackagedHelperRoots(buildPath);
+          if (helpers.length === 0) {
+            throw new Error(
+              `Could not find engine.app / globus_cli.app under packaged app at ${buildPath}`,
+            );
+          }
+          console.log('** Deep-signing packaged PyInstaller helpers (afterCopyExtraResources) **');
+          const quoted = helpers.map((h) => `"${h}"`).join(' ');
+          execSync(`node ./scripts/sign-pyinstaller-helpers.mjs ${quoted}`, {
+            stdio: 'inherit',
+          });
+          callback();
+        } catch (err) {
+          callback(err);
+        }
+      },
+    ];
+
+    const osxSign = {
+      // Do not let osx-sign re-touch PyInstaller COLLECT trees after we signed them.
+      ignore: isPyInstallerHelperPath,
+    };
+    if (process.env.APPLE_IDENTITY) {
+      osxSign.identity = process.env.APPLE_IDENTITY;
+    }
+    packagerConfig.osxSign = osxSign;
+
     if (
       process.env.APPLE_ID &&
       process.env.APPLE_APP_SPECIFIC_PASSWORD &&
@@ -122,16 +186,6 @@ module.exports = {
         env: execEnv,
         stdio: 'inherit',
       });
-
-      // Nested COLLECT trees must be Developer-ID signed before the outer app is notarized.
-      // See scripts/sign-pyinstaller-helpers.mjs and docs/github-release-ci.md.
-      if (os.platform() === 'darwin' && process.env.CSC_LINK) {
-        console.log('** Deep-signing PyInstaller helpers for notarization **');
-        execSync('node ./scripts/sign-pyinstaller-helpers.mjs', {
-          env: execEnv,
-          stdio: 'inherit',
-        });
-      }
     }
   },
   makers: [
