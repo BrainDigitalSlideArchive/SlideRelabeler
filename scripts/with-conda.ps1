@@ -6,6 +6,8 @@ $EnvName = "sliderelabeler"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
+. (Join-Path $Root "scripts\Invoke-Native.ps1")
+
 if ($args.Count -lt 1) {
     Write-Error "with-conda.ps1 requires a command. Usage: with-conda.ps1 <command> [args...]"
 }
@@ -24,10 +26,10 @@ if (-not (Get-Command conda -ErrorAction SilentlyContinue)) {
 # Resolve env prefix. Prefer JSON. Fall back to `conda env list` text, using the
 # last field so an active-env "*" marker is never mistaken for the path.
 function Get-CondaEnvPrefix([string]$Name) {
-    try {
-        $jsonText = & conda env list --json 2>$null
-        if ($LASTEXITCODE -eq 0 -and $jsonText) {
-            $data = $jsonText | ConvertFrom-Json
+    $json = Invoke-NativeCapture -Script { conda env list --json }
+    if ($json.ExitCode -eq 0 -and $json.Output) {
+        try {
+            $data = $json.Output | ConvertFrom-Json
             foreach ($p in @($data.envs)) {
                 if (-not $p) { continue }
                 $leaf = Split-Path -Leaf ([string]$p)
@@ -35,13 +37,13 @@ function Get-CondaEnvPrefix([string]$Name) {
                     return [string]$p
                 }
             }
+        } catch {
+            # fall through to text parse
         }
-    } catch {
-        # fall through to text parse
     }
 
-    $envList = & conda env list 2>&1 | Out-String
-    foreach ($line in ($envList -split "`r?`n")) {
+    $text = Invoke-NativeCapture -Script { conda env list }
+    foreach ($line in ($text.Output -split "`r?`n")) {
         $trimmed = $line.Trim()
         if (-not $trimmed -or $trimmed.StartsWith("#")) { continue }
         $tokens = $trimmed -split "\s+"
@@ -67,14 +69,12 @@ if (-not (Test-Path $python)) {
     Write-Error "Python not found in conda environment '$EnvName' at $prefix"
 }
 
-try {
-    & $python -c "import grpc; import large_image" 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "import failed" }
-} catch {
+$grpcOk = Invoke-Native -Quiet -Script { & $python -c "import grpc; import large_image" }
+if ($grpcOk -ne 0) {
     Write-Error "Environment '$EnvName' is missing required packages (grpc, large_image). Run: conda env create -f environment-windows.yml"
 }
 
-$pyVersion = (& $python --version 2>&1 | Out-String).Trim()
+$pyVersion = (Invoke-NativeCapture -Script { & $python --version }).Output
 Write-Host "[with-conda] Using conda env: $EnvName"
 Write-Host "[with-conda] PYTHON=$python ($pyVersion)"
 
@@ -87,28 +87,17 @@ if (Test-Path $scriptsDir) { $pathParts += $scriptsDir }
 $pathParts += $prefix
 $env:PATH = ($pathParts + $env:PATH) -join [IO.Path]::PathSeparator
 
-# Probe for the native CZI helper. ImportError is expected on a fresh env; with
-# ErrorActionPreference=Stop, Python's stderr traceback becomes a terminating
-# NativeCommandError and would skip setup-czi-rw.ps1. Soften for the probe only.
-$cziProbeOk = $false
-$prevEap = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-try {
-    & $python -c "from sliderelabeler_czi_rw import replace_or_add_attachment" 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) { $cziProbeOk = $true }
-} catch {
-    $cziProbeOk = $false
-} finally {
-    $ErrorActionPreference = $prevEap
-}
+# Probe for the native CZI helper (ImportError expected on a fresh env).
+$cziProbeOk = (Invoke-Native -Quiet -Script {
+    & $python -c "from sliderelabeler_czi_rw import replace_or_add_attachment"
+}) -eq 0
 
 if (-not $cziProbeOk) {
     Write-Host "[with-conda] Building CZI attachment writer (one-time)..."
     $setupPs1 = Join-Path $Root "scripts\setup-czi-rw.ps1"
-    & $setupPs1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to build CZI attachment writer (scripts/setup-czi-rw.ps1)"
-    }
+    Invoke-Native -RequireSuccess -ErrorMessage "Failed to build CZI attachment writer (scripts/setup-czi-rw.ps1)" -Script {
+        & $setupPs1
+    } | Out-Null
 }
 
 $cmd = $args[0]
@@ -117,5 +106,5 @@ if ($args.Count -gt 1) {
     $cmdArgs = $args[1..($args.Count - 1)]
 }
 
-& $cmd @cmdArgs
-exit $LASTEXITCODE
+$exitCode = Invoke-Native -Script { & $cmd @cmdArgs }
+exit $exitCode

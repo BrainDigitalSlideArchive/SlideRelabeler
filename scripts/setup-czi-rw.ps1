@@ -9,6 +9,8 @@ $PatchDir = Join-Path $Root "native\czi_rw\patches"
 $LibCziPin = "61f74ff097d6d0fbe6e36f204ff59d92e299d7cd"
 $RequiredVersion = "0.1.2"
 
+. (Join-Path $Root "scripts\Invoke-Native.ps1")
+
 $Python = $env:PYTHON
 if (-not $Python) {
     if ($env:CONDA_PREFIX) {
@@ -30,31 +32,25 @@ a = [int(x) for x in sys.argv[1].split('.')]
 b = [int(x) for x in sys.argv[2].split('.')]
 sys.exit(0 if a >= b else 1)
 "@
-    & $Python -c $code $Installed $Required
-    return ($LASTEXITCODE -eq 0)
+    $exit = Invoke-Native -Quiet -Script { & $Python -c $code $Installed $Required }
+    return ($exit -eq 0)
 }
 
+$versionProbe = Invoke-NativeCapture -Script {
+    & $Python -c "from importlib.metadata import version; print(version('sliderelabeler-czi-rw'))"
+}
 $installedVersion = $null
-try {
-    $installedVersion = & $Python -c "from importlib.metadata import version; print(version('sliderelabeler-czi-rw'))" 2>$null
-} catch {
-    $installedVersion = $null
+if ($versionProbe.ExitCode -eq 0 -and $versionProbe.Output) {
+    $installedVersion = $versionProbe.Output
 }
 
 if ($installedVersion -and (Test-VersionGe $installedVersion $RequiredVersion)) {
-    $prevEap = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    try {
-        & $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments" 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "sliderelabeler_czi_rw $installedVersion already installed"
-            $ErrorActionPreference = $prevEap
-            exit 0
-        }
-    } catch {
-        # Fall through to rebuild.
-    } finally {
-        $ErrorActionPreference = $prevEap
+    $importOk = Invoke-Native -Quiet -Script {
+        & $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments"
+    }
+    if ($importOk -eq 0) {
+        Write-Host "sliderelabeler_czi_rw $installedVersion already installed"
+        exit 0
     }
 }
 
@@ -83,17 +79,21 @@ function Ensure-PinnedLibCzi {
     }
     $cmakeLists = Join-Path $LibCziDir "CMakeLists.txt"
     if (-not (Test-Path $cmakeLists)) {
-        git clone https://github.com/ZEISS/libczi.git $LibCziDir
-        if ($LASTEXITCODE -ne 0) { Write-Error "Failed to clone ZEISS/libczi" }
+        Invoke-Native -RequireSuccess -ErrorMessage "Failed to clone ZEISS/libczi" -Script {
+            git clone https://github.com/ZEISS/libczi.git $LibCziDir
+        } | Out-Null
     }
     Push-Location $LibCziDir
     try {
-        $current = (git rev-parse HEAD 2>$null)
+        $head = Invoke-NativeCapture -Script { git rev-parse HEAD }
+        $current = $head.Output
         if ($current -ne $LibCziPin) {
-            git fetch --depth 1 origin $LibCziPin
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to fetch libczi pin $LibCziPin" }
-            git checkout --force $LibCziPin
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to checkout libczi pin $LibCziPin" }
+            Invoke-Native -RequireSuccess -ErrorMessage "Failed to fetch libczi pin $LibCziPin" -Script {
+                git fetch --depth 1 origin $LibCziPin
+            } | Out-Null
+            Invoke-Native -RequireSuccess -ErrorMessage "Failed to checkout libczi pin $LibCziPin" -Script {
+                git checkout --force $LibCziPin
+            } | Out-Null
         }
     } finally {
         Pop-Location
@@ -128,8 +128,9 @@ function Apply-LibCziPatches {
 
         Push-Location $LibCziDir
         try {
-            git apply --reverse --check $patch 2>$null
-            if ($LASTEXITCODE -eq 0) {
+            # Expected to fail when the patch is not yet applied.
+            $already = Invoke-Native -Quiet -Script { git apply --reverse --check $patch }
+            if ($already -eq 0) {
                 Write-Host "Patch already applied: $base"
                 continue
             }
@@ -153,12 +154,11 @@ function Apply-LibCziPatches {
 
         Push-Location $LibCziDir
         try {
-            git apply --check $patch 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                git apply $patch
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Error "Failed to apply patch $base"
-                }
+            $canApply = Invoke-Native -Quiet -Script { git apply --check $patch }
+            if ($canApply -eq 0) {
+                Invoke-Native -RequireSuccess -ErrorMessage "Failed to apply patch $base" -Script {
+                    git apply $patch
+                } | Out-Null
                 Write-Host "Applied patch: $base"
                 continue
             }
@@ -173,12 +173,17 @@ function Apply-LibCziPatches {
 Ensure-PinnedLibCzi
 Apply-LibCziPatches
 
-& $Python -m pip install -U pybind11 scikit-build-core
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Invoke-Native -RequireSuccess -ErrorMessage "pip install pybind11/scikit-build-core failed" -Script {
+    & $Python -m pip install -U pybind11 scikit-build-core
+} | Out-Null
 
 $nativePath = Join-Path $Root "native\czi_rw"
-& $Python -m pip install --force-reinstall --no-deps $nativePath
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Invoke-Native -RequireSuccess -ErrorMessage "pip install native/czi_rw failed" -Script {
+    & $Python -m pip install --force-reinstall --no-deps $nativePath
+} | Out-Null
 
-& $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments; print('sliderelabeler_czi_rw OK')"
-exit $LASTEXITCODE
+Invoke-Native -RequireSuccess -ErrorMessage "sliderelabeler_czi_rw import check failed" -Script {
+    & $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments; print('sliderelabeler_czi_rw OK')"
+} | Out-Null
+
+exit 0
