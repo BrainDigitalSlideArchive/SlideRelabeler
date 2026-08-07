@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Python/pybind11 extensions on Windows require the shared CRT (/MD).
+# Without this, libCZIStatic (and deps like zstd) default to /MT and the link
+# fails with LNK2038 RuntimeLibrary mismatches (MT_StaticRelease vs MD_DynamicRelease).
+if(POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif()
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
+endif()
+
 # Build a minimal static libCZI (no tests, curl, cmd, dynlib).
 set(LIBCZI_BUILD_UNITTESTS OFF CACHE BOOL "" FORCE)
 set(LIBCZI_BUILD_CZICMD OFF CACHE BOOL "" FORCE)
