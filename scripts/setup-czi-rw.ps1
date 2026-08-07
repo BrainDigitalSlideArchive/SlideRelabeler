@@ -42,10 +42,19 @@ try {
 }
 
 if ($installedVersion -and (Test-VersionGe $installedVersion $RequiredVersion)) {
-    & $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments" 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "sliderelabeler_czi_rw $installedVersion already installed"
-        exit 0
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Python -c "from sliderelabeler_czi_rw import replace_or_add_attachment, replace_or_add_attachments" 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "sliderelabeler_czi_rw $installedVersion already installed"
+            $ErrorActionPreference = $prevEap
+            exit 0
+        }
+    } catch {
+        # Fall through to rebuild.
+    } finally {
+        $ErrorActionPreference = $prevEap
     }
 }
 

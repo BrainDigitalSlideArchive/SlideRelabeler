@@ -290,7 +290,8 @@ export default function ESMTransformRulesEditor({
               placeholder="Result"
               value={testOutput}
               onChange={() => {}}
-              disabled
+              readOnly
+              disabled={disabled}
               variant="onLight"
             />
           </div>

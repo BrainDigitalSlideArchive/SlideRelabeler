@@ -8,10 +8,12 @@ import {
 
 import './InputText.scss';
 
-function get_input_text_class(disabled, error) {
+function get_input_text_class(disabled, error, readOnly) {
   let class_name = "__input-text";
   if (disabled) {
     class_name += " _disabled";
+  } else if (readOnly) {
+    class_name += " _readonly";
   }
   if (error) {
     class_name += " _error";
@@ -20,7 +22,7 @@ function get_input_text_class(disabled, error) {
 }
 
 function InputText(props) {
-  const { label, value, onChange, disabled, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress, onBlur } = props;
+  const { label, value, onChange, disabled, readOnly, type, error, input_style, tooltip, placeholder, variant, compact, omitLabel, ariaLabel, inputId, onKeyPress, onBlur } = props;
   // Light is the default. `onLight` is a no-op alias; `onDark` opts into dark-modal chrome.
   let rootClass = variant === 'onDark' ? 'InputText InputText--onDark' : 'InputText';
   if (compact) rootClass += ' InputText--compact';
@@ -157,7 +159,8 @@ function InputText(props) {
             type={type ? type : 'text'}
             placeholder={placeholder}
             disabled={disabled}
-            className={get_input_text_class(disabled, error)}
+            readOnly={readOnly}
+            className={get_input_text_class(disabled, error, readOnly)}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyPress={onKeyPress}
@@ -173,7 +176,8 @@ function InputText(props) {
           type={type ? type : 'text'}
           placeholder={placeholder}
           disabled={disabled}
-          className={get_input_text_class(disabled, error)}
+          readOnly={readOnly}
+          className={get_input_text_class(disabled, error, readOnly)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyPress={onKeyPress}

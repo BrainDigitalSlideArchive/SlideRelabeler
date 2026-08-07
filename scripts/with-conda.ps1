@@ -87,8 +87,22 @@ if (Test-Path $scriptsDir) { $pathParts += $scriptsDir }
 $pathParts += $prefix
 $env:PATH = ($pathParts + $env:PATH) -join [IO.Path]::PathSeparator
 
-& $python -c "from sliderelabeler_czi_rw import replace_or_add_attachment" 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) {
+# Probe for the native CZI helper. ImportError is expected on a fresh env; with
+# ErrorActionPreference=Stop, Python's stderr traceback becomes a terminating
+# NativeCommandError and would skip setup-czi-rw.ps1. Soften for the probe only.
+$cziProbeOk = $false
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    & $python -c "from sliderelabeler_czi_rw import replace_or_add_attachment" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { $cziProbeOk = $true }
+} catch {
+    $cziProbeOk = $false
+} finally {
+    $ErrorActionPreference = $prevEap
+}
+
+if (-not $cziProbeOk) {
     Write-Host "[with-conda] Building CZI attachment writer (one-time)..."
     $setupPs1 = Join-Path $Root "scripts\setup-czi-rw.ps1"
     & $setupPs1

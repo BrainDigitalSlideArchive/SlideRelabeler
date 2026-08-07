@@ -114,6 +114,12 @@
       opacity: 0.2;
       cursor: not-allowed;
     }
+
+    &._readonly {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      cursor: default;
+    }
   }
 
   &.InputText--compact {
@@ -206,6 +212,12 @@
       &::placeholder {
         color: $beige;
         opacity: 0.6;
+      }
+
+      &._readonly {
+        background-color: rgba(244, 237, 211, 0.08);
+        color: $beige;
+        cursor: default;
       }
     }
 
