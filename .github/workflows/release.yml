@@ -54,6 +54,17 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Cache conda packages
+        uses: actions/cache@v4
+        env:
+          # Bump to force-refresh the cache without editing environment-windows.yml
+          CACHE_NUMBER: 0
+        with:
+          path: D:\conda_pkgs_dir
+          key: ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment-windows.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-
+
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -61,6 +72,8 @@ jobs:
           environment-file: environment-windows.yml
           auto-activate-base: false
           conda-remove-defaults: true
+          pkgs-dirs: D:\conda_pkgs_dir
+          run-post: false
 
       - name: Install npm dependencies
         shell: pwsh
@@ -117,6 +130,17 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Cache conda packages
+        uses: actions/cache@v4
+        env:
+          # Bump to force-refresh the cache without editing environment-macos.yml
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment-macos.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-
+
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -124,6 +148,8 @@ jobs:
           environment-file: environment-macos.yml
           auto-activate-base: false
           conda-remove-defaults: true
+          pkgs-dirs: ~/conda_pkgs_dir
+          run-post: false
 
       - name: Install npm dependencies
         shell: bash -el {0}
@@ -159,6 +185,17 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Cache conda packages
+        uses: actions/cache@v4
+        env:
+          # Bump to force-refresh the cache without editing environment-linux.yml
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment-linux.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-conda-${{ env.CACHE_NUMBER }}-
+
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -166,6 +203,8 @@ jobs:
           environment-file: environment-linux.yml
           auto-activate-base: false
           conda-remove-defaults: true
+          pkgs-dirs: ~/conda_pkgs_dir
+          run-post: false
 
       - name: Install npm dependencies
         shell: bash -el {0}

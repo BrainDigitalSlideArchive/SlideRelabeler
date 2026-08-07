@@ -439,6 +439,10 @@
                 </ol>
 
                 <div class="note">
+                    <strong>Windows:</strong> Install <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/">Visual Studio Build Tools</a> with the <strong>Desktop development with C++</strong> workload (MSVC + Windows SDK) before the first <code>npm run dev</code> / <code>package</code> / <code>make</code>. The CZI helper is compiled automatically; missing tools produce a clear error. See <code>BUILD_WINDOWS.md</code> for packaging detail.
+                </div>
+
+                <div class="note">
                     <strong>Note for Apple M1 users:</strong> If you encounter issues with <code>large-image[common]</code> installation due to <code>rawpy</code> not being found, you may need to install <code>cmake</code> and clone the rawpy repository directly. See the GitHub issue for detailed solutions.
                 </div>
             </div>

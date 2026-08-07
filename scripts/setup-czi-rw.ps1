@@ -54,22 +54,31 @@ if ($installedVersion -and (Test-VersionGe $installedVersion $RequiredVersion)) 
     }
 }
 
+. (Join-Path $Root "scripts\Initialize-WindowsCziToolchain.ps1")
+Initialize-WindowsCziToolchain
+
 if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
-    Write-Error "cmake is required to build native/czi_rw. Install conda-forge package 'cmake' (listed in environment-windows.yml) and retry."
+    Write-Error @"
+cmake is required to build native/czi_rw. It is listed in environment-windows.yml.
+
+Update the env and retry:
+  conda env update -f environment-windows.yml
+"@
 }
 
-$hasCompiler = (
-    (Get-Command cl -ErrorAction SilentlyContinue) -or
-    (Get-Command clang++ -ErrorAction SilentlyContinue) -or
-    (Get-Command g++ -ErrorAction SilentlyContinue) -or
-    (Get-Command c++ -ErrorAction SilentlyContinue)
-)
-if (-not $hasCompiler) {
-    Write-Error "A C++17 compiler is required to build native/czi_rw. Install conda-forge 'cxx-compiler' (listed in environment-windows.yml) or Visual Studio Build Tools and retry."
+if (-not (Get-Command cl -ErrorAction SilentlyContinue)) {
+    Write-Error @"
+MSVC (cl.exe) is required to build native/czi_rw.
+
+Install Visual Studio Build Tools (or full Visual Studio) with the "Desktop development with C++" workload (MSVC + Windows SDK):
+  https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+Then re-run this script (a normal PowerShell window is fine).
+"@
 }
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Write-Error "git is required to clone ZEISS/libczi into native/czi_rw/third_party/libczi."
+    Write-Error "git is required to clone ZEISS/libczi into native/czi_rw/third_party/libczi. Install Git for Windows: https://git-scm.com/download/win"
 }
 
 function Ensure-PinnedLibCzi {

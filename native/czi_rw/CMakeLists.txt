@@ -5,9 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Python/pybind11 extensions on Windows require the shared CRT (/MD).
-# Without this, libCZIStatic (and deps like zstd) default to /MT and the link
-# fails with LNK2038 RuntimeLibrary mismatches (MT_StaticRelease vs MD_DynamicRelease).
+# Python extensions on Windows must use the shared CRT (/MD).
 if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW)
 endif()
@@ -23,7 +21,7 @@ set(LIBCZI_BUILD_AZURESDK_BASED_STREAM OFF CACHE BOOL "" FORCE)
 set(LIBCZI_BUILD_DYNLIB OFF CACHE BOOL "" FORCE)
 set(LIBCZI_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(LIBCZI_BUILD_LIBCZIAPI OFF CACHE BOOL "" FORCE)
-# libCZI defaults to /MT; keep upstream CMAKE_MSVC_RUNTIME_LIBRARY (/MD).
+# Let this project control MSVC runtime (/MD) instead of libCZI's /MT default.
 set(LIBCZI_DO_NOT_SET_MSVC_RUNTIME_LIBRARY ON CACHE BOOL "" FORCE)
 
 add_subdirectory(third_party/libczi EXCLUDE_FROM_ALL)

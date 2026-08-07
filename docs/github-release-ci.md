@@ -29,6 +29,15 @@ The workflow **fails** if the tag is not exactly `v` + `package.json` `version` 
 
 Squirrel `.nupkg` / `RELEASES` files are **not** uploaded. Intel Mac builds are not produced.
 
+## CI dependency caches
+
+Each platform build job caches:
+
+- **npm** — via `setup-node` (`cache: npm`), keyed from the lockfile
+- **conda packages** — via `actions/cache` on the conda `pkgs_dirs` directory, keyed by OS/arch plus a hash of that platform’s `environment-*.yml`
+
+Env create still runs every job; a cache hit mainly avoids re-downloading packages. The first tag after an env-file change (or after this caching landed) is a cold miss and fills the cache. To force a refresh without editing an env yml, bump `CACHE_NUMBER` in the corresponding Cache conda packages step in [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+
 ## Local vs CI packaging tools (Linux)
 
 On Ubuntu CI the workflow installs `fakeroot` and `rpm` so both makers succeed. Locally, before `npm run make`:

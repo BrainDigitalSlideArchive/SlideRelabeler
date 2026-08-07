@@ -14,7 +14,7 @@ bash scripts/setup-czi-rw.sh
 # Windows:  .\scripts\setup-czi-rw.ps1
 ```
 
-Requires **cmake** ≥ 3.15 and a C++17 compiler (`cmake` and `cxx-compiler` are listed in `environment-*.yml`). The wheel exports:
+Requires **cmake** ≥ 3.15 and a C++17 compiler (`cmake` and `cxx-compiler` are listed in `environment-*.yml`). On **Windows**, install Visual Studio Build Tools with **Desktop development with C++** (MSVC + Windows SDK); [`scripts/setup-czi-rw.ps1`](../../scripts/setup-czi-rw.ps1) loads the MSVC environment when present. The wheel exports:
 
 - `sliderelabeler_czi_rw.replace_or_add_attachment(path, name, content_file_type, data)`
 - `sliderelabeler_czi_rw.replace_or_add_attachments(path, items)` — batch replace in one open/close

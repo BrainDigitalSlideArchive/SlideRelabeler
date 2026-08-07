@@ -17,6 +17,8 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
 
 ## Getting started
 
+**Prerequisites:** Git, Node.js, Miniconda/Anaconda, and a C++ toolchain for the native CZI helper. On **Windows**, install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (or full Visual Studio) with the **Desktop development with C++** workload (MSVC + Windows SDK). A normal PowerShell window is enough; the build scripts load the compiler when needed. See [BUILD_WINDOWS.md](BUILD_WINDOWS.md) for Windows packaging detail.
+
 1. Clone: `git clone https://github.com/BrainDigitalSlideArchive/SlideRelabeler.git` then `cd SlideRelabeler`
 2. Create the conda env:
    - macOS: `conda env create -f environment-macos.yml`
@@ -24,7 +26,7 @@ Development runs the engine as a live Python process from the `sliderelabeler` c
    - Linux: `conda env create -f environment-linux.yml`
 3. Activate: `conda activate sliderelabeler`
 4. Install JS deps: `npm install`
-5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`. The first run may take a few minutes to compile the CZI attachment writer (clones ZEISS/libczi once if missing; needs network).
+5. **Develop:** `npm run dev` — launches Electron with live Python from the conda env (conda-wrapped so `PYTHON` / `PATH` bypass pyenv and Homebrew shims). Prefer this over bare `npm start`. The first run may take a few minutes to compile the CZI attachment writer (clones ZEISS/libczi once if missing; needs network). If a required build tool is missing, the script exits with a clear install message.
 6. **Package:** when you want a distributable, run `npm run package` (app only) or `npm run make` (installer / zip / deb / rpm). These use the same conda wrapper so `pyinstaller` comes from the env. Output is under `out/`.
 
 Platform-specific packaging notes: [build_readme/macosx/README.md](build_readme/macosx/README.md), [build_readme/linux/README.md](build_readme/linux/README.md), [BUILD_WINDOWS.md](BUILD_WINDOWS.md). Automated multi-platform releases: [docs/github-release-ci.md](docs/github-release-ci.md).

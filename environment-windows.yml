@@ -23,6 +23,7 @@ dependencies:
   - vs2015_runtime
   # Native build tools for sliderelabeler_czi_rw (libCZI ReplaceAttachment).
   - cmake
+  - ninja
   - cxx-compiler
   - xz
   - zlib

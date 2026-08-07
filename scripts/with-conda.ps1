@@ -82,7 +82,9 @@ $env:PYTHON = $python
 $env:CONDA_PREFIX = $prefix
 
 $scriptsDir = Join-Path $prefix "Scripts"
+$libraryBin = Join-Path $prefix "Library\bin"
 $pathParts = @()
+if (Test-Path $libraryBin) { $pathParts += $libraryBin }
 if (Test-Path $scriptsDir) { $pathParts += $scriptsDir }
 $pathParts += $prefix
 $env:PATH = ($pathParts + $env:PATH) -join [IO.Path]::PathSeparator

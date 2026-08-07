@@ -65,7 +65,18 @@ Before building the application, ensure you have the following installed and con
    - Run: `npm --version`
    - You should see output like: `9.x.x` or `10.x.x`
 
-### 3. System Requirements
+### 3. Visual Studio Build Tools (C++)
+
+The native CZI attachment writer is compiled on first `npm run dev` / `package` / `make` (or via `build_windows.ps1`). Install **Visual Studio Build Tools** (or full Visual Studio) with:
+
+- Workload: **Desktop development with C++**
+- Components: **MSVC** toolset and a **Windows 10/11 SDK**
+
+Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+A normal PowerShell window is enough — you do not need to open the “x64 Native Tools” prompt. The build scripts locate MSVC and configure the compiler when the CZI helper needs to be built. If Build Tools are missing, the script exits with an install message.
+
+### 4. System Requirements
 
 - **Operating System:** Windows 10 or Windows 11
 - **PowerShell:** Version 5.1 or later (comes with Windows 10/11)
@@ -75,9 +86,10 @@ Before building the application, ensure you have the following installed and con
   - Build artifacts: ~1-2GB
 - **RAM:** 8GB minimum, 16GB recommended (for building with PyInstaller)
 
-### 4. Git (Optional but Recommended)
+### 5. Git
 
-If you need to clone the repository:
+Required to clone this repository and to fetch the pinned libCZI sources used by the CZI attachment writer.
+
 - Download: https://git-scm.com/download/win
 - Or use GitHub Desktop: https://desktop.github.com/
 
@@ -115,6 +127,13 @@ conda info
 node --version
 npm --version
 ```
+
+**Check Git:**
+```powershell
+git --version
+```
+
+**Check Visual Studio C++ tools (optional preflight):** Build scripts will load MSVC automatically when needed. Confirm Build Tools are installed via Visual Studio Installer (workload: Desktop development with C++).
 
 **Check PowerShell Execution Policy:**
 ```powershell
